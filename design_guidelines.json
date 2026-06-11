@@ -1,0 +1,160 @@
+{
+  "app_name": "Tennis Player Auction",
+  "personality": "7 Dark-First Utility DARK",
+  "personality_one_liner": "A fast, tactile, command-center interface built for high-stakes live sports bidding with immediate visual hierarchy.",
+  "color": {
+    "surface": "#0A0B0E",
+    "onSurface": "#E5E7EB",
+    "surfaceSecondary": "#15171D",
+    "onSurfaceSecondary": "#9CA3AF",
+    "surfaceTertiary": "#1F222B",
+    "onSurfaceTertiary": "#6B7280",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#000000",
+    "brand": "#FF5A00",
+    "brandPrimary": "#FF5A00",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#D44900",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#331604",
+    "onBrandTertiary": "#FF8A4C",
+    "success": "#10B981",
+    "onSuccess": "#064E3B",
+    "warning": "#F59E0B",
+    "onWarning": "#78350F",
+    "error": "#EF4444",
+    "onError": "#7F1D1D",
+    "info": "#3B82F6",
+    "onInfo": "#1E3A8A",
+    "border": "#272A35",
+    "borderStrong": "#4B5563",
+    "divider": "#1F222B"
+  },
+  "typography": {
+    "displayFontFamily": "Barlow Condensed",
+    "textFontFamily": "DM Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Dense but scannable. Use 12pt (md) grids for the live auction area to maximize screen real-estate. Avoid accidental white space.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "stack_only",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": [
+      "Use solid surfaceSecondary and surfaceTertiary for sticky headers and stat bars to ensure absolute clarity."
+    ],
+    "dont's": [
+      "Do not use blur or glassmorphism. This is a data-dense utility app; clarity and performance during live bidding take priority."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Login",
+      "purpose": "Authenticate the user before joining the live auction.",
+      "states": {
+        "loading": "Centered spinner matching brandPrimary.",
+        "empty": "N/A",
+        "error": "Inline text banner below the submit button using error tokens."
+      },
+      "layout": "Full screen background image (login_bg) with a heavy top-to-bottom gradient scrim (transparent to surfaceInverse at 80% opacity, but since it's Dark-First, use transparent to surface at 90%). Login form sits at the bottom third of the screen, using surfaceSecondary container. Brand logo/text at the top."
+    },
+    {
+      "name": "SessionSetup",
+      "purpose": "Create a new auction or join an existing one via Session ID.",
+      "states": {
+        "loading": "Button spinner inside the 'Join' or 'Create' CTA.",
+        "empty": "N/A",
+        "error": "Status banner at the top of the screen."
+      },
+      "layout": "Split panel layout. Top half for 'Join Existing' (6-char input, large and centered). Bottom half for 'Create New'. Include a 'Setup Health Check' panel (connection status) fixed at the bottom."
+    },
+    {
+      "name": "LiveAuction",
+      "purpose": "The core bidding screen where teams place real-time bids on the active player.",
+      "states": {
+        "loading": "Skeleton rows for the team grid and a blurred placeholder for the active player.",
+        "empty": "Auction ended illustration, showing 'No more players in pool'.",
+        "error": "Disconnected banner covering the top header with a 'Reconnecting...' state."
+      },
+      "layout": "1. Sticky Context Bar (Top): Active player info (Name, UTR), Current High Bid, and a massive Countdown Timer in Barlow Condensed. Contains a subtle progress bar along the bottom edge showing pool progress. 2. Sticky Sync Status: Small pill at the top right indicating live connection (green dot = live). 3. Scrolling Content: A 2-column grid of 14 Team Cards (surfaceSecondary). 4. Pinned Team: The user's team is always pinned directly under the context bar (or top of the grid) in a distinct brandTertiary tinted container. 5. Admin Controls (if admin): Sticky bottom bar with 'Finalize (Award)' and 'Skip' buttons. 6. Team Card Layout: Team Name, Captain, Remaining Budget/Slots. Bottom half contains a quick-bid chip row (+1k, +2k, +5k) and a primary 'Bid' button. Highlight the winning team card with a brand border (borderStrong)."
+    },
+    {
+      "name": "RostersBottomSheet",
+      "purpose": "Collapsible view to see all acquired players and spend per team.",
+      "states": {
+        "loading": "Spinner in the sheet header.",
+        "empty": "No players acquired yet.",
+        "error": "Failed to load rosters."
+      },
+      "layout": "Bottom sheet pulled up over the live auction. Contains an accordion/list of teams. Expanding a team shows rows of players acquired and the purchase price."
+    },
+    {
+      "name": "AuctionSummary",
+      "purpose": "Post-auction recap showing all finalized rosters and remaining budgets.",
+      "states": {
+        "loading": "Spinner in the center of the screen.",
+        "empty": "No data found for this session.",
+        "error": "Error loading final results."
+      },
+      "layout": "List layout using surfaceSecondary cards. Each card represents a Team, showing their final spend, remaining budget, and a compact list of acquired players. Includes a 'Close/Exit' CTA sticky at the bottom."
+    }
+  ],
+  "images": {
+    "login_bg": {
+      "url": "https://images.unsplash.com/photo-1578966663421-00f3bfebfa89?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHxkYXJrJTIwdGVubmlzJTIwY291cnQlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4MTE0ODAxNnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Top down view of a green tennis court in low light"
+    }
+  },
+  "haptics": {
+    "events": {
+      "quick_bid_chip_press": "light",
+      "place_bid_press": "medium",
+      "timer_tick_last_5_seconds": "light",
+      "bid_awarded": "success",
+      "error_state": "error"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the '7 Dark-First Utility DARK' guidelines. This is a high-speed, live data tool, not a lifestyle app. Function and readability are paramount.",
+    "Do NOT use indigo, violet, purple, or blue as the primary color. Stick strictly to the Signal Orange (brand) and deep obsidian (surface) palette provided.",
+    "For the Live Auction screen, prioritize a 2-column grid for the team cards using Flexbox (width: (screenWidth - 2*screenPadding - gap) / 2). Ensure no cards are orphaned on the left.",
+    "The countdown timer and current bid should utilize the displayFontFamily (Barlow Condensed) at the largest available scale (2xl) to ensure glanceability.",
+    "Implement the 'pinned team' card using the `brandTertiary` background to differentiate it instantly from the other 13 teams.",
+    "Include a gradient scrim from `transparent` to `surface` over the `login_bg` image, placing the login form inside the darkest area of the gradient.",
+    "For the bottom sheet displaying rosters, use `@gorhom/bottom-sheet` and keep its background strictly to `surfaceSecondary` with no blur (glass is disabled for this theme)."
+  ]
+}
