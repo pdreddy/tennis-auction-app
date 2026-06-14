@@ -2,12 +2,12 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import time
 import random
 import string
 import logging
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
@@ -16,13 +16,14 @@ import bcrypt
 import jwt
 
 import seed_data as seed
+import firebase_db as fb
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+# Initialise the Firebase Realtime Database admin client at import time so it is
+# ready for the very first request (fails fast if the credential is bad).
+fb.init()
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALG = "HS256"
@@ -35,6 +36,72 @@ security = HTTPBearer(auto_error=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# ----------------------------- Firebase helpers -----------------------------
+async def fb_get(path: str):
+    return await asyncio.to_thread(lambda: fb.ref(path).get())
+
+
+async def fb_set(path: str, value):
+    return await asyncio.to_thread(lambda: fb.ref(path).set(value))
+
+
+def to_list(v):
+    """Firebase stores arrays as index-keyed objects / drops empties — normalize back to a list."""
+    if isinstance(v, list):
+        return [x for x in v if x is not None]
+    if isinstance(v, dict):
+        try:
+            return [v[k] for k in sorted(v.keys(), key=lambda x: int(x))]
+        except (ValueError, TypeError):
+            return list(v.values())
+    return []
+
+
+def normalize(doc):
+    """Coerce a raw Firebase auction node into the canonical shape the app expects."""
+    if not doc:
+        return None
+    doc = dict(doc)
+    doc["teams"] = [
+        {**t, "players": to_list(t.get("players"))} for t in to_list(doc.get("teams"))
+    ]
+    pools = doc.get("playerPools") or {}
+    doc["playerPools"] = {k: to_list(pools.get(k)) for k in seed.POOL_ORDER}
+    cb = doc.get("currentBids") or {}
+    if isinstance(cb, list):
+        cb = {str(i): v for i, v in enumerate(cb) if v}
+    doc["currentBids"] = {str(k): v for k, v in cb.items()}
+    doc["currentPoolIndex"] = doc.get("currentPoolIndex", 0)
+    doc["currentPlayerIndex"] = doc.get("currentPlayerIndex", 0)
+    doc["version"] = doc.get("version", 0)
+    doc["timerEnd"] = doc.get("timerEnd", now_ms())
+    return doc
+
+
+async def run_txn(sid: str, mutate):
+    """Atomic compare-and-set on the whole auction node.
+
+    `mutate(doc) -> (new_doc, error_detail)`. On error the node is left unchanged
+    and the error is surfaced; concurrent writers are serialised by RTDB.
+    """
+    holder = {}
+
+    def txn(current):
+        if current is None:
+            holder["error"] = (404, "Session not found")
+            return None
+        doc = normalize(current)
+        new_doc, err = mutate(doc)
+        if err is not None:
+            holder["error"] = (400, err)
+            return current  # commit unchanged → reject
+        holder["ok"] = True
+        return new_doc
+
+    await asyncio.to_thread(lambda: fb.ref(f"auctions/{sid}").transaction(txn))
+    return holder
 
 
 # ----------------------------- Auth helpers -----------------------------
@@ -71,7 +138,7 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
         raise cred_err
     if not code:
         raise cred_err
-    user = await db.users.find_one({"code": code})
+    user = await fb_get(f"users/{code}")
     if not user:
         raise cred_err
     return {
@@ -192,25 +259,85 @@ def winning_bids(doc: dict):
     return winners, highest
 
 
-def strip(doc: dict) -> dict:
-    doc.pop("_id", None)
-    return doc
+# ----------------------------- Mutations (run inside a transaction) -----------------------------
+def mutate_bid(doc, team_id, amount):
+    if doc["timerEnd"] <= now_ms():
+        return None, "Time is up!"
+    err = validate_bid(doc, team_id, amount)
+    if err:
+        return None, err
+    doc["currentBids"][str(team_id)] = amount
+    doc["version"] = doc.get("version", 0) + 1
+    doc["lastUpdate"] = now_ms()
+    return doc, None
 
 
-async def commit(sid: str, version: int, updates: dict) -> bool:
-    updates["version"] = version + 1
-    updates["lastUpdate"] = now_ms()
-    res = await db.auctions.update_one(
-        {"sessionId": sid, "version": version}, {"$set": updates}
-    )
-    return res.matched_count == 1
+def mutate_finalize(doc):
+    eff_pool, eff_player, pool_key, player = effective(doc)
+    if not player:
+        return None, "No player available"
+    winners, highest = winning_bids(doc)
+    if not winners:
+        return None, "No bids. Use Skip instead."
+    if len(winners) > 1:
+        names = ", ".join(next(t["name"] for t in doc["teams"] if t["id"] == w) for w in winners)
+        return None, f"Tie: {names}. Place different bids."
+
+    win_id = winners[0]
+    teams = doc["teams"]
+    idx = next(i for i, t in enumerate(teams) if t["id"] == win_id)
+    win = teams[idx]
+    if len(win["players"]) >= seed.TEAM_SIZE:
+        return None, f"{win['name']} is full"
+    if highest > win["budget"]:
+        return None, f"{win['name']} cannot afford"
+
+    win["players"] = list(win["players"]) + [{**player, "acquiredPrice": highest}]
+    win["budget"] = win["budget"] - highest
+    win["totalSpent"] = win["totalSpent"] + highest
+
+    cur = doc["playerPools"][pool_key]
+    cur.pop(eff_player)
+    next_pool, next_player = eff_pool, eff_player
+    if eff_player >= len(cur):
+        next_pool, next_player = eff_pool + 1, 0
+
+    doc["currentPoolIndex"] = next_pool
+    doc["currentPlayerIndex"] = next_player
+    doc["currentBids"] = {}
+    doc["timerEnd"] = now_ms() + TIMER_MS
+    doc["version"] = doc.get("version", 0) + 1
+    doc["lastUpdate"] = now_ms()
+    return doc, None
+
+
+def mutate_skip(doc):
+    eff_pool, eff_player, pool_key, player = effective(doc)
+    if not player:
+        return None, "No player to skip"
+    cur = doc["playerPools"][pool_key]
+    moved = dict(cur[eff_player])
+    moved["isRetry"] = True
+    moved["retryCount"] = moved.get("retryCount", 0) + 1
+    cur.pop(eff_player)
+    cur.append(moved)
+    next_pool, next_player = eff_pool, eff_player
+    if eff_player >= len(cur):
+        next_pool, next_player = eff_pool + 1, 0
+    doc["currentPoolIndex"] = next_pool
+    doc["currentPlayerIndex"] = next_player
+    doc["currentBids"] = {}
+    doc["timerEnd"] = now_ms() + TIMER_MS
+    doc["version"] = doc.get("version", 0) + 1
+    doc["lastUpdate"] = now_ms()
+    return doc, None
 
 
 # ----------------------------- Auth routes -----------------------------
 @api_router.post("/auth/login")
 async def login(req: LoginReq):
     code = req.code.strip().upper()
-    user = await db.users.find_one({"code": code})
+    user = await fb_get(f"users/{code}")
     if not user or not verify_pw(req.pin, user["hashed_pin"]):
         raise HTTPException(status_code=401, detail="Invalid code or PIN")
     pub = {
@@ -237,147 +364,53 @@ async def config():
 @api_router.post("/auctions")
 async def create_auction(user=Depends(require_admin)):
     sid = new_session_id()
-    while await db.auctions.find_one({"sessionId": sid}):
+    while await fb_get(f"auctions/{sid}"):
         sid = new_session_id()
     doc = initial_doc(sid)
-    await db.auctions.insert_one(dict(doc))
-    return {"sessionId": sid, "serverNow": now_ms(), "state": strip(doc)}
+    await fb_set(f"auctions/{sid}", doc)
+    return {"sessionId": sid, "serverNow": now_ms(), "state": doc}
 
 
 @api_router.get("/auctions/{sid}")
 async def get_auction(sid: str, user=Depends(get_current_user)):
-    doc = await db.auctions.find_one({"sessionId": sid})
+    doc = normalize(await fb_get(f"auctions/{sid}"))
     if not doc:
         raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-    return {"serverNow": now_ms(), "state": strip(doc)}
+    return {"serverNow": now_ms(), "state": doc}
 
 
 @api_router.post("/auctions/{sid}/bid")
 async def place_bid(sid: str, req: BidReq, user=Depends(get_current_user)):
     if user["role"] != "captain" or user["teamId"] != req.teamId:
         raise HTTPException(status_code=403, detail="You can only bid for your own team")
-    doc = await db.auctions.find_one({"sessionId": sid})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if doc["timerEnd"] <= now_ms():
-        raise HTTPException(status_code=400, detail="Time is up!")
-    err = validate_bid(doc, req.teamId, req.amount)
-    if err:
-        raise HTTPException(status_code=400, detail=err)
-    bids = dict(doc["currentBids"])
-    bids[str(req.teamId)] = req.amount
-    ok = await commit(sid, doc["version"], {"currentBids": bids})
-    if not ok:
-        raise HTTPException(status_code=409, detail="Bid conflict — please retry")
+    holder = await run_txn(sid, lambda d: mutate_bid(d, req.teamId, req.amount))
+    if "error" in holder:
+        raise HTTPException(status_code=holder["error"][0], detail=holder["error"][1])
     return {"ok": True}
 
 
 @api_router.post("/auctions/{sid}/finalize")
 async def finalize(sid: str, user=Depends(require_admin)):
-    doc = await db.auctions.find_one({"sessionId": sid})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Session not found")
-    eff_pool, eff_player, pool_key, player = effective(doc)
-    if not player:
-        raise HTTPException(status_code=400, detail="No player available")
-    winners, highest = winning_bids(doc)
-    if not winners:
-        raise HTTPException(status_code=400, detail="No bids. Use Skip instead.")
-    if len(winners) > 1:
-        names = ", ".join(
-            next(t["name"] for t in doc["teams"] if t["id"] == w) for w in winners
-        )
-        raise HTTPException(status_code=400, detail=f"Tie: {names}. Place different bids.")
-
-    win_id = winners[0]
-    teams = [dict(t) for t in doc["teams"]]
-    idx = next(i for i, t in enumerate(teams) if t["id"] == win_id)
-    win = teams[idx]
-    if len(win["players"]) >= seed.TEAM_SIZE:
-        raise HTTPException(status_code=400, detail=f"{win['name']} is full")
-    if highest > win["budget"]:
-        raise HTTPException(status_code=400, detail=f"{win['name']} cannot afford")
-
-    acquired = dict(player)
-    acquired["acquiredPrice"] = highest
-    win = dict(win)
-    win["players"] = list(win["players"]) + [acquired]
-    win["budget"] = win["budget"] - highest
-    win["totalSpent"] = win["totalSpent"] + highest
-    teams[idx] = win
-
-    pools = {k: list(v) for k, v in doc["playerPools"].items()}
-    cur = list(pools[pool_key])
-    cur.pop(eff_player)
-    pools[pool_key] = cur
-
-    next_pool, next_player = eff_pool, eff_player
-    if eff_player >= len(cur):
-        next_pool, next_player = eff_pool + 1, 0
-
-    ok = await commit(
-        sid,
-        doc["version"],
-        {
-            "teams": teams,
-            "playerPools": pools,
-            "currentPoolIndex": next_pool,
-            "currentPlayerIndex": next_player,
-            "currentBids": {},
-            "timerEnd": now_ms() + TIMER_MS,
-        },
-    )
-    if not ok:
-        raise HTTPException(status_code=409, detail="Conflict — please retry")
+    holder = await run_txn(sid, mutate_finalize)
+    if "error" in holder:
+        raise HTTPException(status_code=holder["error"][0], detail=holder["error"][1])
     return {"ok": True}
 
 
 @api_router.post("/auctions/{sid}/skip")
 async def skip(sid: str, user=Depends(require_admin)):
-    doc = await db.auctions.find_one({"sessionId": sid})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Session not found")
-    eff_pool, eff_player, pool_key, player = effective(doc)
-    if not player:
-        raise HTTPException(status_code=400, detail="No player to skip")
-
-    pools = {k: list(v) for k, v in doc["playerPools"].items()}
-    cur = list(pools[pool_key])
-    moved = dict(cur[eff_player])
-    moved["isRetry"] = True
-    moved["retryCount"] = moved.get("retryCount", 0) + 1
-    cur.pop(eff_player)
-    cur.append(moved)
-    pools[pool_key] = cur
-
-    next_pool, next_player = eff_pool, eff_player
-    if eff_player >= len(cur):
-        next_pool, next_player = eff_pool + 1, 0
-
-    ok = await commit(
-        sid,
-        doc["version"],
-        {
-            "playerPools": pools,
-            "currentPoolIndex": next_pool,
-            "currentPlayerIndex": next_player,
-            "currentBids": {},
-            "timerEnd": now_ms() + TIMER_MS,
-        },
-    )
-    if not ok:
-        raise HTTPException(status_code=409, detail="Conflict — please retry")
+    holder = await run_txn(sid, mutate_skip)
+    if "error" in holder:
+        raise HTTPException(status_code=holder["error"][0], detail=holder["error"][1])
     return {"ok": True}
 
 
 @api_router.post("/auctions/{sid}/reset")
 async def reset(sid: str, user=Depends(require_admin)):
-    doc = await db.auctions.find_one({"sessionId": sid})
-    if not doc:
+    existing = await fb_get(f"auctions/{sid}")
+    if not existing:
         raise HTTPException(status_code=404, detail="Session not found")
-    fresh = initial_doc(sid)
-    fresh["version"] = doc["version"] + 1
-    await db.auctions.update_one({"sessionId": sid}, {"$set": fresh})
+    await fb_set(f"auctions/{sid}", initial_doc(sid))
     return {"ok": True}
 
 
@@ -394,30 +427,18 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    # Migrate away from any legacy email-based users/index.
-    existing = await db.users.index_information()
-    if "email_1" in existing:
-        await db.users.drop_index("email_1")
-    await db.users.delete_many({"code": {"$exists": False}})
-    await db.users.create_index("code", unique=True)
-    await db.auctions.create_index("sessionId", unique=True)
+    fb.init()
     # Idempotently seed the admin + 14 team captain accounts (code + PIN).
     for acc in seed.get_accounts():
-        await db.users.update_one(
-            {"code": acc["code"]},
-            {
-                "$setOnInsert": {
+        existing = await fb_get(f"users/{acc['code']}")
+        if not existing:
+            await fb_set(
+                f"users/{acc['code']}",
+                {
                     "code": acc["code"],
                     "hashed_pin": hash_pw(acc["pin"]),
                     "role": acc["role"],
                     "teamId": acc["teamId"],
                     "name": acc["name"],
-                }
-            },
-            upsert=True,
-        )
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+                },
+            )

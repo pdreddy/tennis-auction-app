@@ -1,0 +1,43 @@
+{
+  "summary": "Backend-only regression of Tennis Player Auction after MongoDB -> Firebase Realtime Database migration. 30/30 pytest cases PASS (24 prior auth/authz/bidding/full-flow + 6 new Firebase-migration tests). Firebase normalization (to_list + normalize) verified across multiple consecutive finalize operations: 5 captains awarded the entire UTR 5.0 pool, pool transitioned cleanly to UTR 4.5 (pool key still present and length 5), first 4.5 bid at $10k accepted, $9k rejected. Skip correctly rotates current player to end of pool with isRetry=True and retryCount=1. Persistence verified with fresh requests.Session (no client cache) after create+bid+finalize. Reset restores initial 14-captains-only state with pools full. Initial-state checks: 14 teams pre-assigned captains with budget=100000-captain_price, pools utr_5_5 and utr_5_25 fully consumed by captains and serialized as [] (Firebase drops empty arrays but normalize() restores them), first auctioned player is from UTR 5.0 @ base $12,000. Auth/authz matrix unchanged and green (admin/captain code+PIN, wrong PIN -> 401, captain create/finalize/skip/reset -> 403, captain bid other team -> 403, admin can't bid -> 403, unique-bid, below-base, bad-increment, budget-reserve rules all enforced). No code changes were needed; all behaviour matches the pre-migration spec.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auction_api.py",
+    "/app/backend/tests/test_firebase_migration.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/results.xml"
+  ],
+  "action_items": [
+    "Optional carry-over (iter_1/iter_2): POST /api/auctions/{sid}/reset is not optimistic-concurrency safe (full set without version gate via fb_set). Could overwrite an in-flight transaction. Consider gating on version inside a transaction.",
+    "Optional: server.py still uses deprecated FastAPI @app.on_event('startup'); switch to lifespan context manager.",
+    "Cosmetic: backend/.env still has the now-unused MONGO_URL/DB_NAME keys after the Firebase migration; safe to remove."
+  ],
+  "critical_code_review_comments": [
+    "normalize()/to_list() correctly handle Firebase's array<->index-keyed-dict ambiguity and dropped-empty-array behaviour. Pool order is preserved deterministically via sorted(int(k)).",
+    "run_txn() uses RTDB transaction on the whole /auctions/{sid} node — returning `current` (unchanged) on validation errors is the correct way to reject without a write. Concurrency on bid/finalize/skip is safe.",
+    "POST /reset writes via fb_set (not a transaction) — only admin path so the race risk is low, but a concurrent bid mid-reset could be silently overwritten.",
+    "firebase_db.init() is idempotent (checks firebase_admin._apps) and is called both at import time and in @app.on_event('startup'); fine but on_event is deprecated.",
+    "Auth/authz unchanged from prior iterations: bcrypt PIN (72-byte safe slice), JWT with role+teamId, idempotent code-based seeding from seed.get_accounts()."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_firebase_migration.py (new — 6 Firebase-migration regression tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (30/30)",
+    "frontend": "not tested this iteration (backend-only request)"
+  },
+  "seed_data_creation": "Used auto-seeded ADMIN/731902 and TEAM1..TEAM14 captains from /app/memory/test_credentials.md. Created multiple short-lived auction sessions (unique 6-char sessionIds) under /auctions/* in Firebase; no teardown performed (each session is isolated by sessionId).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL: https://player-bidding-8.preview.emergentagent.com (also in frontend/.env as EXPO_PUBLIC_BACKEND_URL). Data layer is Firebase Realtime DB (databaseURL from FIREBASE_DB_URL env, service-account JSON in FIREBASE_CREDENTIALS_B64). Tests live in /app/backend/tests/ and use HTTP only — no direct Firebase fixtures. To clean up a specific auction node: `from dotenv import load_dotenv; load_dotenv(); import firebase_db as fb; fb.init(); fb.ref(f'auctions/{sid}').delete()`. Key normalization rule: pools persist as index-keyed dicts in Firebase, normalize() converts back to ordered lists; empty arrays come back as None and normalize() replaces with []. First auctioned player is always UTR 5.0 @ $12,000 because UTR 5.5 and 5.25 pools are fully consumed by the 14 captains.",
+  "rca_of_issue": "N/A — no bugs found in this iteration."
+}
