@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#07090f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tennis Auction">
@@ -20,24 +20,24 @@
     <style>
         /* ── Design tokens ── */
         :root {
-            --accent:   #00e5a0;   /* tennis-court teal-green */
-            --accent2:  #f5c842;   /* tennis-ball yellow      */
+            --accent:   #00e5a0;   /* teal — live/active indicators only  */
+            --gold:     #f5c842;   /* tennis-ball gold — captain / tied    */
+            --blue:     #4d8ef0;   /* action blue — buttons & chips        */
+            --blue2:    #3a7de8;
             --danger:   #ff4757;
-            --warn:     #f5c842;
-            --blue:     #4f9eff;
-            --win:      #00c97a;
-            --bg:       #070c12;
-            --bg2:      #0e1520;
-            --card:     #111826;
-            --card2:    #161f2e;
-            --border:   #1e2d42;
-            --border2:  #253348;
-            --text:     #e8f0fe;
-            --muted:    #6b7a99;
-            --muted2:   #3d4f6a;
+            --win:      #22c97a;   /* green — winning state ONLY           */
+            --bg:       #07090f;
+            --bg2:      #0c1018;
+            --card:     #10141e;
+            --card2:    #151b29;
+            --border:   #1c2438;
+            --border2:  #232e45;
+            --text:     #dde6f5;
+            --muted:    #637090;
+            --muted2:   #38465e;
         }
 
-        *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,229,160,0.12); }
+        *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: rgba(77,142,240,0.12); }
         html { -webkit-text-size-adjust: 100%; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -45,21 +45,20 @@
             padding-top: max(10px, env(safe-area-inset-top));
             padding-bottom: max(10px, env(safe-area-inset-bottom));
             background: var(--bg); color: var(--text); min-height: 100vh;
-            background-image: radial-gradient(ellipse at 20% 0%, rgba(0,229,160,.06) 0%, transparent 60%),
-                              radial-gradient(ellipse at 80% 100%, rgba(79,158,255,.05) 0%, transparent 60%);
+            background-image:
+                radial-gradient(ellipse at 15% 0%,   rgba(77,142,240,.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 100%, rgba(0,229,160,.04)  0%, transparent 55%);
         }
 
         /* ── Login ── */
         .login-wrap {
             max-width: 420px; margin: 60px auto; padding: 32px 28px;
-            background: var(--card);
-            border: 1px solid var(--border2);
-            border-radius: 18px;
-            box-shadow: 0 0 0 1px rgba(0,229,160,.08), 0 24px 48px rgba(0,0,0,.6);
+            background: var(--card); border: 1px solid var(--border2); border-radius: 18px;
+            box-shadow: 0 0 0 1px rgba(77,142,240,.08), 0 24px 60px rgba(0,0,0,.7);
         }
         .login-title {
             font-size: 30px; font-weight: 900; letter-spacing: 1px; text-align: center; margin: 0 0 4px;
-            background: linear-gradient(135deg, #fff 30%, var(--accent));
+            background: linear-gradient(135deg, #fff 40%, var(--blue));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         .login-sub { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 28px; }
@@ -72,8 +71,8 @@
             transition: border-color .2s, box-shadow .2s;
         }
         select:focus, input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(0,229,160,.15);
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(77,142,240,.18);
         }
         .btn {
             width: 100%; padding: 14px; font-size: 15px; font-weight: 700;
@@ -82,17 +81,24 @@
             letter-spacing: .3px;
         }
         .btn:active { transform: scale(.97); opacity: .9; }
+        /* primary = blue for most actions */
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #00b87a);
-            color: #021a10;
-            box-shadow: 0 4px 18px rgba(0,229,160,.35);
+            background: linear-gradient(135deg, var(--blue), var(--blue2));
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(77,142,240,.35);
         }
-        .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(0,229,160,.5); }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 26px rgba(77,142,240,.5); }
+        /* success = green for Award / confirm */
+        .btn-success {
+            background: linear-gradient(135deg, var(--win), #16a060);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(34,201,122,.35);
+        }
+        .btn-success:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(34,201,122,.5); }
         .btn-danger  { background: linear-gradient(135deg, var(--danger), #c0392b); color: #fff; box-shadow: 0 4px 12px rgba(255,71,87,.3); }
-        .btn-warning { background: linear-gradient(135deg, var(--warn), #e6a800); color: #1a1000; }
-        .btn-success { background: linear-gradient(135deg, var(--win), #009955); color: #fff; box-shadow: 0 4px 12px rgba(0,201,122,.3); }
+        .btn-warning { background: linear-gradient(135deg, var(--gold), #d4a800); color: #1a1200; }
         .btn-neutral { background: var(--card2); color: var(--text); border: 1px solid var(--border2); }
-        .btn-neutral:hover:not(:disabled) { border-color: var(--border2); background: #1e2d42; }
+        .btn-neutral:hover:not(:disabled) { background: var(--border); }
         .btn:disabled { opacity: .35; cursor: default; transform: none; box-shadow: none; }
         .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; font-weight: 600; }
 
@@ -101,7 +107,7 @@
         .card {
             background: var(--card); border: 1px solid var(--border); border-radius: 14px;
             padding: 20px; margin-bottom: 14px;
-            box-shadow: 0 2px 12px rgba(0,0,0,.3);
+            box-shadow: 0 2px 16px rgba(0,0,0,.35);
         }
         .card-title { font-size: 17px; font-weight: 700; margin: 0 0 8px; color: #fff; }
         .card-sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
@@ -126,33 +132,33 @@
             padding: 5px 10px; font-size: 11px; color: var(--muted);
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .dot-green { background: var(--win); box-shadow: 0 0 6px var(--win); }
-        .dot-red   { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+        .dot-green { background: var(--accent); box-shadow: 0 0 7px var(--accent); }
+        .dot-red   { background: var(--danger);  box-shadow: 0 0 7px var(--danger); }
 
         /* ── Sticky player bar ── */
         .sticky-bar {
             position: sticky; top: 0; z-index: 900;
-            background: linear-gradient(135deg, #0e1c14, #0d1a28);
-            border: 2px solid var(--accent);
+            background: linear-gradient(135deg, #0c1428, #101c38);
+            border: 2px solid rgba(77,142,240,.6);
             border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
             display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            box-shadow: 0 4px 24px rgba(0,229,160,.2), 0 8px 32px rgba(0,0,0,.5);
+            box-shadow: 0 4px 24px rgba(77,142,240,.15), 0 8px 32px rgba(0,0,0,.5);
         }
         .sb-player { font-size: 16px; font-weight: 800; color: #fff; }
-        .sb-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-        .sb-high { font-size: 12px; color: var(--accent); font-weight: 700; margin-top: 3px; }
+        .sb-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .sb-high   { font-size: 12px; color: var(--gold); font-weight: 700; margin-top: 3px; }
         .sb-timer {
             min-width: 62px; text-align: center; padding: 8px 10px; border-radius: 10px;
-            background: rgba(0,229,160,.12); color: var(--accent);
-            font-size: 24px; font-weight: 900; border: 1px solid rgba(0,229,160,.3);
+            background: rgba(77,142,240,.15); color: var(--blue);
+            font-size: 24px; font-weight: 900; border: 1px solid rgba(77,142,240,.35);
         }
-        .sb-timer.warn { background: rgba(255,71,87,.15); color: var(--danger); border-color: rgba(255,71,87,.4); }
+        .sb-timer.warn { background: rgba(255,71,87,.15); color: var(--danger); border-color: rgba(255,71,87,.45); }
 
         /* ── Progress ── */
-        .progress-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 0 0 4px; }
+        .progress-track { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 0 0 4px; }
         .progress-fill {
             height: 100%; border-radius: 99px; transition: width .4s ease;
-            background: linear-gradient(90deg, var(--accent), #4f9eff);
+            background: linear-gradient(90deg, var(--blue), var(--accent));
         }
         .progress-text { font-size: 11px; color: var(--muted2); text-align: center; margin-bottom: 10px; }
 
@@ -173,44 +179,48 @@
         }
         .bid-card.winning {
             border-color: var(--win); border-width: 2px;
-            background: linear-gradient(160deg, #051f10, #091a14);
-            box-shadow: 0 0 18px rgba(0,201,122,.18);
+            background: linear-gradient(160deg, #071a10, #091c13);
+            box-shadow: 0 0 20px rgba(34,201,122,.15);
         }
         .bid-card.tied {
-            border-color: var(--warn); border-width: 2px;
-            background: linear-gradient(160deg, #1a1500, #1a1200);
-            box-shadow: 0 0 14px rgba(245,200,66,.15);
+            border-color: var(--gold); border-width: 2px;
+            background: linear-gradient(160deg, #181300, #1a1500);
+            box-shadow: 0 0 16px rgba(245,200,66,.12);
         }
-        .bid-card.pinned  { border-color: var(--accent2); box-shadow: 0 0 12px rgba(245,200,66,.12); }
+        .bid-card.pinned { border-color: var(--gold); box-shadow: 0 0 14px rgba(245,200,66,.1); }
         .bid-card.disabled-card {
             display: flex; flex-direction: row; align-items: center;
-            justify-content: space-between; opacity: .4; padding: 8px 12px;
+            justify-content: space-between; opacity: .38; padding: 8px 12px;
         }
         .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; }
         .team-name { font-size: 14px; font-weight: 700; color: #fff; }
         .team-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
-        .pin-btn { background:none; border:none; cursor:pointer; font-size:15px; padding:0 2px; opacity:.3; transition: opacity .15s; }
+        .pin-btn { background:none; border:none; cursor:pointer; font-size:15px; padding:0 2px; opacity:.28; transition: opacity .15s; }
         .pin-btn.pinned { opacity: 1; }
         .bid-input-wrap { display: flex; flex-direction: column; gap: 4px; }
         .bid-input { font-size: 16px; padding: 9px 10px; border-radius: 8px; }
+
+        /* chips: blue, NOT green */
         .quick-chips { display: flex; gap: 4px; flex-wrap: wrap; }
         .chip {
             flex: 1 1 auto; min-width: 52px; padding: 6px 4px; text-align: center;
             font-size: 12px; font-weight: 700; border-radius: 7px;
-            border: 1px solid rgba(0,229,160,.25); background: rgba(0,229,160,.07); color: var(--accent);
-            cursor: pointer; touch-action: manipulation; transition: background .15s, color .15s;
+            border: 1px solid rgba(77,142,240,.3); background: rgba(77,142,240,.1); color: #7eb3ff;
+            cursor: pointer; touch-action: manipulation; transition: background .15s, color .15s, border-color .15s;
         }
-        .chip:active { background: var(--accent); color: #021a10; }
-        .chip:disabled { opacity: .25; }
+        .chip:active { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .chip:disabled { opacity: .22; }
+
+        /* Place Bid button: blue */
         .place-bid-btn { padding: 10px; font-size: 14px; font-weight: 700; min-height: 44px; }
-        .bid-status { font-size: 11px; color: var(--accent); font-weight: 600; }
+        .bid-status { font-size: 11px; color: #7eb3ff; font-weight: 600; }
         .bid-win-badge {
-            background: linear-gradient(135deg, var(--win), #009955);
+            background: linear-gradient(135deg, var(--win), #16a060);
             color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
         }
         .bid-tie-badge {
-            background: linear-gradient(135deg, var(--warn), #e6a800);
-            color: #1a1000; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--gold), #d4a800);
+            color: #1a1200; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
         }
         .bid-error { color: var(--danger); font-size: 11px; font-weight: 600; }
 
@@ -225,7 +235,7 @@
             border: 1px solid var(--border); background: var(--card); color: var(--muted);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
         }
-        .pool-chip.active { background: var(--accent2); color: #1a1000; font-weight: 700; border-color: var(--accent2); }
+        .pool-chip.active { background: var(--gold); color: #1a1200; font-weight: 700; border-color: var(--gold); }
         .pool-chip.retry  { border-color: var(--danger); color: var(--danger); }
 
         /* ── Rosters ── */
@@ -234,9 +244,9 @@
             width: 100%; background: var(--card); border: 1px solid var(--border);
             color: var(--text); border-radius: 10px; padding: 12px 14px;
             font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
-            transition: border-color .2s;
+            transition: border-color .2s, background .2s;
         }
-        .section-toggle:hover { border-color: var(--border2); }
+        .section-toggle:hover { background: var(--card2); }
         .rosters-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 80px; }
         @media (min-width: 640px) { .rosters-grid { grid-template-columns: repeat(3,1fr); } }
         @media (min-width: 900px) { .rosters-grid { grid-template-columns: repeat(4,1fr); } }
@@ -247,35 +257,36 @@
         .roster-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
         .roster-budget { display: flex; gap: 8px; color: var(--muted); margin-bottom: 5px; }
         .roster-spent { color: var(--danger); font-weight: 600; }
-        .roster-left  { color: var(--win); font-weight: 600; }
-        .roster-player { color: #8a9bbf; margin-top: 2px; }
-        .roster-captain { color: var(--accent2); font-weight: 700; }
+        .roster-left  { color: var(--win);    font-weight: 600; }
+        .roster-player  { color: #8a9bbf; margin-top: 2px; }
+        .roster-captain { color: var(--gold); font-weight: 700; }
 
         /* ── Complete screen ── */
         .complete-banner {
-            background: linear-gradient(135deg, var(--win), #007a44);
+            background: linear-gradient(135deg, #0d4a28, #0a3a20);
+            border: 1px solid var(--win);
             color: #fff; text-align: center;
             font-size: 20px; font-weight: 800; padding: 18px; border-radius: 12px;
             margin-bottom: 14px;
-            box-shadow: 0 6px 24px rgba(0,201,122,.35);
+            box-shadow: 0 6px 24px rgba(34,201,122,.25);
         }
 
         /* ── Error banner ── */
         .error-banner {
-            background: rgba(255,71,87,.1); border: 1px solid rgba(255,71,87,.4); color: #ff8a95;
+            background: rgba(255,71,87,.09); border: 1px solid rgba(255,71,87,.35); color: #ff8a95;
             border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px;
         }
 
         /* ── Reset modal ── */
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,.75);
+            position: fixed; inset: 0; background: rgba(0,0,0,.78);
             display: flex; align-items: center; justify-content: center;
-            z-index: 9999; padding: 20px; backdrop-filter: blur(4px);
+            z-index: 9999; padding: 20px; backdrop-filter: blur(5px);
         }
         .modal-card {
             background: var(--card); border: 1px solid var(--border2); border-radius: 16px;
             padding: 26px; width: 100%; max-width: 360px;
-            box-shadow: 0 24px 60px rgba(0,0,0,.7);
+            box-shadow: 0 24px 60px rgba(0,0,0,.75);
         }
         .modal-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 8px; }
         .modal-body  { font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
