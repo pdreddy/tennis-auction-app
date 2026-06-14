@@ -98,34 +98,47 @@ export default function Session() {
             </View>
           )}
 
-          {/* Create */}
-          <View style={styles.card}>
-            <View style={styles.cardHead}>
-              <Ionicons name="add-circle" size={20} color={colors.brand} />
-              <Text style={styles.cardTitle}>Start a new auction</Text>
-            </View>
-            <Text style={styles.cardSub}>
-              Creates a fresh session with all 14 teams and a 6-character ID to share.
-            </Text>
-            <Pressable
-              testID="create-auction-button"
-              style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
-              onPress={createNew}
-              disabled={creating}
-            >
-              {creating ? (
-                <ActivityIndicator color={colors.onBrand} />
-              ) : (
-                <Text style={styles.ctaText}>Create New Auction</Text>
-              )}
-            </Pressable>
-          </View>
+          {user?.role === "admin" ? (
+            <>
+              <View style={styles.card}>
+                <View style={styles.cardHead}>
+                  <Ionicons name="add-circle" size={20} color={colors.brand} />
+                  <Text style={styles.cardTitle}>Start a new auction</Text>
+                </View>
+                <Text style={styles.cardSub}>
+                  Creates a fresh session with all 14 teams and a 6-character ID to share.
+                </Text>
+                <Pressable
+                  testID="create-auction-button"
+                  style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
+                  onPress={createNew}
+                  disabled={creating}
+                >
+                  {creating ? (
+                    <ActivityIndicator color={colors.onBrand} />
+                  ) : (
+                    <Text style={styles.ctaText}>Create New Auction</Text>
+                  )}
+                </Pressable>
+              </View>
 
-          <View style={styles.orRow}>
-            <View style={styles.line} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.line} />
-          </View>
+              <View style={styles.orRow}>
+                <View style={styles.line} />
+                <Text style={styles.orText}>OR</Text>
+                <View style={styles.line} />
+              </View>
+            </>
+          ) : (
+            <View style={styles.teamBanner} testID="captain-banner">
+              <Ionicons name="people" size={24} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.teamBannerTitle}>You are the captain of Team {user?.teamId}</Text>
+                <Text style={styles.cardSub}>
+                  Enter the Session ID from your Auctioneer to join and bid for your team.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Join */}
           <View style={styles.card}>
@@ -307,4 +320,16 @@ const styles = StyleSheet.create({
   },
   poolLabel: { color: colors.onSurfaceTertiary, fontFamily: font.text, fontSize: 12 },
   poolVal: { color: colors.onSurfaceTertiary, fontFamily: font.text, fontSize: 12 },
+  teamBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.brandTertiary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  teamBannerTitle: { color: colors.onSurface, fontFamily: font.displaySemi, fontSize: 18 },
 });

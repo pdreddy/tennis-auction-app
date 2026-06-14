@@ -126,6 +126,32 @@ TEAMS = [
 
 CAPTAIN_NAMES = {t["captain"] for t in TEAMS}
 
+# ----------------------------- Login accounts -----------------------------
+# One admin (auctioneer) + 14 team captains, each with a 6-digit PIN.
+ADMIN_PIN = "731902"
+TEAM_PINS = {
+    1: "481027", 2: "635914", 3: "217658", 4: "859302", 5: "374186",
+    6: "196540", 7: "742839", 8: "503271", 9: "618495", 10: "285063",
+    11: "947612", 12: "360728", 13: "814359", 14: "572046",
+}
+
+
+def get_accounts():
+    accounts = [
+        {"code": "ADMIN", "pin": ADMIN_PIN, "role": "admin", "teamId": None, "name": "Auctioneer"}
+    ]
+    for t in TEAMS:
+        accounts.append(
+            {
+                "code": f"TEAM{t['id']}",
+                "pin": TEAM_PINS[t["id"]],
+                "role": "captain",
+                "teamId": t["id"],
+                "name": t["captain"],
+            }
+        )
+    return accounts
+
 POOL_ORDER = ["utr_5_5", "utr_5_25", "utr_5_0", "utr_4_5", "utr_4_0", "utr_3_5", "utr_3_0"]
 
 

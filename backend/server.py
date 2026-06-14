@@ -9,7 +9,7 @@ import random
 import string
 import logging
 from pathlib import Path
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 
 import bcrypt
@@ -49,9 +49,12 @@ def verify_pw(pw: str, hashed: str) -> bool:
         return False
 
 
-def create_token(sub: str) -> str:
+def create_token(user: dict) -> str:
     payload = {
-        "sub": sub,
+        "sub": user["code"],
+        "role": user["role"],
+        "teamId": user["teamId"],
+        "name": user["name"],
         "exp": datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
@@ -63,27 +66,32 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
     )
     try:
         payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
-        email = payload.get("sub")
+        code = payload.get("sub")
     except jwt.PyJWTError:
         raise cred_err
-    if not email:
+    if not code:
         raise cred_err
-    user = await db.users.find_one({"email": email})
+    user = await db.users.find_one({"code": code})
     if not user:
         raise cred_err
-    return {"email": user["email"], "name": user.get("name", "")}
+    return {
+        "code": user["code"],
+        "role": user["role"],
+        "teamId": user.get("teamId"),
+        "name": user.get("name", ""),
+    }
+
+
+async def require_admin(user=Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin (auctioneer) only")
+    return user
 
 
 # ----------------------------- Models -----------------------------
-class RegisterReq(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=6)
-    name: str = ""
-
-
 class LoginReq(BaseModel):
-    email: EmailStr
-    password: str
+    code: str
+    pin: str
 
 
 class BidReq(BaseModel):
@@ -199,26 +207,19 @@ async def commit(sid: str, version: int, updates: dict) -> bool:
 
 
 # ----------------------------- Auth routes -----------------------------
-@api_router.post("/auth/register")
-async def register(req: RegisterReq):
-    email = req.email.lower()
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    await db.users.insert_one(
-        {"email": email, "hashed_password": hash_pw(req.password), "name": req.name}
-    )
-    token = create_token(email)
-    return {"token": token, "user": {"email": email, "name": req.name}}
-
-
 @api_router.post("/auth/login")
 async def login(req: LoginReq):
-    email = req.email.lower()
-    user = await db.users.find_one({"email": email})
-    if not user or not verify_pw(req.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_token(email)
-    return {"token": token, "user": {"email": email, "name": user.get("name", "")}}
+    code = req.code.strip().upper()
+    user = await db.users.find_one({"code": code})
+    if not user or not verify_pw(req.pin, user["hashed_pin"]):
+        raise HTTPException(status_code=401, detail="Invalid code or PIN")
+    pub = {
+        "code": user["code"],
+        "role": user["role"],
+        "teamId": user.get("teamId"),
+        "name": user.get("name", ""),
+    }
+    return {"token": create_token(pub), "user": pub}
 
 
 @api_router.get("/auth/me")
@@ -234,7 +235,7 @@ async def config():
 
 # ----------------------------- Auction routes -----------------------------
 @api_router.post("/auctions")
-async def create_auction(user=Depends(get_current_user)):
+async def create_auction(user=Depends(require_admin)):
     sid = new_session_id()
     while await db.auctions.find_one({"sessionId": sid}):
         sid = new_session_id()
@@ -253,6 +254,8 @@ async def get_auction(sid: str, user=Depends(get_current_user)):
 
 @api_router.post("/auctions/{sid}/bid")
 async def place_bid(sid: str, req: BidReq, user=Depends(get_current_user)):
+    if user["role"] != "captain" or user["teamId"] != req.teamId:
+        raise HTTPException(status_code=403, detail="You can only bid for your own team")
     doc = await db.auctions.find_one({"sessionId": sid})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -270,7 +273,7 @@ async def place_bid(sid: str, req: BidReq, user=Depends(get_current_user)):
 
 
 @api_router.post("/auctions/{sid}/finalize")
-async def finalize(sid: str, user=Depends(get_current_user)):
+async def finalize(sid: str, user=Depends(require_admin)):
     doc = await db.auctions.find_one({"sessionId": sid})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -330,7 +333,7 @@ async def finalize(sid: str, user=Depends(get_current_user)):
 
 
 @api_router.post("/auctions/{sid}/skip")
-async def skip(sid: str, user=Depends(get_current_user)):
+async def skip(sid: str, user=Depends(require_admin)):
     doc = await db.auctions.find_one({"sessionId": sid})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -368,7 +371,7 @@ async def skip(sid: str, user=Depends(get_current_user)):
 
 
 @api_router.post("/auctions/{sid}/reset")
-async def reset(sid: str, user=Depends(get_current_user)):
+async def reset(sid: str, user=Depends(require_admin)):
     doc = await db.auctions.find_one({"sessionId": sid})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -391,16 +394,27 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await db.users.create_index("email", unique=True)
+    # Migrate away from any legacy email-based users/index.
+    existing = await db.users.index_information()
+    if "email_1" in existing:
+        await db.users.drop_index("email_1")
+    await db.users.delete_many({"code": {"$exists": False}})
+    await db.users.create_index("code", unique=True)
     await db.auctions.create_index("sessionId", unique=True)
-    # Seed a test account for QA.
-    if not await db.users.find_one({"email": "test@auction.com"}):
-        await db.users.insert_one(
+    # Idempotently seed the admin + 14 team captain accounts (code + PIN).
+    for acc in seed.get_accounts():
+        await db.users.update_one(
+            {"code": acc["code"]},
             {
-                "email": "test@auction.com",
-                "hashed_password": hash_pw("Test1234"),
-                "name": "Test User",
-            }
+                "$setOnInsert": {
+                    "code": acc["code"],
+                    "hashed_pin": hash_pw(acc["pin"]),
+                    "role": acc["role"],
+                    "teamId": acc["teamId"],
+                    "name": acc["name"],
+                }
+            },
+            upsert=True,
         )
 
 

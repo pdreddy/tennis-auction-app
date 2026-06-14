@@ -18,7 +18,6 @@ import * as Haptics from "expo-haptics";
 
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/api";
-import { storage } from "@/src/utils/storage";
 import { colors, spacing, radius, font, POOL_ORDER, getUTRFromKey, TEAM_SIZE } from "@/src/theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -34,7 +33,7 @@ export default function AuctionScreen() {
   const sid = String(id);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [state, setState] = useState<State | null>(null);
   const [connected, setConnected] = useState(false);
@@ -43,7 +42,6 @@ export default function AuctionScreen() {
   const [bidInputs, setBidInputs] = useState<Record<number, string>>({});
   const [bidErrors, setBidErrors] = useState<Record<number, string | null>>({});
   const [actionError, setActionError] = useState<string | null>(null);
-  const [pinnedTeam, setPinnedTeam] = useState<number | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -57,9 +55,6 @@ export default function AuctionScreen() {
       c.pools.forEach((p: any) => (m[p.key] = p.cap));
       setCapsByKey(m);
     }).catch(() => {});
-    storage.getItem<number | null>(`pin_${sid}`, null).then((v) => {
-      if (v != null) setPinnedTeam(v as number);
-    });
   }, [token, sid]);
 
   const fetchState = useCallback(async () => {
@@ -123,13 +118,6 @@ export default function AuctionScreen() {
     return { winners: entries.filter((e) => e.bid === hb).map((e) => e.teamId), highestBid: hb };
   }, [state]);
 
-  const togglePin = (teamId: number) => {
-    const next = pinnedTeam === teamId ? null : teamId;
-    setPinnedTeam(next);
-    storage.setItem(`pin_${sid}`, next);
-    Haptics.selectionAsync();
-  };
-
   const countFromPool = (team: any, utr: number) =>
     team.players.slice(1).filter((p: any) => p.utr === utr).length;
   const poolCapReached = (team: any, key: string) =>
@@ -185,6 +173,8 @@ export default function AuctionScreen() {
   }
 
   const teams = state.teams || [];
+  const isAdmin = user?.role === "admin";
+  const myTeamId = user?.teamId ?? null;
 
   // ---------- Auction complete summary ----------
   if (eff?.complete || !eff?.player) {
@@ -195,6 +185,7 @@ export default function AuctionScreen() {
           connected={connected}
           onBack={() => router.replace("/session")}
           onReset={() => setResetOpen(true)}
+          canReset={isAdmin}
         />
         <View style={styles.completeBanner}>
           <Ionicons name="trophy" size={20} color={colors.surface} />
@@ -229,34 +220,48 @@ export default function AuctionScreen() {
   const hasBids = winners.length > 0;
   const warn = timeRemaining <= 10;
 
-  // Partition teams.
-  const enriched = teams.map((team: any) => {
-    const disabled =
-      team.players.length >= TEAM_SIZE ||
-      team.budget < player.price ||
-      poolCapReached(team, poolKey);
-    return { team, disabled, pinned: pinnedTeam === team.id };
-  });
-  const pinned = enriched.filter((e: any) => e.pinned);
-  const biddable = enriched.filter((e: any) => !e.pinned && !e.disabled);
-  const disabled = enriched.filter((e: any) => !e.pinned && e.disabled);
-
-  const renderBidCard = ({ team, pinned: isPinned }: any) => {
+  // Per-team status used by both captain and admin views.
+  const teamStatus = (team: any) => {
     const teamBid = state.currentBids?.[String(team.id)] || 0;
     const isWinning = teamBid > 0 && teamBid === highestBid && winners.length === 1;
     const isTied = teamBid > 0 && teamBid === highestBid && winners.length > 1;
+    const disabledReason =
+      team.players.length >= TEAM_SIZE
+        ? "Roster full"
+        : team.budget < player.price
+        ? "Budget too low"
+        : poolCapReached(team, poolKey)
+        ? `Max ${capsByKey[poolKey]} at UTR ${currentUTR}`
+        : null;
+    return { teamBid, isWinning, isTied, disabledReason };
+  };
+
+  // Captain's own interactive bid card.
+  const renderBidCard = (team: any) => {
+    const { teamBid, isWinning, isTied, disabledReason } = teamStatus(team);
+    const err = bidErrors[team.id];
     const anchor = highestBid > 0 ? highestBid + 1000 : player.price;
     const chips = [anchor, anchor + 1000, anchor + 2000].filter((v) => v <= team.budget);
-    const err = bidErrors[team.id];
+
+    if (disabledReason) {
+      return (
+        <View key={team.id} style={[styles.bidCard, styles.bidCardPinned]} testID="my-team-card">
+          <Text style={styles.teamName}>{team.name} · You</Text>
+          <Text style={styles.teamMeta}>
+            ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}
+          </Text>
+          <Text style={styles.cardError}>{disabledReason} — you cannot bid on this player.</Text>
+        </View>
+      );
+    }
 
     return (
       <View
         key={team.id}
-        testID={`bid-card-${team.id}`}
+        testID="my-team-card"
         style={[
           styles.bidCard,
-          { width: isPinned ? "100%" : CARD_W },
-          isPinned && styles.bidCardPinned,
+          styles.bidCardPinned,
           isWinning && styles.bidCardWinning,
           isTied && styles.bidCardTied,
         ]}
@@ -264,19 +269,12 @@ export default function AuctionScreen() {
         <View style={styles.bidHead}>
           <View style={{ flex: 1 }}>
             <Text style={styles.teamName} numberOfLines={1}>
-              {team.name}
+              {team.name} · You
             </Text>
             <Text style={styles.teamMeta} numberOfLines={1}>
-              ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}
+              ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE} · {team.captain}
             </Text>
           </View>
-          <Pressable testID={`pin-${team.id}`} onPress={() => togglePin(team.id)} hitSlop={8}>
-            <Ionicons
-              name={isPinned ? "bookmark" : "bookmark-outline"}
-              size={18}
-              color={isPinned ? colors.brand : colors.onSurfaceTertiary}
-            />
-          </Pressable>
         </View>
 
         <TextInput
@@ -319,7 +317,7 @@ export default function AuctionScreen() {
           disabled={!bidInputs[team.id] || timeRemaining === 0}
           onPress={() => placeBid(team.id)}
         >
-          <Text style={styles.bidBtnText}>Bid</Text>
+          <Text style={styles.bidBtnText}>Place Bid</Text>
         </Pressable>
 
         {teamBid > 0 && (
@@ -333,6 +331,42 @@ export default function AuctionScreen() {
     );
   };
 
+  // Read-only status card for the other teams (and the admin grid).
+  const renderReadOnly = (team: any) => {
+    const { teamBid, isWinning, isTied } = teamStatus(team);
+    return (
+      <View
+        key={team.id}
+        testID={`team-status-${team.id}`}
+        style={[styles.statusCard, isWinning && styles.bidCardWinning, isTied && styles.bidCardTied]}
+      >
+        <Text style={styles.statusName} numberOfLines={1}>
+          {team.name}
+        </Text>
+        <Text style={styles.statusMeta} numberOfLines={1}>
+          ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}
+        </Text>
+        {teamBid > 0 ? (
+          <Text
+            style={[
+              styles.statusBid,
+              isWinning && { color: colors.success },
+              isTied && { color: colors.warning },
+            ]}
+          >
+            ${fmt(teamBid)}
+            {isWinning ? " · LEAD" : isTied ? " · TIE" : ""}
+          </Text>
+        ) : (
+          <Text style={styles.statusNoBid}>No bid</Text>
+        )}
+      </View>
+    );
+  };
+
+  const myTeam = myTeamId != null ? teams.find((t: any) => t.id === myTeamId) : null;
+  const otherTeams = teams.filter((t: any) => t.id !== myTeamId);
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]} testID="auction-screen">
       <Header
@@ -340,6 +374,7 @@ export default function AuctionScreen() {
         connected={connected}
         onBack={() => router.replace("/session")}
         onReset={() => setResetOpen(true)}
+        canReset={isAdmin}
       />
 
       {/* Sticky context bar */}
@@ -388,59 +423,56 @@ export default function AuctionScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {pinned.map(renderBidCard)}
-
-        <View style={styles.grid}>{biddable.map(renderBidCard)}</View>
-
-        {disabled.length > 0 && (
-          <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-            {disabled.map(({ team }: any) => {
-              const reason =
-                team.players.length >= TEAM_SIZE
-                  ? "Full"
-                  : team.budget < player.price
-                  ? "Low budget"
-                  : `Max ${capsByKey[poolKey]} at UTR ${currentUTR}`;
-              return (
-                <View key={team.id} style={styles.strip} testID={`disabled-${team.id}`}>
-                  <Text style={styles.stripName}>
-                    {team.name} <Text style={styles.stripSlots}>({team.players.length}/{TEAM_SIZE})</Text>
-                  </Text>
-                  <Text style={styles.stripReason}>{reason}</Text>
-                </View>
-              );
-            })}
-          </View>
+        {isAdmin ? (
+          <>
+            <Text style={styles.sectionLabel}>Live bids · {teams.length} teams</Text>
+            <View style={styles.grid}>{teams.map(renderReadOnly)}</View>
+          </>
+        ) : (
+          <>
+            {myTeam && renderBidCard(myTeam)}
+            <Text style={styles.sectionLabel}>Other teams</Text>
+            <View style={styles.grid}>{otherTeams.map(renderReadOnly)}</View>
+          </>
         )}
       </ScrollView>
 
       {/* Admin controls + rosters */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-        <Pressable testID="open-rosters" style={styles.rostersBtn} onPress={() => sheetRef.current?.snapToIndex(0)}>
+        <Pressable
+          testID="open-rosters"
+          style={isAdmin ? styles.rostersBtn : styles.rostersBtnWide}
+          onPress={() => sheetRef.current?.snapToIndex(0)}
+        >
           <Ionicons name="list" size={20} color={colors.onSurface} />
+          {!isAdmin && <Text style={styles.rostersBtnText}>View all team rosters</Text>}
         </Pressable>
-        <Pressable
-          testID="skip-button"
-          style={styles.skipBtn}
-          onPress={() => doAction(() => api.skip(sid, token!), false)}
-          disabled={busy}
-        >
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
-        <Pressable
-          testID="finalize-button"
-          style={[styles.finalizeBtn, (!hasBids || winners.length !== 1) && styles.finalizeDisabled]}
-          disabled={!hasBids || winners.length !== 1 || busy}
-          onPress={() => doAction(() => api.finalize(sid, token!), true)}
-        >
-          <Text style={styles.finalizeText}>
-            {!hasBids
-              ? "No Bids"
-              : winners.length > 1
-              ? `Tie (${winners.length})`
-              : `Award · ${teams.find((t: any) => t.id === winners[0])?.name}`}
-          </Text>
-        </Pressable>
+        {isAdmin && (
+          <Pressable
+            testID="skip-button"
+            style={styles.skipBtn}
+            onPress={() => doAction(() => api.skip(sid, token!), false)}
+            disabled={busy}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        )}
+        {isAdmin && (
+          <Pressable
+            testID="finalize-button"
+            style={[styles.finalizeBtn, (!hasBids || winners.length !== 1) && styles.finalizeDisabled]}
+            disabled={!hasBids || winners.length !== 1 || busy}
+            onPress={() => doAction(() => api.finalize(sid, token!), true)}
+          >
+            <Text style={styles.finalizeText}>
+              {!hasBids
+                ? "No Bids"
+                : winners.length > 1
+                ? `Tie (${winners.length})`
+                : `Award · ${teams.find((t: any) => t.id === winners[0])?.name}`}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Rosters bottom sheet */}
@@ -478,11 +510,13 @@ function Header({
   connected,
   onBack,
   onReset,
+  canReset,
 }: {
   sid: string;
   connected: boolean;
   onBack: () => void;
   onReset: () => void;
+  canReset: boolean;
 }) {
   return (
     <View style={styles.header}>
@@ -497,9 +531,11 @@ function Header({
         <View style={[styles.dot, { backgroundColor: connected ? colors.success : colors.error }]} />
         <Text style={styles.syncText}>{connected ? "Live" : "Offline"}</Text>
       </View>
-      <Pressable testID="reset-button" onPress={onReset} hitSlop={8} style={styles.hIcon}>
-        <Ionicons name="refresh" size={20} color={colors.onSurfaceSecondary} />
-      </Pressable>
+      {canReset && (
+        <Pressable testID="reset-button" onPress={onReset} hitSlop={8} style={styles.hIcon}>
+          <Ionicons name="refresh" size={20} color={colors.onSurfaceSecondary} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -658,6 +694,26 @@ const styles = StyleSheet.create({
   },
   actionErrText: { color: colors.error, fontFamily: font.text, fontSize: 12, flex: 1 },
 
+  sectionLabel: {
+    color: colors.onSurfaceSecondary,
+    fontFamily: font.displayMed,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    marginTop: spacing.xs,
+  },
+  statusCard: {
+    width: CARD_W,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    gap: 2,
+  },
+  statusName: { color: colors.onSurface, fontFamily: font.displaySemi, fontSize: 15 },
+  statusMeta: { color: colors.onSurfaceSecondary, fontFamily: font.text, fontSize: 11 },
+  statusBid: { color: colors.onBrandTertiary, fontFamily: font.displaySemi, fontSize: 16, marginTop: 2 },
+  statusNoBid: { color: colors.onSurfaceTertiary, fontFamily: font.text, fontSize: 12, marginTop: 2 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP },
   bidCard: {
     backgroundColor: colors.surfaceSecondary,
@@ -741,6 +797,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  rostersBtnWide: {
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  rostersBtnText: { color: colors.onSurface, fontFamily: font.displaySemi, fontSize: 16 },
   skipBtn: {
     flex: 1,
     borderRadius: radius.md,

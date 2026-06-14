@@ -22,10 +22,8 @@ async function req(path: string, { method = "GET", body, token }: Opts = {}) {
 }
 
 export const api = {
-  register: (email: string, password: string, name: string) =>
-    req("/auth/register", { method: "POST", body: { email, password, name } }),
-  login: (email: string, password: string) =>
-    req("/auth/login", { method: "POST", body: { email, password } }),
+  login: (code: string, pin: string) =>
+    req("/auth/login", { method: "POST", body: { code, pin } }),
   config: (token: string) => req("/config", { token }),
   createAuction: (token: string) => req("/auctions", { method: "POST", token }),
   getAuction: (sid: string, token: string) => req(`/auctions/${sid}`, { token }),

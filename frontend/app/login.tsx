@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,37 +24,36 @@ import { colors, spacing, radius, font } from "@/src/theme";
 const BG =
   "https://images.unsplash.com/photo-1578966663421-00f3bfebfa89?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHxkYXJrJTIwdGVubmlzJTIwY291cnQlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4MTE0ODAxNnww&ixlib=rb-4.1.0&q=85";
 
+const ACCOUNTS = [
+  { code: "ADMIN", label: "Admin · Auctioneer" },
+  ...Array.from({ length: 14 }, (_, i) => ({ code: `TEAM${i + 1}`, label: `Team ${i + 1}` })),
+];
+
 export default function Login() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login } = useAuth();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
+  const [account, setAccount] = useState(ACCOUNTS[0]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setError(null);
-    if (!email.trim() || !password) {
-      setError("Email and password are required");
+    if (pin.length < 6) {
+      setError("Enter your 6-digit PIN");
       return;
     }
     setBusy(true);
     try {
-      if (mode === "login") {
-        await login(email.trim(), password);
-      } else {
-        await register(email.trim(), password, name.trim());
-      }
+      await login(account.code, pin);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/session");
     } catch (e: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(e?.detail || "Something went wrong");
+      setError(e?.detail || "Invalid code or PIN");
     } finally {
       setBusy(false);
     }
@@ -85,58 +85,37 @@ export default function Login() {
           </View>
 
           <View style={[styles.card, { marginBottom: insets.bottom + spacing.lg }]}>
-            <Text style={styles.cardTitle}>
-              {mode === "login" ? "Welcome back" : "Create account"}
-            </Text>
+            <Text style={styles.cardTitle}>Sign in</Text>
 
-            {mode === "register" && (
-              <View style={styles.inputWrap}>
-                <Ionicons name="person-outline" size={18} color={colors.onSurfaceTertiary} />
-                <TextInput
-                  testID="name-input"
-                  style={styles.input}
-                  placeholder="Display name"
-                  placeholderTextColor={colors.onSurfaceTertiary}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
-              </View>
-            )}
-
-            <View style={styles.inputWrap}>
-              <Ionicons name="mail-outline" size={18} color={colors.onSurfaceTertiary} />
-              <TextInput
-                testID="email-input"
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={colors.onSurfaceTertiary}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoComplete="email"
+            <Text style={styles.fieldLabel}>Account</Text>
+            <Pressable
+              testID="account-selector"
+              style={styles.selector}
+              onPress={() => setPickerOpen(true)}
+            >
+              <Ionicons
+                name={account.code === "ADMIN" ? "shield-checkmark" : "people"}
+                size={18}
+                color={colors.brand}
               />
-            </View>
+              <Text style={styles.selectorText}>{account.label}</Text>
+              <Ionicons name="chevron-down" size={18} color={colors.onSurfaceTertiary} />
+            </Pressable>
 
+            <Text style={styles.fieldLabel}>6-digit PIN</Text>
             <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.onSurfaceTertiary} />
+              <Ionicons name="keypad-outline" size={18} color={colors.onSurfaceTertiary} />
               <TextInput
-                testID="password-input"
-                style={styles.input}
-                placeholder="Password"
+                testID="pin-input"
+                style={[styles.input, styles.pinInput]}
+                placeholder="● ● ● ● ● ●"
                 placeholderTextColor={colors.onSurfaceTertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!show}
+                value={pin}
+                onChangeText={(t) => setPin(t.replace(/[^0-9]/g, "").slice(0, 6))}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
               />
-              <Pressable onPress={() => setShow((s) => !s)} hitSlop={10} testID="toggle-password">
-                <Ionicons
-                  name={show ? "eye-off-outline" : "eye-outline"}
-                  size={18}
-                  color={colors.onSurfaceTertiary}
-                />
-              </Pressable>
             </View>
 
             {error && (
@@ -154,28 +133,47 @@ export default function Login() {
               {busy ? (
                 <ActivityIndicator color={colors.onBrand} />
               ) : (
-                <Text style={styles.ctaText}>
-                  {mode === "login" ? "Sign In" : "Sign Up"}
-                </Text>
+                <Text style={styles.ctaText}>Sign In</Text>
               )}
             </Pressable>
 
-            <Pressable
-              testID="toggle-mode"
-              onPress={() => {
-                setMode((m) => (m === "login" ? "register" : "login"));
-                setError(null);
-              }}
-              style={styles.switchRow}
-            >
-              <Text style={styles.switchText}>
-                {mode === "login" ? "New here? " : "Have an account? "}
-                <Text style={styles.switchLink}>
-                  {mode === "login" ? "Create one" : "Sign in"}
-                </Text>
-              </Text>
-            </Pressable>
+            <Text style={styles.hint}>
+              Captains bid for their own team. The Auctioneer runs the draft.
+            </Text>
           </View>
+
+          <Modal
+            visible={pickerOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setPickerOpen(false)}
+          >
+            <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)}>
+              <View style={styles.pickerCard} testID="account-picker">
+                <Text style={styles.pickerTitle}>Choose account</Text>
+                <ScrollView style={{ maxHeight: 380 }}>
+                  {ACCOUNTS.map((a) => (
+                    <Pressable
+                      key={a.code}
+                      testID={`account-option-${a.code}`}
+                      style={[styles.pickerRow, account.code === a.code && styles.pickerRowActive]}
+                      onPress={() => {
+                        setAccount(a);
+                        setPickerOpen(false);
+                        setError(null);
+                        Haptics.selectionAsync();
+                      }}
+                    >
+                      <Text style={styles.pickerRowText}>{a.label}</Text>
+                      {account.code === a.code && (
+                        <Ionicons name="checkmark-circle" size={18} color={colors.brand} />
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -245,7 +243,63 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   ctaText: { color: colors.onBrand, fontFamily: font.displaySemi, fontSize: 18, letterSpacing: 0.5 },
-  switchRow: { alignItems: "center", paddingVertical: spacing.xs },
-  switchText: { color: colors.onSurfaceSecondary, fontFamily: font.text, fontSize: 14 },
-  switchLink: { color: colors.brand, fontFamily: font.text },
+  fieldLabel: {
+    color: colors.onSurfaceSecondary,
+    fontFamily: font.displayMed,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    marginBottom: -spacing.xs,
+  },
+  selector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceTertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    height: 50,
+  },
+  selectorText: { flex: 1, color: colors.onSurface, fontFamily: font.displaySemi, fontSize: 17 },
+  pinInput: { fontFamily: font.display, fontSize: 22, letterSpacing: 6 },
+  hint: {
+    color: colors.onSurfaceTertiary,
+    fontFamily: font.text,
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 17,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.xl,
+  },
+  pickerCard: {
+    width: "100%",
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  pickerTitle: {
+    color: colors.onSurface,
+    fontFamily: font.displaySemi,
+    fontSize: 20,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  pickerRowActive: { backgroundColor: colors.brandTertiary },
+  pickerRowText: { color: colors.onSurface, fontFamily: font.text, fontSize: 16 },
 });

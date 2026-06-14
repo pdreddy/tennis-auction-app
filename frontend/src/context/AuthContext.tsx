@@ -3,14 +3,13 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { storage } from "@/src/utils/storage";
 import { api } from "@/src/api";
 
-type User = { email: string; name: string };
+type User = { code: string; role: "admin" | "captain"; teamId: number | null; name: string };
 
 type AuthCtx = {
   token: string | null;
   user: User | null;
   ready: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  login: (code: string, pin: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -41,13 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storage.setItem(USER_KEY, u);
   };
 
-  const login = async (email: string, password: string) => {
-    const res = await api.login(email, password);
-    await persist(res.token, res.user);
-  };
-
-  const register = async (email: string, password: string, name: string) => {
-    const res = await api.register(email, password, name);
+  const login = async (code: string, pin: string) => {
+    const res = await api.login(code, pin);
     await persist(res.token, res.user);
   };
 
@@ -59,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ token, user, ready, login, register, logout }}>
+    <Ctx.Provider value={{ token, user, ready, login, logout }}>
       {children}
     </Ctx.Provider>
   );
