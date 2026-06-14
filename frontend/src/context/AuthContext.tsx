@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (code: string, pin: string) => {
     const res = await api.login(code, pin);
+    // token is now the user's code string (no JWT needed)
     await persist(res.token, res.user);
   };
 
