@@ -3,6 +3,9 @@
   command = "yarn install && yarn build"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
