@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tennis Auction">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/manifest.json">
+    <title>Tennis Auction</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,123,255,0.12); }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 10px;
+            padding-top: max(10px, env(safe-area-inset-top));
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            background: #0a0b0e; color: #f0f0f0; min-height: 100vh;
+        }
+
+        /* ── Login ── */
+        .login-wrap {
+            max-width: 420px; margin: 60px auto; padding: 28px;
+            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 14px;
+        }
+        .login-title { font-size: 28px; font-weight: 800; letter-spacing: 1px; color: #fff; text-align: center; margin: 0 0 4px; }
+        .login-sub { text-align: center; color: #888; font-size: 13px; margin: 0 0 24px; }
+        .field-label { font-size: 12px; font-weight: 600; color: #888; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .field-wrap { margin-bottom: 16px; }
+        select, input[type="password"], input[type="text"], input[type="number"] {
+            width: 100%; padding: 12px 14px; font-size: 16px; border-radius: 8px;
+            border: 1px solid #2a2b30; background: #111215; color: #f0f0f0;
+            outline: none; appearance: none; -webkit-appearance: none;
+        }
+        select:focus, input:focus { border-color: #4f9eff; }
+        .btn {
+            width: 100%; padding: 14px; font-size: 16px; font-weight: 700;
+            border: none; border-radius: 8px; cursor: pointer; transition: opacity .15s;
+        }
+        .btn:active { opacity: .8; }
+        .btn-primary { background: #4f9eff; color: #000; }
+        .btn-danger  { background: #dc3545; color: #fff; }
+        .btn-warning { background: #ffc107; color: #000; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-neutral { background: #2a2b30; color: #f0f0f0; border: 1px solid #3a3b40; }
+        .btn:disabled { opacity: .4; cursor: default; }
+        .login-error { color: #ff6b6b; font-size: 13px; margin-top: 8px; text-align: center; }
+
+        /* ── Setup / lobby ── */
+        .setup-wrap { max-width: 480px; margin: 40px auto; }
+        .card { background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+        .card-title { font-size: 17px; font-weight: 700; margin: 0 0 8px; color: #fff; }
+        .card-sub { font-size: 13px; color: #888; margin: 0 0 14px; line-height: 1.5; }
+        .or-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+        .or-row .line { flex:1; height:1px; background:#2a2b30; }
+        .or-row span { font-size: 12px; color: #555; }
+        .code-input { font-size: 26px; font-weight: 700; letter-spacing: 8px; text-align: center; }
+        .health-panel { font-size: 12px; color: #888; margin-top: 14px; }
+        .health-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #222; }
+        .health-ok { color: #28a745; font-weight: 700; }
+        .health-bad { color: #dc3545; font-weight: 700; }
+
+        /* ── Auction header ── */
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px; gap: 8px;
+        }
+        .top-bar h1 { font-size: 18px; font-weight: 800; margin: 0; color: #fff; letter-spacing: .5px; }
+        .sync-dot {
+            display: flex; align-items: center; gap: 5px;
+            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 20px;
+            padding: 5px 10px; font-size: 11px; color: #888;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot-green { background: #28a745; }
+        .dot-red   { background: #dc3545; }
+
+        /* ── Sticky player bar ── */
+        .sticky-bar {
+            position: sticky; top: 0; z-index: 900;
+            background: #1a1b20; border: 2px solid #ffc107;
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.5);
+        }
+        .sb-player { font-size: 16px; font-weight: 700; color: #fff; }
+        .sb-meta { font-size: 11px; color: #888; margin-top: 2px; }
+        .sb-high { font-size: 12px; color: #4f9eff; font-weight: 700; margin-top: 3px; }
+        .sb-timer {
+            min-width: 58px; text-align: center; padding: 8px 10px; border-radius: 8px;
+            background: #1c3a6e; color: #4f9eff; font-size: 22px; font-weight: 800;
+        }
+        .sb-timer.warn { background: #5a1a1a; color: #ff6b6b; }
+
+        /* ── Progress ── */
+        .progress-track { height: 6px; background: #2a2b30; border-radius: 99px; overflow: hidden; margin: 0 0 4px; }
+        .progress-fill { height: 100%; background: #28a745; border-radius: 99px; transition: width .4s ease; }
+        .progress-text { font-size: 11px; color: #555; text-align: center; margin-bottom: 10px; }
+
+        /* ── Admin controls ── */
+        .admin-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+        .admin-bar .btn { flex: 1; padding: 12px 8px; font-size: 14px; }
+
+        /* ── Bidding grid ── */
+        .bidding-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px; margin-bottom: 12px;
+        }
+        @media (min-width: 520px)  { .bidding-grid { grid-template-columns: repeat(2,1fr); } }
+        @media (min-width: 800px)  { .bidding-grid { grid-template-columns: repeat(3,1fr); } }
+        @media (min-width: 1100px) { .bidding-grid { grid-template-columns: repeat(4,1fr); } }
+
+        .bid-card {
+            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 10px;
+            padding: 10px; display: flex; flex-direction: column; gap: 6px;
+        }
+        .bid-card.winning { border-color: #28a745; border-width: 2px; background: #0d1f12; }
+        .bid-card.tied    { border-color: #ffc107; border-width: 2px; background: #1f1a0d; }
+        .bid-card.pinned  { border-color: #ffc107; }
+        .bid-card.disabled-card {
+            display: flex; flex-direction: row; align-items: center;
+            justify-content: space-between; opacity: .5; padding: 8px 12px;
+        }
+        .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; }
+        .team-name { font-size: 14px; font-weight: 700; color: #fff; }
+        .team-meta { font-size: 10px; color: #666; margin-top: 1px; }
+        .pin-btn { background:none; border:none; cursor:pointer; font-size:15px; padding:0 2px; opacity:.4; }
+        .pin-btn.pinned { opacity: 1; }
+        .bid-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+        .bid-input { font-size: 16px; padding: 9px 10px; border-radius: 7px; }
+        .quick-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+        .chip {
+            flex: 1 1 auto; min-width: 52px; padding: 6px 4px; text-align: center;
+            font-size: 12px; font-weight: 700; border-radius: 6px;
+            border: 1px solid #2a5a9f; background: #0f1f3a; color: #4f9eff;
+            cursor: pointer; touch-action: manipulation;
+        }
+        .chip:active { background: #4f9eff; color: #000; }
+        .chip:disabled { opacity: .3; }
+        .place-bid-btn { padding: 10px; font-size: 14px; font-weight: 700; min-height: 44px; }
+        .bid-status { font-size: 11px; color: #4f9eff; }
+        .bid-win-badge { background: #28a745; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+        .bid-tie-badge { background: #ffc107; color: #000; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+        .bid-error { color: #ff6b6b; font-size: 11px; font-weight: 600; }
+
+        /* ── Pool viewer ── */
+        .pool-viewer {
+            background: #0f1420; border: 1px solid #1e2a3a; border-radius: 10px;
+            padding: 10px; margin-bottom: 10px;
+        }
+        .pool-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .pool-chip {
+            font-size: 10px; padding: 4px 7px; border-radius: 5px;
+            border: 1px solid #1e2a3a; background: #111520; color: #888;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+        }
+        .pool-chip.active { background: #ffc107; color: #000; font-weight: 700; border-color: #ffc107; }
+        .pool-chip.retry  { border-color: #ff6b6b; color: #ff6b6b; }
+
+        /* ── Rosters ── */
+        .section-toggle {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; background: #1a1b1f; border: 1px solid #2a2b30;
+            color: #f0f0f0; border-radius: 10px; padding: 12px 14px;
+            font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
+        }
+        .rosters-grid {
+            display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 80px;
+        }
+        @media (min-width: 640px) { .rosters-grid { grid-template-columns: repeat(3,1fr); } }
+        @media (min-width: 900px) { .rosters-grid { grid-template-columns: repeat(4,1fr); } }
+        .roster-card {
+            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 10px;
+            padding: 10px; font-size: 11px;
+        }
+        .roster-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+        .roster-budget { display: flex; gap: 8px; color: #888; margin-bottom: 5px; }
+        .roster-spent { color: #dc3545; }
+        .roster-left  { color: #28a745; }
+        .roster-player { color: #aaa; margin-top: 2px; }
+        .roster-captain { color: #ffc107; font-weight: 700; }
+
+        /* ── Complete screen ── */
+        .complete-banner {
+            background: #28a745; color: #fff; text-align: center;
+            font-size: 20px; font-weight: 800; padding: 16px; border-radius: 10px;
+            margin-bottom: 14px;
+        }
+
+        /* ── Error banner ── */
+        .error-banner {
+            background: #2a1010; border: 1px solid #dc3545; color: #ff6b6b;
+            border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px;
+        }
+
+        /* ── Reset modal ── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; padding: 20px;
+        }
+        .modal-card {
+            background: #1a1b1f; border: 1px solid #3a3b40; border-radius: 14px;
+            padding: 24px; width: 100%; max-width: 360px;
+        }
+        .modal-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 8px; }
+        .modal-body  { font-size: 14px; color: #888; line-height: 1.5; margin: 0 0 16px; }
+        .modal-btns  { display: flex; gap: 10px; }
+        .modal-btns .btn { flex: 1; padding: 12px; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── Firebase ────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey: "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
+    authDomain: "koc2-20fb8.firebaseapp.com",
+    databaseURL: "https://koc2-20fb8-default-rtdb.firebaseio.com",
+    projectId: "koc2-20fb8",
+    storageBucket: "koc2-20fb8.firebasestorage.app",
+    messagingSenderId: "317734341461",
+    appId: "1:317734341461:web:1bcad5a1792fac0e46bddc"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ─── Static data ─────────────────────────────────────────────────────────────
+const TEAM_BUDGET = 100000;
+const TEAM_SIZE   = 7;
+const TIMER_MS    = 60000;
+
+const POOL_ORDER = ["utr_5_5","utr_5_25","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
+const getUTR = k => parseFloat(k.replace("utr_","").replace("_","."));
+
+const PLAYERS = [
+    {id:1,Name:"Satish Reddy Orugunta",utr:5.5,price:14000},
+    {id:2,Name:"Rajasekhar Chintha",utr:5.5,price:14000},
+    {id:3,Name:"Anil Kunda",utr:5.5,price:14000},
+    {id:4,Name:"Krishna Vennapusa",utr:5.5,price:14000},
+    {id:5,Name:"Nagarjuna Saladi",utr:5.5,price:14000},
+    {id:6,Name:"Dinesh Reddy Timmareddy",utr:5.5,price:14000},
+    {id:7,Name:"Sudhakara Nallapati",utr:5.5,price:14000},
+    {id:8,Name:"Dinkar Bhardwaj",utr:5.5,price:14000},
+    {id:9,Name:"Yogesh Dhadge",utr:5.25,price:13000},
+    {id:10,Name:"Uma Vommi",utr:5.25,price:13000},
+    {id:11,Name:"Manish Jangid",utr:5.25,price:13000},
+    {id:12,Name:"Vinod Aripaka",utr:5.25,price:13000},
+    {id:13,Name:"Narayan Prasad",utr:5.25,price:13000},
+    {id:14,Name:"Chandrakant Dharme",utr:5.0,price:12000},
+    {id:15,Name:"Rajasekhar Karru",utr:5.0,price:12000},
+    {id:16,Name:"Hari Mothukuri",utr:5.0,price:12000},
+    {id:17,Name:"Lloyd Prasana Kumar",utr:5.0,price:12000},
+    {id:18,Name:"Ritesh Kumar",utr:5.0,price:12000},
+    {id:19,Name:"Sandeep Gengineri",utr:4.5,price:10000},
+    {id:20,Name:"Venky Dh",utr:4.5,price:10000},
+    {id:21,Name:"Jitender Kumar",utr:4.5,price:10000},
+    {id:22,Name:"Srinidhi Kulkarni",utr:4.5,price:10000},
+    {id:23,Name:"Naveenkumar Mohanram",utr:4.5,price:10000},
+    {id:24,Name:"Srikant Tenni",utr:4.0,price:8000},
+    {id:25,Name:"Bhaskar Boddireddy",utr:4.0,price:8000},
+    {id:26,Name:"Mohan Koripuri",utr:4.0,price:8000},
+    {id:27,Name:"Anshul Goyal",utr:4.0,price:8000},
+    {id:28,Name:"Jaweed Ibrahim",utr:4.0,price:8000},
+    {id:29,Name:"Janaki Ram Kantheti",utr:4.0,price:8000},
+    {id:30,Name:"Biju Koshy",utr:4.0,price:8000},
+    {id:31,Name:"Damodhara Palavali",utr:4.0,price:8000},
+    {id:32,Name:"Naseer Mohammad",utr:4.0,price:8000},
+    {id:33,Name:"Trinadh Cheepilla",utr:3.5,price:6000},
+    {id:34,Name:"Malla Reddy Cheerke",utr:3.5,price:6000},
+    {id:35,Name:"Charan Macharla",utr:3.5,price:6000},
+    {id:36,Name:"Mohamed Noufal",utr:3.5,price:6000},
+    {id:37,Name:"Rajasekhar Chejerla",utr:3.5,price:6000},
+    {id:38,Name:"Nivas Nazeer",utr:3.0,price:5000},
+    {id:39,Name:"Venice Robinson Amal Doss",utr:3.0,price:5000},
+    {id:40,Name:"Volkan Bal",utr:3.0,price:5000},
+    {id:41,Name:"Premkumar Balakrishnan",utr:3.0,price:5000},
+    {id:42,Name:"Guru Bavirisetty",utr:3.0,price:5000},
+    {id:43,Name:"Sidharth Behera",utr:3.0,price:5000},
+    {id:44,Name:"Sreekanth Bobbala",utr:3.0,price:5000},
+    {id:45,Name:"Hariprashanth Ganapathy",utr:3.0,price:5000},
+    {id:46,Name:"Prashanth Gourineni",utr:3.0,price:5000},
+    {id:47,Name:"Amit Gundewar",utr:3.0,price:5000},
+    {id:48,Name:"Jitin Jaitly",utr:3.0,price:5000},
+    {id:49,Name:"Prashanth Jayantha Kumar",utr:3.0,price:5000},
+    {id:50,Name:"Kalyan Kalidindi",utr:3.0,price:5000},
+    {id:51,Name:"Dineshkumar Kaliyaperumal",utr:3.0,price:5000},
+    {id:52,Name:"Joel Kodoru",utr:3.0,price:5000},
+    {id:53,Name:"Anand Krishnamurthy",utr:3.0,price:5000},
+    {id:54,Name:"Karthik Kumaresan",utr:3.0,price:5000},
+    {id:55,Name:"Sankara Lakshmanan",utr:3.0,price:5000},
+    {id:56,Name:"Chandu M",utr:3.0,price:5000},
+    {id:57,Name:"Satya Maddipati",utr:3.0,price:5000},
+    {id:58,Name:"Kailas Magi",utr:3.0,price:5000},
+    {id:59,Name:"Ninad Mahajan",utr:3.0,price:5000},
+    {id:60,Name:"Asif Mohammed",utr:3.0,price:5000},
+    {id:61,Name:"Boopesh Natarajan",utr:3.0,price:5000},
+    {id:62,Name:"Venky Pantham",utr:3.0,price:5000},
+    {id:63,Name:"Abhishek Patel",utr:3.0,price:5000},
+    {id:64,Name:"Mayur Patel",utr:3.0,price:5000},
+    {id:65,Name:"Shailendra Patidar",utr:3.0,price:5000},
+    {id:66,Name:"Prashanth Pendli",utr:3.0,price:5000},
+    {id:67,Name:"Mahidhar Penigi",utr:3.0,price:5000},
+    {id:68,Name:"Vinod Punati",utr:3.0,price:5000},
+    {id:69,Name:"Addy R",utr:3.0,price:5000},
+    {id:70,Name:"Raja R",utr:3.0,price:5000},
+    {id:71,Name:"Karthik Ragunathan",utr:3.0,price:5000},
+    {id:72,Name:"Saket Raizada",utr:3.0,price:5000},
+    {id:73,Name:"Jagapathi Raju",utr:3.0,price:5000},
+    {id:74,Name:"Arpit Rawat",utr:3.0,price:5000},
+    {id:75,Name:"Rajib Sarkar",utr:3.0,price:5000},
+    {id:76,Name:"Karthik Ram Senthilvel",utr:3.0,price:5000},
+    {id:77,Name:"Gopal Setty",utr:3.0,price:5000},
+    {id:78,Name:"Chandan Singh",utr:3.0,price:5000},
+    {id:79,Name:"Vipul Sud",utr:3.0,price:5000},
+    {id:80,Name:"Bharath Sunku",utr:3.0,price:5000},
+    {id:81,Name:"Avinash Terala",utr:3.0,price:5000},
+    {id:82,Name:"Vivek Tiku",utr:3.0,price:5000},
+    {id:83,Name:"Tushar Tipatre",utr:3.0,price:5000},
+    {id:84,Name:"Koushik Venkatasubramanian",utr:3.0,price:5000},
+    {id:85,Name:"Venu Sarvepalli",utr:3.0,price:5000},
+    {id:86,Name:"Vivek Bihani",utr:3.0,price:5000},
+    {id:87,Name:"Jay Sermadevi",utr:3.0,price:5000},
+    {id:88,Name:"Veeresh Kurni",utr:3.0,price:5000},
+    {id:89,Name:"Srinath Elitem",utr:3.0,price:5000},
+    {id:90,Name:"Prashant Janmatti",utr:3.0,price:5000},
+    {id:91,Name:"Rajesh Mishra",utr:3.0,price:5000},
+    {id:92,Name:"Samir Junnarkar",utr:3.0,price:5000},
+    {id:93,Name:"Amol Patwardhan",utr:3.0,price:5000},
+    {id:94,Name:"Shiva Kumar",utr:3.0,price:5000},
+    {id:95,Name:"Harsha Beeram",utr:3.0,price:5000},
+    {id:96,Name:"Raj Chava",utr:3.0,price:5000},
+    {id:97,Name:"Vijay Gate",utr:3.0,price:5000},
+    {id:98,Name:"Vinoth Duraisamy",utr:3.0,price:5000},
+];
+
+const TEAMS = [
+    {id:1,name:"Team 1",captain:"Yogesh Dhadge"},
+    {id:2,name:"Team 2",captain:"Srikant Tenni"},
+    {id:3,name:"Team 3",captain:"Uma Vommi"},
+    {id:4,name:"Team 4",captain:"Narayan Prasad"},
+    {id:5,name:"Team 5",captain:"Manish Jangid"},
+    {id:6,name:"Team 6",captain:"Vinod Aripaka"},
+    {id:7,name:"Team 7",captain:"Satish Reddy Orugunta"},
+    {id:8,name:"Team 8",captain:"Anil Kunda"},
+    {id:9,name:"Team 9",captain:"Rajasekhar Chintha"},
+    {id:10,name:"Team 10",captain:"Krishna Vennapusa"},
+    {id:11,name:"Team 11",captain:"Nagarjuna Saladi"},
+    {id:12,name:"Team 12",captain:"Dinesh Reddy Timmareddy"},
+    {id:13,name:"Team 13",captain:"Sudhakara Nallapati"},
+    {id:14,name:"Team 14",captain:"Dinkar Bhardwaj"},
+    {id:15,name:"Team 15",captain:"Chandrakant Dharme"},
+    {id:16,name:"Team 16",captain:"Rajasekhar Karru"},
+];
+
+const CAPTAIN_NAMES = new Set(TEAMS.map(t => t.captain));
+
+const PLAYER_POOLS = {};
+POOL_ORDER.forEach(key => {
+    const utr = getUTR(key);
+    PLAYER_POOLS[key] = PLAYERS.filter(p => p.utr === utr && !CAPTAIN_NAMES.has(p.Name));
+});
+
+const POOL_CAPS = {};
+POOL_ORDER.forEach(key => {
+    const size = PLAYER_POOLS[key].length;
+    POOL_CAPS[key] = size === 0 ? 0 : size <= TEAMS.length ? 1 : TEAM_SIZE - 1;
+});
+
+// ─── Auth accounts ────────────────────────────────────────────────────────────
+const ADMIN_PIN = "731902";
+const TEAM_PINS = {1:"481027",2:"635914",3:"217658",4:"859302",5:"374186",6:"196540",7:"742839",8:"503271",9:"618495",10:"285063",11:"947612",12:"360728",13:"814359",14:"572046",15:"639021",16:"184756"};
+
+const ACCOUNTS = [
+    {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null,pin:ADMIN_PIN},
+    ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id,pin:TEAM_PINS[t.id]}))
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt = n => (n||0).toLocaleString();
+const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
+const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
+const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
+
+function normalize(data) {
+    if (!data) return null;
+    const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
+    const rawPools = data.playerPools || {};
+    const playerPools = {};
+    POOL_ORDER.forEach(k => { playerPools[k] = toArr(rawPools[k]); });
+    let cb = data.currentBids || {};
+    if (Array.isArray(cb)) cb = Object.fromEntries(cb.map((v,i)=>[String(i),v]).filter(([,v])=>v));
+    const currentBids = {};
+    Object.entries(cb).forEach(([k,v]) => { currentBids[String(k)] = v; });
+    return { ...data, teams, playerPools, currentBids,
+        currentPoolIndex: data.currentPoolIndex||0,
+        currentPlayerIndex: data.currentPlayerIndex||0,
+        timerEnd: data.timerEnd || Date.now() };
+}
+
+function getEffective(state) {
+    const pools = state.playerPools;
+    let effPool = state.currentPoolIndex;
+    while (effPool < POOL_ORDER.length && (pools[POOL_ORDER[effPool]]||[]).length === 0) effPool++;
+    if (effPool >= POOL_ORDER.length) return { complete: true };
+    const pool = pools[POOL_ORDER[effPool]] || [];
+    const effPlayer = effPool === state.currentPoolIndex
+        ? Math.min(state.currentPlayerIndex, Math.max(0, pool.length-1))
+        : 0;
+    return { complete: false, effPool, effPlayer, poolKey: POOL_ORDER[effPool], pool, player: pool[effPlayer]||null };
+}
+
+function getInitialTeams() {
+    const byName = Object.fromEntries(PLAYERS.map(p=>[p.Name,p]));
+    return TEAMS.map(team => {
+        const cap = byName[team.captain];
+        const price = cap?.price||0;
+        return { ...team, budget: TEAM_BUDGET-price, totalSpent: price,
+            players: cap ? [{id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}] : [] };
+    });
+}
+
+function freshPools() {
+    const p = {};
+    POOL_ORDER.forEach(k => { p[k] = PLAYER_POOLS[k].map(x=>({...x})); });
+    return p;
+}
+
+function initialDoc(sid) {
+    return { sessionId:sid, teams:getInitialTeams(), playerPools:freshPools(),
+        currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
+        timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now() };
+}
+
+// ─── Login screen ─────────────────────────────────────────────────────────────
+function Login({ onLogin }) {
+    const [account, setAccount] = useState(ACCOUNTS[0]);
+    const [pin, setPin] = useState("");
+    const [error, setError] = useState(null);
+    const [busy, setBusy] = useState(false);
+
+    const submit = async () => {
+        setError(null);
+        if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
+        setBusy(true);
+        try {
+            // Check Firebase for user, seed if missing
+            const snap = await db.ref(`users/${account.code}`).once("value");
+            let user = snap.val();
+            if (!user) {
+                // Seed all users on first login
+                const updates = {};
+                ACCOUNTS.forEach(a => { updates[`users/${a.code}`] = {code:a.code,pin:a.pin,role:a.role,teamId:a.teamId,name:a.label}; });
+                await db.ref().update(updates);
+                user = { code:account.code, pin:account.pin, role:account.role, teamId:account.teamId };
+            }
+            if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
+            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
+        } catch(e) { setError("Error: " + e.message); setBusy(false); }
+    };
+
+    return (
+        <div className="login-wrap">
+            <div className="login-title">🎾 TENNIS AUCTION</div>
+            <div className="login-sub">Live player draft · Real-time sync</div>
+
+            <div className="field-wrap">
+                <div className="field-label">ACCOUNT</div>
+                <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
+                    {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
+                </select>
+            </div>
+
+            <div className="field-wrap">
+                <div className="field-label">6-DIGIT PIN</div>
+                <input type="password" value={pin} maxLength={6} inputMode="numeric"
+                    placeholder="● ● ● ● ● ●"
+                    style={{letterSpacing:8,textAlign:"center",fontSize:20}}
+                    onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
+                    onKeyPress={e => e.key==="Enter" && submit()} />
+            </div>
+
+            {error && <div className="login-error">{error}</div>}
+
+            <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
+                {busy ? "Signing in…" : "Sign In"}
+            </button>
+        </div>
+    );
+}
+
+// ─── Session lobby ────────────────────────────────────────────────────────────
+function Lobby({ user, onJoin, onLogout }) {
+    const [joinId, setJoinId] = useState("");
+    const [creating, setCreating] = useState(false);
+    const [joining, setJoining] = useState(false);
+    const [error, setError] = useState(null);
+
+    const createNew = async () => {
+        setCreating(true); setError(null);
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+        await db.ref(`auctions/${sid}`).set(initialDoc(sid));
+        onJoin(sid);
+    };
+
+    const joinExisting = async () => {
+        const id = joinId.trim().toUpperCase();
+        if (!id) { setError("Enter a session ID"); return; }
+        setJoining(true); setError(null);
+        const snap = await db.ref(`auctions/${id}`).once("value");
+        if (!snap.exists()) { setError(`Session ${id} not found`); setJoining(false); return; }
+        onJoin(id);
+    };
+
+    const poolPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+
+    return (
+        <div className="setup-wrap">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                <div>
+                    <div style={{fontSize:11,color:"#888"}}>Signed in as</div>
+                    <div style={{fontWeight:700,color:"#fff"}}>{user.name}</div>
+                </div>
+                <button className="btn btn-neutral" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={onLogout}>Log out</button>
+            </div>
+
+            {error && <div className="error-banner">{error}</div>}
+
+            {user.role === "admin" ? (
+                <div className="card">
+                    <div className="card-title">Start new auction</div>
+                    <div className="card-sub">Creates a fresh session. Share the 6-letter ID with all captains.</div>
+                    <button className="btn btn-primary" onClick={createNew} disabled={creating}>
+                        {creating ? "Creating…" : "Create New Auction"}
+                    </button>
+                </div>
+            ) : (
+                <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
+                    <div className="card-title">👋 Hi, {user.name.split("·")[1]?.trim()}</div>
+                    <div className="card-sub">Ask the Auctioneer for the Session ID, then join below.</div>
+                </div>
+            )}
+
+            <div className="or-row"><div className="line"/><span>OR JOIN EXISTING</span><div className="line"/></div>
+
+            <div className="card">
+                <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
+                    value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
+                    onKeyPress={e=>e.key==="Enter"&&joinExisting()} />
+                <button className="btn btn-neutral" style={{marginTop:10}} onClick={joinExisting} disabled={joining||!joinId.trim()}>
+                    {joining ? "Joining…" : "Join Auction"}
+                </button>
+            </div>
+
+            <div className="health-panel">
+                <div style={{fontWeight:700,color:"#aaa",marginBottom:6}}>Setup check</div>
+                <div className="health-row"><span>Teams</span><span className={TEAMS.length===16?"health-ok":"health-bad"}>{TEAMS.length} / 16</span></div>
+                <div className="health-row"><span>Pool players</span><span>{poolPlayers}</span></div>
+                <div className="health-row"><span>Total players</span><span>{PLAYERS.length}</span></div>
+                {POOL_ORDER.map(key => {
+                    const c = PLAYER_POOLS[key].length;
+                    return <div className="health-row" key={key}>
+                        <span>UTR {getUTR(key)}</span>
+                        <span style={{color:"#666"}}>{c===0?"auto-skipped":`${c} players · max ${POOL_CAPS[key]}/team`}</span>
+                    </div>;
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── Main auction screen ──────────────────────────────────────────────────────
+function Auction({ sid, user, onBack }) {
+    const [state, setState] = useState(null);
+    const [connected, setConnected] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(60);
+    const [bidInputs, setBidInputs] = useState({});
+    const [bidErrors, setBidErrors] = useState({});
+    const [actionError, setActionError] = useState(null);
+    const [resetOpen, setResetOpen] = useState(false);
+    const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
+    const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
+    const auctionRef = useRef(db.ref(`auctions/${sid}`));
+
+    // Real-time listener
+    useEffect(() => {
+        const connRef = db.ref(".info/connected");
+        connRef.on("value", s => setConnected(s.val()===true));
+        auctionRef.current.on("value", snap => {
+            if (snap.exists()) { setState(normalize(snap.val())); setConnected(true); }
+            else setConnected(false);
+        });
+        return () => { connRef.off(); auctionRef.current.off(); };
+    }, [sid]);
+
+    // Timer
+    useEffect(() => {
+        if (!state?.timerEnd) return;
+        const iv = setInterval(() => setTimeLeft(Math.max(0, Math.floor((state.timerEnd - Date.now())/1000))), 200);
+        return () => clearInterval(iv);
+    }, [state?.timerEnd]);
+
+    const fbUpdate = updates => auctionRef.current.update({...updates, lastUpdate: Date.now()});
+    const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
+    const togglePin = id => { const n=pinnedTeam===id?null:id; setPinnedTeam(n); savePref("ta_pin",n); };
+
+    const placeBid = (teamId, amount) => {
+        const n = parseInt(amount)||0;
+        if (!eff?.player) return;
+        const err = validateBid(teamId, n);
+        if (err) { setBidErrors(p=>({...p,[teamId]:err})); return; }
+        if (timeLeft===0) { setBidErrors(p=>({...p,[teamId]:"Time is up!"})); return; }
+        setBidErrors(p=>({...p,[teamId]:null}));
+        auctionRef.current.child("currentBids").transaction(cur => {
+            const bids = cur||{};
+            const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
+            if (taken) return; // abort
+            return {...bids,[teamId]:n};
+        }, (err,committed) => {
+            if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
+            else { setBidInputs(p=>({...p,[teamId]:""})); auctionRef.current.update({lastUpdate:Date.now()}); }
+        });
+    };
+
+    const validateBid = (teamId, amount) => {
+        if (!eff?.player) return "No player";
+        const team = state.teams.find(t=>t.id===teamId);
+        if (!team) return "Team not found";
+        if (team.players.length >= TEAM_SIZE) return `Team full`;
+        const utr = getUTR(eff.poolKey);
+        const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
+        if (fromPool >= (POOL_CAPS[eff.poolKey]||0)) return `Max ${POOL_CAPS[eff.poolKey]} at UTR ${utr}`;
+        if (!amount||amount<=0) return "Enter amount";
+        if (amount < eff.player.price) return `Min $${fmt(eff.player.price)}`;
+        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
+        const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
+        if (dup) return `$${fmt(amount)} taken by ${dup.name}`;
+        if (amount > team.budget) return "Exceeds budget";
+        const rem = TEAM_SIZE - team.players.length;
+        const minNeeded = rem>1?(rem-1)*5000:0;
+        if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
+        return null;
+    };
+
+    const finalize = () => {
+        if (!eff?.player) return;
+        const bids = Object.entries(state.currentBids).map(([tid,b])=>({teamId:parseInt(tid),bid:b})).filter(x=>x.bid>0);
+        if (!bids.length) { setActionError("No bids — use Skip"); return; }
+        const highest = Math.max(...bids.map(b=>b.bid));
+        const winners = bids.filter(b=>b.bid===highest);
+        if (winners.length>1) { setActionError(`Tie between ${winners.map(w=>state.teams.find(t=>t.id===w.teamId)?.name).join(", ")} — place different bids`); return; }
+        const winId = winners[0].teamId;
+        const teams = state.teams.map(t => {
+            if (t.id!==winId) return t;
+            return {...t, players:[...t.players,{...eff.player,acquiredPrice:highest}], budget:t.budget-highest, totalSpent:t.totalSpent+highest};
+        });
+        const pools = {...state.playerPools};
+        const pool = [...pools[eff.poolKey]];
+        pool.splice(eff.effPlayer,1);
+        pools[eff.poolKey] = pool;
+        let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
+        if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
+        fbUpdate({teams,playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        setBidInputs({}); setBidErrors({}); setActionError(null);
+    };
+
+    const skip = () => {
+        if (!eff?.player) return;
+        const pools = {...state.playerPools};
+        const pool = [...pools[eff.poolKey]];
+        const moved = {...pool[eff.effPlayer],isRetry:true,retryCount:(pool[eff.effPlayer].retryCount||0)+1};
+        pool.splice(eff.effPlayer,1); pool.push(moved);
+        pools[eff.poolKey] = pool;
+        let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
+        if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
+        fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        setBidInputs({}); setBidErrors({}); setActionError(null);
+    };
+
+    const reset = () => {
+        auctionRef.current.set(initialDoc(sid));
+        setBidInputs({}); setBidErrors({}); setActionError(null); setResetOpen(false);
+    };
+
+    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
+
+    const eff = getEffective(state);
+    const isAdmin = user.role === "admin";
+    const myTeamId = user.teamId;
+
+    // Auction complete
+    if (eff.complete || !eff.player) {
+        return (
+            <div>
+                <div className="top-bar">
+                    <h1>🎾 TENNIS AUCTION</h1>
+                    <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
+                </div>
+                <div className="complete-banner">🏆 Auction Complete · Session {sid}</div>
+                {isAdmin && <div style={{textAlign:"center",marginBottom:12}}>
+                    <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>
+                </div>}
+                <div className="rosters-grid">
+                    {state.teams.map(t => <RosterCard key={t.id} team={t}/>)}
+                </div>
+                {resetOpen && <ResetModal onCancel={()=>setResetOpen(false)} onConfirm={reset}/>}
+            </div>
+        );
+    }
+
+    const bids = Object.entries(state.currentBids).map(([tid,b])=>({teamId:parseInt(tid),bid:b})).filter(x=>x.bid>0);
+    const highest = bids.length ? Math.max(...bids.map(b=>b.bid)) : 0;
+    const winners = bids.filter(b=>b.bid===highest);
+    const hasBids = bids.length>0;
+    const warn = timeLeft<=10;
+    const pct = Math.min(100,Math.round(((eff.effPool+(eff.effPlayer/Math.max(1,eff.pool.length)))/POOL_ORDER.length)*100));
+
+    const teamStatusFor = team => {
+        const teamBid = state.currentBids[String(team.id)]||0;
+        const isWin = teamBid>0&&teamBid===highest&&winners.length===1;
+        const isTie = teamBid>0&&teamBid===highest&&winners.length>1;
+        return {teamBid,isWin,isTie};
+    };
+
+    const sortedTeams = [...state.teams].map(t => {
+        const isDisabled = t.players.length>=TEAM_SIZE || t.budget<eff.player.price ||
+            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS[eff.poolKey]||0));
+        return {...t,isDisabled,isPinned:pinnedTeam===t.id};
+    }).sort((a,b) => {
+        if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
+        if (!isAdmin && a.id===myTeamId) return -1;
+        if (!isAdmin && b.id===myTeamId) return 1;
+        if (a.isDisabled!==b.isDisabled) return a.isDisabled?1:-1;
+        return 0;
+    });
+
+    return (
+        <div>
+            <div className="top-bar">
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <button onClick={onBack} style={{background:"none",border:"none",color:"#888",fontSize:20,cursor:"pointer",padding:0}}>‹</button>
+                    <div>
+                        <div style={{fontSize:11,color:"#555",letterSpacing:1}}>SESSION</div>
+                        <div style={{fontWeight:800,fontSize:20,color:"#fff",letterSpacing:2}}>{sid}</div>
+                    </div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
+                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"6px 12px",fontSize:12}} onClick={()=>setResetOpen(true)}>Reset</button>}
+                </div>
+            </div>
+
+            <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
+            <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
+
+            <div className={`sticky-bar`} style={warn?{borderColor:"#ff6b6b"}:{}}>
+                <div style={{minWidth:0}}>
+                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span style={{color:"#ff6b6b",fontSize:13}}> · Retry #{eff.player.retryCount}</span>}</div>
+                    <div className="sb-meta">UTR {eff.player.utr} · base ${fmt(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
+                    {highest>0 && <div className="sb-high">High ${fmt(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
+                </div>
+                <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
+            </div>
+
+            {actionError && <div className="error-banner" onClick={()=>setActionError(null)}>{actionError} ✕</div>}
+
+            {isAdmin && (
+                <div className="admin-bar">
+                    <button className="btn btn-neutral" onClick={skip}>Skip</button>
+                    <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
+                        disabled={!hasBids||winners.length!==1} onClick={finalize}>
+                        {!hasBids ? "No Bids" : winners.length>1 ? `Tie (${winners.length})` : `Award → ${state.teams.find(t=>t.id===winners[0].teamId)?.name}`}
+                    </button>
+                </div>
+            )}
+
+            <div className="bidding-grid">
+                {sortedTeams.map(team => {
+                    const {teamBid,isWin,isTie} = teamStatusFor(team);
+                    const isMyTeam = !isAdmin && team.id===myTeamId;
+
+                    if (team.isDisabled && !isMyTeam) {
+                        const reason = team.players.length>=TEAM_SIZE?"Full":team.budget<eff.player.price?"Low budget":`Cap at UTR ${getUTR(eff.poolKey)}`;
+                        return (
+                            <div key={team.id} className="bid-card disabled-card">
+                                <span style={{fontSize:12,color:"#555"}}>{team.name} ({team.players.length}/{TEAM_SIZE})</span>
+                                <span style={{fontSize:11,color:"#444",fontStyle:"italic"}}>{reason}</span>
+                            </div>
+                        );
+                    }
+
+                    const anchor = highest>0?highest+1000:eff.player.price;
+                    const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=team.budget);
+                    const canBid = !isAdmin || isAdmin; // admin can bid for any team in test mode — captains only their own
+
+                    return (
+                        <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
+                            <div className="bid-card-head">
+                                <div>
+                                    <div className="team-name">{team.name}{isMyTeam?" · You":""}</div>
+                                    <div className="team-meta">{team.captain} · ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}</div>
+                                </div>
+                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin my team">📌</button>
+                            </div>
+
+                            {(isAdmin || isMyTeam) && (
+                                <div className="bid-input-wrap">
+                                    <input type="number" inputMode="numeric" className="bid-input"
+                                        placeholder={`Min $${fmt(eff.player.price)}`}
+                                        value={bidInputs[team.id]||""}
+                                        disabled={timeLeft===0}
+                                        onChange={e=>{setBidInputs(p=>({...p,[team.id]:e.target.value}));setBidErrors(p=>({...p,[team.id]:null}));}}
+                                        onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
+                                    />
+                                    <div className="quick-chips">
+                                        {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
+                                            ${v/1000}k
+                                        </button>)}
+                                    </div>
+                                    {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
+                                    <button className="btn btn-primary place-bid-btn"
+                                        disabled={!bidInputs[team.id]||timeLeft===0}
+                                        onClick={()=>placeBid(team.id,bidInputs[team.id])}>
+                                        Place Bid
+                                    </button>
+                                </div>
+                            )}
+
+                            {teamBid>0 && <div className="bid-status">Bid: ${fmt(teamBid)}</div>}
+                            {isWin && <span className="bid-win-badge">WINNING</span>}
+                            {isTie && <span className="bid-tie-badge">TIED</span>}
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="pool-viewer">
+                <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:4}}>Current pool · UTR {getUTR(eff.poolKey)}</div>
+                <div className="pool-grid">
+                    {eff.pool.map((p,i)=>(
+                        <div key={p.id||i} className={`pool-chip ${i===eff.effPlayer?"active":""} ${p.isRetry?"retry":""}`} title={p.Name}>
+                            {i===eff.effPlayer?"▶ ":""}{p.Name.length>18?p.Name.slice(0,16)+"…":p.Name}
+                            {p.isRetry&&` (R${p.retryCount})`}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <button className="section-toggle" onClick={toggleRosters}>
+                <span>Team rosters · {state.teams.length} teams</span>
+                <span>{showRosters?"Hide ▲":"Show ▼"}</span>
+            </button>
+            {showRosters && (
+                <div className="rosters-grid">
+                    {state.teams.map(t=><RosterCard key={t.id} team={t}/>)}
+                </div>
+            )}
+
+            {resetOpen && <ResetModal onCancel={()=>setResetOpen(false)} onConfirm={reset}/>}
+        </div>
+    );
+}
+
+function RosterCard({team}) {
+    const cap = team.players[0];
+    const rest = team.players.slice(1);
+    return (
+        <div className="roster-card">
+            <div className="roster-name">{team.name} ({team.players.length}/{TEAM_SIZE})</div>
+            <div className="roster-budget">
+                <span className="roster-spent">-${fmt(team.totalSpent)}</span>
+                <span className="roster-left">${fmt(team.budget)} left</span>
+            </div>
+            {cap && <div className="roster-player roster-captain">⭐ {cap.Name} ({cap.utr})</div>}
+            {rest.map(p=><div key={p.id} className="roster-player">{p.Name} · ${fmt(p.acquiredPrice)}</div>)}
+        </div>
+    );
+}
+
+function ResetModal({onCancel,onConfirm}) {
+    return (
+        <div className="modal-overlay">
+            <div className="modal-card">
+                <div className="modal-title">Reset auction?</div>
+                <div className="modal-body">Clears all bids and rosters. This cannot be undone.</div>
+                <div className="modal-btns">
+                    <button className="btn btn-neutral" onClick={onCancel}>Cancel</button>
+                    <button className="btn btn-danger" onClick={onConfirm}>Reset</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Root app ─────────────────────────────────────────────────────────────────
+function App() {
+    const [user, setUser] = useState(() => pref("ta_user", null));
+    const [sessionId, setSessionId] = useState(null);
+
+    const handleLogin = u => { setUser(u); savePref("ta_user",u); };
+    const handleLogout = () => { setUser(null); savePref("ta_user",null); setSessionId(null); };
+
+    if (!user) return <Login onLogin={handleLogin}/>;
+    if (!sessionId) return <Lobby user={user} onJoin={setSessionId} onLogout={handleLogout}/>;
+    return <Auction sid={sessionId} user={user} onBack={()=>setSessionId(null)}/>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
