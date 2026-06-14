@@ -458,11 +458,10 @@ function Login({ onLogin }) {
         if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
         setBusy(true);
         try {
-            // Check Firebase for user, seed if missing
             const snap = await db.ref(`users/${account.code}`).once("value");
             let user = snap.val();
-            if (!user) {
-                // Seed all users on first login
+            // Seed (or re-seed) if user missing or stored in old bcrypt format
+            if (!user || !user.pin) {
                 const updates = {};
                 ACCOUNTS.forEach(a => { updates[`users/${a.code}`] = {code:a.code,pin:a.pin,role:a.role,teamId:a.teamId,name:a.label}; });
                 await db.ref().update(updates);
