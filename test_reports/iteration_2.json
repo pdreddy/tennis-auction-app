@@ -1,0 +1,44 @@
+{
+  "summary": "Re-tested Tennis Player Auction after auth migration from email/password to Team Code + 6-digit PIN with admin/captain roles. Backend: 24/24 pytest cases PASS (auth code+PIN, /auth/me for admin and captain, wrong PIN -> 401, unknown code -> 401, case-insensitive code, /api/config shape, captain cannot create/finalize/skip/reset (403), admin cannot bid (403), captain can bid OWN team (200), captain bidding OTHER team -> 403, admin can create/skip/reset, unique-bid rule, base-price, increment, budget-reserve rule, full admin-create -> TEAM1 bid -> admin sees via GET -> admin finalize -> player awarded with budget/totalSpent/pool/acquiredPrice all updated). Frontend (mobile viewport 390x844): wrong-PIN shows 'Invalid code or PIN' error; ADMIN session shows Create New Auction and NO captain-banner; TEAM1 session shows captain-banner and NO create button; ADMIN auction screen renders 14 read-only team-status-* cards, finalize/skip/reset buttons, no my-team-card; TEAM1 auction screen renders 1 my-team-card (bid-input-1, chip-1-12000, place-bid-1) + 13 read-only team-status-* and NO finalize/skip/reset; TEAM1 successfully placed $12,000 bid (my-team-card shows 'Your bid $12,000 · WINNING'), ADMIN polling reflected it (team-status-1 shows '$12,000 · LEAD'), admin finalize succeeded and pool advanced. Found and fixed 1 bug: the live auction-screen Header was not passing canReset={isAdmin}, so reset-button (refresh icon) was hidden for admin in the main screen (only visible on auction-complete). Fixed by adding the prop; verified reset-button + reset-modal now render for admin.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "auction/[id].tsx Header", "issue": "Fixed: live auction-screen Header was missing canReset={isAdmin} so reset-button was not rendered for admin during a running auction (was only correct on auction-complete branch). Reference: /app/frontend/app/auction/[id].tsx:370-377", "testID": "reset-button", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "console-warning", "issue": "Benign 'props.pointerEvents is deprecated' warning likely from a transitive RN/Expo dep — not actionable in app code."},
+      {"component": "console-error", "issue": "Benign React 19 'Accessing element.ref was removed' from a transitive lib (likely @expo/vector-icons / react-native-safe-area-context) — no functional impact."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auction_api.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/results.xml"
+  ],
+  "action_items": [
+    "(Already fixed by tester) Ensure canReset is passed in the main auction-screen Header so admin gets reset-button + reset-modal during a live session.",
+    "Optional (carry-over from iter_1): /api/auctions/{sid}/reset bypasses optimistic-concurrency (raw $set with new version) — could silently overwrite an in-flight bid. Consider version-gated reset.",
+    "Optional: server.py uses deprecated FastAPI @app.on_event hooks; switch to lifespan context.",
+    "Captain auction screen does NOT render a reset icon (correct by design); confirm captains never need to restart their own client beyond logout."
+  ],
+  "critical_code_review_comments": [
+    "Auth flow is clean: bcrypt PIN hashing (with 72-byte safe slice), JWT with role+teamId+name in claims, idempotent code-based seeding on startup, migration that drops legacy email_1 index.",
+    "Captain authorization correctly enforced server-side in /auctions/{sid}/bid: requires role=captain AND user.teamId == req.teamId (admins also rejected from bidding — matches review_request).",
+    "Frontend uses EXPO_PUBLIC_BACKEND_URL only; testIDs present on all interactive elements; StyleSheet.create everywhere; all text inside Text components.",
+    "AuthContext persists token via SecureStore (storage.secureSet) and user via AsyncStorage — appropriate split.",
+    "/auctions/{sid}/reset is still not optimistic-concurrency safe (carry-over)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py (rewritten for code+PIN admin/team1/team2 fixtures)",
+    "/app/backend/tests/test_auction_api.py (rewritten — 24 tests covering new auth + role authz + full flow)",
+    "/app/frontend/app/auction/[id].tsx (added canReset={isAdmin} to live-screen Header)"
+  ],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% after the 1-line canReset fix"},
+  "seed_data_creation": "Used auto-seeded ADMIN/731902, TEAM1/481027, TEAM2/635914 from /app/memory/test_credentials.md. No new data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend URL: https://player-bidding-8.preview.emergentagent.com. Login is code+PIN (no email/password — old register/login endpoints REMOVED). Test suite at /app/backend/tests/test_auction_api.py runs in ~4s using ADMIN/TEAM1/TEAM2 fixtures. Key testIDs: login-screen, account-selector, account-picker, account-option-{CODE}, pin-input, submit-button, login-error, session-screen, create-auction-button, captain-banner, session-id-input, join-auction-button, auction-screen, my-team-card, bid-input-{teamId}, chip-{teamId}-{amount}, place-bid-{teamId}, team-status-{teamId}, finalize-button, skip-button, reset-button, reset-modal/reset-cancel/reset-confirm. Polling interval ~1.5s; currentBids keyed by stringified teamId. First auctioned player is from UTR 5.0 pool @ $12,000.",
+  "rca_of_issue": "Bug RCA: auction/[id].tsx defines two render branches — auction-complete (line 182-) and auction-screen (line 370-). Both render the shared <Header /> with onReset/onBack/etc. The complete-screen branch passes canReset={isAdmin} (line 188) but the live-screen branch (line 372-377) was missing the prop, so canReset defaulted to undefined/false and the reset Pressable was guarded out (line 533). Fix: add canReset={isAdmin} to the live Header invocation. Verified after expo restart that reset-button and reset-modal now render for admin during a live session."
+}

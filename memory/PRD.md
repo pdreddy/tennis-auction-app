@@ -13,6 +13,18 @@ Convert a real-time, Firebase-based "Tennis Player Auction" web app into a nativ
 
 ## Implemented (2026-06-11)
 - JWT auth (register/login/logout, secure token storage). Seeded QA user `test@auction.com` / `Test1234`.
+
+## Datastore migration — MongoDB → Firebase Realtime Database (2026-06-14)
+- Replaced MongoDB with **Firebase Realtime Database** (firebase-admin SDK). All data now lives under `/users` (15 accounts) and `/auctions/{sessionId}` — visible live in the Firebase console (project `koc2-20fb8`).
+- Service-account credential stored base64 in `backend/.env` (`FIREBASE_CREDENTIALS_B64`, `FIREBASE_DB_URL`); never hardcoded. `firebase_db.py` initialises the admin client.
+- Optimistic concurrency now via **RTDB transactions** on the whole `/auctions/{sid}` node. `normalize()`/`to_list()` handle Firebase's index-keyed-array + dropped-empty-array quirks.
+- Auth/roles/rules unchanged. Verified: 30/30 backend tests incl. multi-award array-normalization edge case. (MongoDB env vars remain but unused.)
+
+## Auth v2 — Team Code + PIN with roles (2026-06-14)
+- Replaced email/password with **Team Code + 6-digit PIN**. 15 auto-seeded accounts: `ADMIN` (auctioneer) + `TEAM1..TEAM14` (captains). JWT carries `role` + `teamId`. PINs in `/app/memory/test_credentials.md`.
+- **Captains** bid only for their own team (server 403 otherwise); UI shows own interactive bid card + read-only other teams.
+- **Admin** is the only role that can Create / Finalize / Skip / Reset; UI shows read-only live-bids grid + admin controls.
+- Verified: 24/24 backend tests (full authz matrix) + frontend role-based UI.
 - Login screen (court background + gradient), Session setup (create/join 6-char ID + setup health check).
 - Live auction: sticky context bar (player + high bid + 60s timer), pool progress bar, 14-team bidding grid, quick-bid chips, pin-your-team, winning/tied indicators, disabled-team strips, finalize/skip bottom bar, rosters bottom sheet, reset confirm modal, auction-complete summary.
 - Real-time sync via polling; sync/connection pill. Haptics on key interactions.
