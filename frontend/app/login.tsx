@@ -26,7 +26,7 @@ const BG =
 
 const ACCOUNTS = [
   { code: "ADMIN", label: "Admin · Auctioneer" },
-  ...Array.from({ length: 14 }, (_, i) => ({ code: `TEAM${i + 1}`, label: `Team ${i + 1}` })),
+  ...Array.from({ length: 16 }, (_, i) => ({ code: `TEAM${i + 1}`, label: `Team ${i + 1}` })),
 ];
 
 export default function Login() {

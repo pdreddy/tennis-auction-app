@@ -105,6 +105,20 @@ PLAYERS = [
     {"id": 96, "Name": "Raj Chava", "utr": 3.0, "price": 5000},
     {"id": 97, "Name": "Vijay Gate", "utr": 3.0, "price": 5000},
     {"id": 98, "Name": "Vinoth Duraisamy", "utr": 3.0, "price": 5000},
+    {"id": 99, "Name": "name1", "utr": 3.0, "price": 5000},
+    {"id": 100, "Name": "name2", "utr": 3.0, "price": 5000},
+    {"id": 101, "Name": "name3", "utr": 3.0, "price": 5000},
+    {"id": 102, "Name": "name4", "utr": 3.0, "price": 5000},
+    {"id": 103, "Name": "name5", "utr": 3.0, "price": 5000},
+    {"id": 104, "Name": "name6", "utr": 3.0, "price": 5000},
+    {"id": 105, "Name": "name7", "utr": 3.0, "price": 5000},
+    {"id": 106, "Name": "name8", "utr": 3.0, "price": 5000},
+    {"id": 107, "Name": "name9", "utr": 3.0, "price": 5000},
+    {"id": 108, "Name": "name10", "utr": 3.0, "price": 5000},
+    {"id": 109, "Name": "name11", "utr": 3.0, "price": 5000},
+    {"id": 110, "Name": "name12", "utr": 3.0, "price": 5000},
+    {"id": 111, "Name": "name13", "utr": 3.0, "price": 5000},
+    {"id": 112, "Name": "name14", "utr": 3.0, "price": 5000},
 ]
 
 TEAMS = [
@@ -122,17 +136,20 @@ TEAMS = [
     {"id": 12, "name": "Team 12", "captain": "Dinesh Reddy Timmareddy"},
     {"id": 13, "name": "Team 13", "captain": "Sudhakara Nallapati"},
     {"id": 14, "name": "Team 14", "captain": "Dinkar Bhardwaj"},
+    {"id": 15, "name": "Team 15", "captain": "Chandrakant Dharme"},
+    {"id": 16, "name": "Team 16", "captain": "Rajasekhar Karru"},
 ]
 
 CAPTAIN_NAMES = {t["captain"] for t in TEAMS}
 
 # ----------------------------- Login accounts -----------------------------
-# One admin (auctioneer) + 14 team captains, each with a 6-digit PIN.
+# One admin (auctioneer) + 16 team captains, each with a 6-digit PIN.
 ADMIN_PIN = "731902"
 TEAM_PINS = {
     1: "481027", 2: "635914", 3: "217658", 4: "859302", 5: "374186",
     6: "196540", 7: "742839", 8: "503271", 9: "618495", 10: "285063",
-    11: "947612", 12: "360728", 13: "814359", 14: "572046",
+    11: "947612", 12: "360728", 13: "814359", 14: "572046", 15: "639021",
+    16: "184756",
 }
 
 
