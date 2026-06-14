@@ -27,6 +27,7 @@ import {
   getUTRFromKey,
   TEAM_SIZE,
 } from "@/src/theme";
+import { POOL_CAPS } from "@/src/firebase/seed";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_GAP = 10;
@@ -124,7 +125,7 @@ export default function AuctionScreen() {
     };
   }, [state]);
 
-  const capsByKey = state?.poolCaps || {};
+  const capsByKey = state?.poolCaps || POOL_CAPS;
   const countFromPool = (team: any, utr: number) =>
     team.players.slice(1).filter((p: any) => p.utr === utr).length;
   const poolCapReached = (team: any, key: string) =>
@@ -259,7 +260,7 @@ export default function AuctionScreen() {
   };
 
   // Captain's own interactive bid card.
-  const renderBidCard = (team: any) => {
+  const renderBidCard = (team: any, label = "") => {
     const { teamBid, isWinning, isTied, disabledReason } = teamStatus(team);
     const err = bidErrors[team.id];
     const anchor = highestBid > 0 ? highestBid + 1000 : player.price;
@@ -274,7 +275,10 @@ export default function AuctionScreen() {
           style={[styles.bidCard, styles.bidCardPinned]}
           testID="my-team-card"
         >
-          <Text style={styles.teamName}>{team.name} · You</Text>
+          <Text style={styles.teamName}>
+            {team.name}
+            {label}
+          </Text>
           <Text style={styles.teamMeta}>
             ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}
           </Text>
@@ -299,7 +303,8 @@ export default function AuctionScreen() {
         <View style={styles.bidHead}>
           <View style={{ flex: 1 }}>
             <Text style={styles.teamName} numberOfLines={1}>
-              {team.name} · You
+              {team.name}
+              {label}
             </Text>
             <Text style={styles.teamMeta} numberOfLines={1}>
               ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE} ·{" "}
@@ -474,13 +479,13 @@ export default function AuctionScreen() {
         {isAdmin ? (
           <>
             <Text style={styles.sectionLabel}>
-              Live bids · {teams.length} teams
+              Enter bids · {teams.length} teams
             </Text>
-            <View style={styles.grid}>{teams.map(renderReadOnly)}</View>
+            {teams.map((team: any) => renderBidCard(team))}
           </>
         ) : (
           <>
-            {myTeam && renderBidCard(myTeam)}
+            {myTeam && renderBidCard(myTeam, " · You")}
             <Text style={styles.sectionLabel}>Other teams</Text>
             <View style={styles.grid}>{otherTeams.map(renderReadOnly)}</View>
           </>
