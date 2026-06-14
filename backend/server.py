@@ -428,17 +428,19 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     fb.init()
-    # Idempotently seed the admin + 14 team captain accounts (code + PIN).
+    # Seed accounts: always upsert admin so PIN changes take effect immediately;
+    # only create team accounts if they don't exist yet.
     for acc in seed.get_accounts():
-        existing = await fb_get(f"users/{acc['code']}")
-        if not existing:
-            await fb_set(
-                f"users/{acc['code']}",
-                {
-                    "code": acc["code"],
-                    "hashed_pin": hash_pw(acc["pin"]),
-                    "role": acc["role"],
-                    "teamId": acc["teamId"],
-                    "name": acc["name"],
-                },
-            )
+        payload = {
+            "code": acc["code"],
+            "hashed_pin": hash_pw(acc["pin"]),
+            "role": acc["role"],
+            "teamId": acc["teamId"],
+            "name": acc["name"],
+        }
+        if acc["role"] == "admin":
+            await fb_set(f"users/{acc['code']}", payload)
+        else:
+            existing = await fb_get(f"users/{acc['code']}")
+            if not existing:
+                await fb_set(f"users/{acc['code']}", payload)
