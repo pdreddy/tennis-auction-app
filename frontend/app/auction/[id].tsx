@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"; // useCallback kept for fetchState stub
 import {
   View,
   Text,
@@ -17,8 +17,9 @@ import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { api } from "@/src/api";
+import { api, subscribeAuction } from "@/src/api";
 import { colors, spacing, radius, font, POOL_ORDER, getUTRFromKey, TEAM_SIZE } from "@/src/theme";
+import { configSummary } from "@/src/firebase/seed";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_GAP = 10;
@@ -48,33 +49,25 @@ export default function AuctionScreen() {
   const offsetRef = useRef(0);
   const sheetRef = useRef<BottomSheet>(null);
 
-  // Load static caps + pinned pref once.
+  // Load static caps from local seed (no network call needed).
   useEffect(() => {
-    if (token) api.config(token).then((c) => {
-      const m: Record<string, number> = {};
-      c.pools.forEach((p: any) => (m[p.key] = p.cap));
-      setCapsByKey(m);
-    }).catch(() => {});
-  }, [token, sid]);
+    const config = configSummary();
+    const m: Record<string, number> = {};
+    config.pools.forEach((p: any) => (m[p.key] = p.cap));
+    setCapsByKey(m);
+  }, []);
 
-  const fetchState = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await api.getAuction(sid, token);
-      offsetRef.current = res.serverNow - Date.now();
-      setState(res.state);
-      setConnected(true);
-    } catch {
-      setConnected(false);
-    }
-  }, [sid, token]);
-
-  // Poll.
+  // Real-time Firebase listener — replaces 1.5s polling.
   useEffect(() => {
-    fetchState();
-    const iv = setInterval(fetchState, 1500);
-    return () => clearInterval(iv);
-  }, [fetchState]);
+    const unsub = subscribeAuction(
+      sid,
+      (state) => { setState(state); setConnected(true); },
+      () => setConnected(false)
+    );
+    return unsub;
+  }, [sid]);
+
+  const fetchState = useCallback(() => {}, []);
 
   // Timer tick.
   useEffect(() => {
