@@ -5,14 +5,32 @@ export const TEAM_SIZE = 7;
 export const TIMER_MS = 60_000;
 
 export const POOL_ORDER = [
-  "utr_5_5", "utr_5_25", "utr_5_0", "utr_4_5", "utr_4_0", "utr_3_5", "utr_3_0",
+  "utr_5_5",
+  "utr_5_25",
+  "utr_5_0",
+  "utr_4_5",
+  "utr_4_0",
+  "utr_3_5",
+  "utr_3_0",
 ];
 
 export function getUTRFromKey(key: string): number {
   return parseFloat(key.replace("utr_", "").replace("_", "."));
 }
 
-const PLAYERS = [
+export type AuctionPlayer = {
+  id: number;
+  Name: string;
+  utr: number;
+  price: number;
+};
+export type AuctionTeamConfig = { id: number; name: string; captain: string };
+export type AuctionConfig = {
+  players: AuctionPlayer[];
+  teams: AuctionTeamConfig[];
+};
+
+const PLAYERS: AuctionPlayer[] = [
   { id: 1, Name: "Satish Reddy Orugunta", utr: 5.5, price: 14000 },
   { id: 2, Name: "Rajasekhar Chintha", utr: 5.5, price: 14000 },
   { id: 3, Name: "Anil Kunda", utr: 5.5, price: 14000 },
@@ -113,7 +131,7 @@ const PLAYERS = [
   { id: 98, Name: "Vinoth Duraisamy", utr: 3.0, price: 5000 },
 ];
 
-const TEAMS = [
+const TEAMS: AuctionTeamConfig[] = [
   { id: 1, name: "Team 1", captain: "Yogesh Dhadge" },
   { id: 2, name: "Team 2", captain: "Srikant Tenni" },
   { id: 3, name: "Team 3", captain: "Uma Vommi" },
@@ -132,47 +150,99 @@ const TEAMS = [
   { id: 16, name: "Team 16", captain: "Rajasekhar Karru" },
 ];
 
-const CAPTAIN_NAMES = new Set(TEAMS.map((t) => t.captain));
+export const DEFAULT_AUCTION_CONFIG: AuctionConfig = {
+  players: PLAYERS,
+  teams: TEAMS,
+};
+
+function configPlayers(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  return config.players ?? [];
+}
+
+function configTeams(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  return config.teams ?? [];
+}
+
+function captainNames(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  return new Set(configTeams(config).map((t) => t.captain));
+}
 
 const ADMIN_PIN = "731902";
 const TEAM_PINS: Record<number, string> = {
-  1: "481027", 2: "635914", 3: "217658", 4: "859302", 5: "374186",
-  6: "196540", 7: "742839", 8: "503271", 9: "618495", 10: "285063",
-  11: "947612", 12: "360728", 13: "814359", 14: "572046", 15: "639021",
+  1: "481027",
+  2: "635914",
+  3: "217658",
+  4: "859302",
+  5: "374186",
+  6: "196540",
+  7: "742839",
+  8: "503271",
+  9: "618495",
+  10: "285063",
+  11: "947612",
+  12: "360728",
+  13: "814359",
+  14: "572046",
+  15: "639021",
   16: "184756",
 };
 
 // Build pools grouped by UTR, captains excluded.
-export const PLAYER_POOLS: Record<string, typeof PLAYERS[0][]> = {};
-for (const key of POOL_ORDER) {
-  const utr = getUTRFromKey(key);
-  PLAYER_POOLS[key] = PLAYERS.filter((p) => p.utr === utr && !CAPTAIN_NAMES.has(p.Name));
-}
-
-// Per-team cap for each pool.
-export const POOL_CAPS: Record<string, number> = {};
-for (const key of POOL_ORDER) {
-  const size = PLAYER_POOLS[key].length;
-  POOL_CAPS[key] = size === 0 ? 0 : size <= TEAMS.length ? 1 : TEAM_SIZE - 1;
-}
-
-export function freshPools() {
-  const pools: Record<string, any[]> = {};
+export function buildPlayerPools(
+  config: AuctionConfig = DEFAULT_AUCTION_CONFIG,
+) {
+  const captains = captainNames(config);
+  const pools: Record<string, AuctionPlayer[]> = {};
   for (const key of POOL_ORDER) {
-    pools[key] = PLAYER_POOLS[key].map((p) => ({ ...p }));
+    const utr = getUTRFromKey(key);
+    pools[key] = configPlayers(config).filter(
+      (p) => p.utr === utr && !captains.has(p.Name),
+    );
   }
   return pools;
 }
 
-export function getInitialTeams() {
-  const byName: Record<string, typeof PLAYERS[0]> = {};
-  for (const p of PLAYERS) byName[p.Name] = p;
+export function buildPoolCaps(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  const pools = buildPlayerPools(config);
+  const caps: Record<string, number> = {};
+  for (const key of POOL_ORDER) {
+    const size = pools[key].length;
+    caps[key] =
+      size === 0 ? 0 : size <= configTeams(config).length ? 1 : TEAM_SIZE - 1;
+  }
+  return caps;
+}
 
-  return TEAMS.map((team) => {
+export const PLAYER_POOLS = buildPlayerPools();
+export const POOL_CAPS = buildPoolCaps();
+
+export function freshPools(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  const sourcePools = buildPlayerPools(config);
+  const pools: Record<string, any[]> = {};
+  for (const key of POOL_ORDER) {
+    pools[key] = sourcePools[key].map((p) => ({ ...p }));
+  }
+  return pools;
+}
+
+export function getInitialTeams(
+  config: AuctionConfig = DEFAULT_AUCTION_CONFIG,
+) {
+  const byName: Record<string, AuctionPlayer> = {};
+  for (const p of configPlayers(config)) byName[p.Name] = p;
+
+  return configTeams(config).map((team) => {
     const cap = byName[team.captain];
     const captainPrice = cap?.price ?? 0;
     const players = cap
-      ? [{ id: `c${team.id}`, Name: cap.Name, utr: cap.utr, acquiredPrice: captainPrice }]
+      ? [
+          {
+            id: `c${team.id}`,
+            Name: cap.Name,
+            utr: cap.utr,
+            acquiredPrice: captainPrice,
+          },
+        ]
       : [];
     return {
       id: team.id,
@@ -187,7 +257,13 @@ export function getInitialTeams() {
 
 export function getAccounts() {
   const accounts: any[] = [
-    { code: "ADMIN", pin: ADMIN_PIN, role: "admin", teamId: null, name: "Auctioneer" },
+    {
+      code: "ADMIN",
+      pin: ADMIN_PIN,
+      role: "admin",
+      teamId: null,
+      name: "Auctioneer",
+    },
   ];
   for (const team of TEAMS) {
     accounts.push({
@@ -201,19 +277,24 @@ export function getAccounts() {
   return accounts;
 }
 
-export function configSummary() {
+export function configSummary(config: AuctionConfig = DEFAULT_AUCTION_CONFIG) {
+  const playerPools = buildPlayerPools(config);
+  const poolCaps = buildPoolCaps(config);
   const pools = POOL_ORDER.map((key) => ({
     key,
     utr: getUTRFromKey(key),
-    count: PLAYER_POOLS[key].length,
-    cap: POOL_CAPS[key],
+    count: playerPools[key].length,
+    cap: poolCaps[key],
   }));
-  const poolPlayers = POOL_ORDER.reduce((s, k) => s + PLAYER_POOLS[k].length, 0);
+  const poolPlayers = POOL_ORDER.reduce(
+    (sum, key) => sum + playerPools[key].length,
+    0,
+  );
   return {
-    teams: TEAMS.length,
+    teams: configTeams(config).length,
     teamSize: TEAM_SIZE,
     budget: TEAM_BUDGET,
-    totalPlayers: PLAYERS.length,
+    totalPlayers: configPlayers(config).length,
     poolPlayers,
     pools,
   };
