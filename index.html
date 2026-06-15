@@ -1500,6 +1500,8 @@ function Auction({ sid, user, onBack }) {
         });
     };
 
+    const TEAM_SIZE_EFF = state?.config?.teamSize || TEAM_SIZE;
+
     const validateBid = (teamId, amount) => {
         if (!eff?.player) return "No player";
         const team = state.teams.find(t=>t.id===teamId);
@@ -1561,7 +1563,6 @@ function Auction({ sid, user, onBack }) {
     };
 
     if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
-    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
 
     const eff = getEffective(state);
     const isAdmin = user.role === "admin";
