@@ -1119,7 +1119,7 @@ function AdminConfig() {
                                     <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
                                     <div className="setting-control">
                                         <input type="number" min={min} max={max} step={step}
-                                            value={scale?Math.round(settings[key]/scale):(settings[key]??min)}
+                                            value={scale?Math.round(settings[key]/scale):(settings[key]!=null?settings[key]:min)}
                                             onChange={e=>{const v=parseInt(e.target.value)||min;setSettings(s=>({...s,[key]:scale?v*scale:v}));}} />
                                         <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>{suffix}</div>
                                     </div>
@@ -1482,25 +1482,12 @@ function Auction({ sid, user, onBack }) {
     const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
     const togglePin = id => { const n=pinnedTeam===id?null:id; setPinnedTeam(n); savePref("ta_pin",n); };
 
-    const placeBid = (teamId, amount) => {
-        const n = parseInt(amount)||0;
-        if (!eff?.player) return;
-        const err = validateBid(teamId, n);
-        if (err) { setBidErrors(p=>({...p,[teamId]:err})); return; }
-        if (timeLeft===0) { setBidErrors(p=>({...p,[teamId]:"Time is up!"})); return; }
-        setBidErrors(p=>({...p,[teamId]:null}));
-        auctionRef.current.child("currentBids").transaction(cur => {
-            const bids = cur||{};
-            const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
-            if (taken) return; // abort
-            return {...bids,[teamId]:n};
-        }, (err,committed) => {
-            if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
-            else { setBidInputs(p=>({...p,[teamId]:""})); auctionRef.current.update({lastUpdate:Date.now()}); }
-        });
-    };
+    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
 
-    const TEAM_SIZE_EFF = state?.config?.teamSize || TEAM_SIZE;
+    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
+    const eff = getEffective(state);
+    const isAdmin = user.role === "admin";
+    const myTeamId = user.teamId;
 
     const validateBid = (teamId, amount) => {
         if (!eff?.player) return "No player";
@@ -1520,6 +1507,24 @@ function Auction({ sid, user, onBack }) {
         const minNeeded = rem>1?(rem-1)*5000:0;
         if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
         return null;
+    };
+
+    const placeBid = (teamId, amount) => {
+        const n = parseInt(amount)||0;
+        if (!eff?.player) return;
+        const err = validateBid(teamId, n);
+        if (err) { setBidErrors(p=>({...p,[teamId]:err})); return; }
+        if (timeLeft===0) { setBidErrors(p=>({...p,[teamId]:"Time is up!"})); return; }
+        setBidErrors(p=>({...p,[teamId]:null}));
+        auctionRef.current.child("currentBids").transaction(cur => {
+            const bids = cur||{};
+            const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
+            if (taken) return;
+            return {...bids,[teamId]:n};
+        }, (err,committed) => {
+            if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
+            else { setBidInputs(p=>({...p,[teamId]:""})); auctionRef.current.update({lastUpdate:Date.now()}); }
+        });
     };
 
     const finalize = () => {
@@ -1561,12 +1566,6 @@ function Auction({ sid, user, onBack }) {
         auctionRef.current.set(initialDoc(sid));
         setBidInputs({}); setBidErrors({}); setActionError(null); setResetOpen(false);
     };
-
-    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
-
-    const eff = getEffective(state);
-    const isAdmin = user.role === "admin";
-    const myTeamId = user.teamId;
 
     // Auction complete
     if (eff.complete || !eff.player) {
