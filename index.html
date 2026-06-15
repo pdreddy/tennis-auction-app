@@ -767,7 +767,8 @@ const ACCOUNTS = [
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = n => (n||0).toLocaleString();
+const fmt = n => (n||0).toLocaleString("en-IN");
+const fmtR = n => "₹"+(n||0).toLocaleString("en-IN");
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
@@ -782,7 +783,9 @@ function normalize(data) {
     if (Array.isArray(cb)) cb = Object.fromEntries(cb.map((v,i)=>[String(i),v]).filter(([,v])=>v));
     const currentBids = {};
     Object.entries(cb).forEach(([k,v]) => { currentBids[String(k)] = v; });
-    return { ...data, teams, playerPools, currentBids,
+    const cfgPlayers = Array.isArray(data.cfgPlayers) ? data.cfgPlayers : null;
+    const cfgTeams   = Array.isArray(data.cfgTeams)   ? data.cfgTeams   : null;
+    return { ...data, teams, playerPools, currentBids, cfgPlayers, cfgTeams,
         currentPoolIndex: data.currentPoolIndex||0,
         currentPlayerIndex: data.currentPlayerIndex||0,
         timerEnd: data.timerEnd || Date.now() };
@@ -954,7 +957,7 @@ function AdminConfig() {
     const [tab, setTab]         = useState("players");
     const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
     const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
-    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS});
+    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS,playersPerGroup:5});
     const [saving, setSaving]   = useState(false);
     const [status, setStatus]   = useState(null);
     const [drag, setDrag]       = useState(false);
@@ -990,6 +993,21 @@ function AdminConfig() {
     const updTeam = (id,f,v) => setTeams(ts=>ts.map(t=>t.id===id?{...t,[f]:v}:t));
     const delTeam = id => setTeams(ts=>ts.filter(t=>t.id!==id));
 
+    const setNumTeams = n => {
+        const count = Math.max(1, Math.min(32, parseInt(n)||1));
+        setTeams(ts => {
+            if (count > ts.length) {
+                const extra = [];
+                for (let i=ts.length; i<count; i++) {
+                    const nid = Math.max(0,...ts.map(t=>t.id),...extra.map(t=>t.id))+1;
+                    extra.push({id:nid, name:`Team ${nid}`, captain:""});
+                }
+                return [...ts, ...extra];
+            }
+            return ts.slice(0, count);
+        });
+    };
+
     const saveAll = async () => {
         setSaving(true); setStatus(null);
         const vp = players.filter(p=>p.Name.trim());
@@ -999,7 +1017,7 @@ function AdminConfig() {
         const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
         try {
             await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
-            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ₹${settings.budget.toLocaleString()} budget`});
+            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget`});
         } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
         setSaving(false);
     };
@@ -1085,16 +1103,26 @@ function AdminConfig() {
                 {tab==="settings" && (
                     <div className="cfg-tab-panel">
                         <div style={{border:"1px solid var(--border)",borderRadius:10,padding:"0 14px"}}>
+                            <div className="setting-row">
+                                <div><div className="setting-label">Number of Teams</div><div className="setting-desc">How many teams participate in the auction</div></div>
+                                <div className="setting-control">
+                                    <input type="number" min={1} max={32} step={1}
+                                        value={teams.length}
+                                        onChange={e=>setNumTeams(e.target.value)} />
+                                    <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>teams</div>
+                                </div>
+                            </div>
                             {[
+                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size per team including the captain",    suffix:" players",min:3,     max:30, step:1},
+                                {key:"playersPerGroup", label:"Players per Group", desc:"How many players are divided into each auction group", suffix:" players", min:1, max:50, step:1},
                                 {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"₹",      min:5000,  step:5000},
-                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size including the captain",    suffix:" players",min:3,     max:30, step:1},
                                 {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
                             ].map(({key,label,desc,suffix,min,max,step,scale})=>(
                                 <div key={key} className="setting-row">
                                     <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
                                     <div className="setting-control">
                                         <input type="number" min={min} max={max} step={step}
-                                            value={scale?Math.round(settings[key]/scale):settings[key]}
+                                            value={scale?Math.round(settings[key]/scale):(settings[key]!=null?settings[key]:min)}
                                             onChange={e=>{const v=parseInt(e.target.value)||min;setSettings(s=>({...s,[key]:scale?v*scale:v}));}} />
                                         <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>{suffix}</div>
                                     </div>
@@ -1103,7 +1131,9 @@ function AdminConfig() {
                         </div>
                         <div style={{marginTop:12,padding:"10px 14px",background:"var(--surface3)",borderRadius:10,fontSize:12,color:"var(--text3)"}}>
                             <strong style={{color:"var(--text)"}}>Summary: </strong>
-                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots · ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
+                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots
+                            {settings.playersPerGroup ? ` · ${settings.playersPerGroup} players/group` : ""}
+                            {" "}· {fmtR(settings.budget)} budget · {Math.round(settings.timerMs/1000)}s timer
                         </div>
                     </div>
                 )}
@@ -1212,24 +1242,36 @@ const POOL_LABELS = {
     4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
     3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
 };
-function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
-
 function PoolViewer() {
     const [open, setOpen] = useState({});
+    const [pools, setPools] = useState(PLAYER_POOLS);
+    const [captainNames, setCaptainNames] = useState(CAPTAIN_NAMES);
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
-    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+    useEffect(() => {
+        db.ref(CFG_PATH).once("value").then(snap => {
+            const d = snap.val();
+            if (!d) return;
+            const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players : PLAYERS;
+            const cfgTeams   = Array.isArray(d.teams)   && d.teams.length   ? d.teams   : TEAMS;
+            const capNames   = new Set(cfgTeams.map(t=>t.captain));
+            setCaptainNames(capNames);
+            setPools(buildPools(cfgPlayers, POOL_ORDER, capNames));
+        });
+    }, []);
+
+    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+(pools[k]||[]).length, 0);
 
     return (
         <div className="card" style={{padding:"18px"}}>
             <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
             <div className="card-sub" style={{marginBottom:14}}>
-                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+                {totalPlayers} players across {POOL_ORDER.filter(k=>(pools[k]||[]).length>0).length} pools · auction runs highest UTR first
             </div>
             {POOL_ORDER.map(key => {
                 const utr = getUTR(key);
-                const players = PLAYER_POOLS[key];
-                if (!players || players.length === 0) return null;
+                const players = pools[key] || [];
+                if (!players.length) return null;
                 const col = UTR_COLORS[utr] || UTR_COLORS[3.0];
                 const isOpen = !!open[key];
                 return (
@@ -1252,7 +1294,7 @@ function PoolViewer() {
                         {isOpen && (
                             <div className="pool-body">
                                 {players.map((p,i) => {
-                                    const isCap = CAPTAIN_NAMES.has(p.Name);
+                                    const isCap = captainNames.has(p.Name);
                                     return (
                                         <div key={p.id} className="pool-player-row">
                                             <span className="pool-player-num">{i+1}</span>
@@ -1278,7 +1320,17 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const sessionHistory = pref("ta_sessions", []);
+    const [sessionHistory, setSessionHistory] = useState(() => pref("ta_sessions", []));
+
+    const removeSession = id => {
+        const updated = sessionHistory.filter(s => s.id !== id);
+        savePref("ta_sessions", updated);
+        setSessionHistory(updated);
+    };
+    const clearAllSessions = () => {
+        savePref("ta_sessions", []);
+        setSessionHistory([]);
+    };
 
     const saveSession = (sid) => {
         const existing = pref("ta_sessions", []);
@@ -1297,9 +1349,10 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
             const cfg = cfgSnap.val();
             const cfgPlayers = (cfg?.players?.length ? cfg.players : PLAYERS);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
-            const budget     = cfg?.settings?.budget  || TEAM_BUDGET;
-            const teamSize   = cfg?.settings?.teamSize || TEAM_SIZE;
-            const timerMs    = cfg?.settings?.timerMs  || TIMER_MS;
+            const budget          = cfg?.settings?.budget          || TEAM_BUDGET;
+            const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
+            const timerMs         = cfg?.settings?.timerMs         || TIMER_MS;
+            const playersPerGroup = cfg?.settings?.playersPerGroup || 5;
             const capNames   = new Set(cfgTeams.map(t=>t.captain));
             const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
             const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
@@ -1309,7 +1362,8 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
                 sessionId:sid, teams:initTeams, playerPools:pools,
                 currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
                 timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
-                config:{budget,teamSize,timerMs}
+                config:{budget,teamSize,timerMs,playersPerGroup},
+                cfgPlayers, cfgTeams
             });
             saveSession(sid);
             onJoin(sid);
@@ -1376,16 +1430,28 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
 
                 {sessionHistory.length > 0 && (
                     <div className="card">
-                        <div className="session-hist-title">🕐 Recent Sessions</div>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <div className="session-hist-title" style={{marginBottom:0}}>🕐 Recent Sessions</div>
+                            <button onClick={clearAllSessions}
+                                style={{background:"none",border:"none",color:"var(--text4)",fontSize:11,cursor:"pointer",padding:"2px 6px"}}>
+                                Clear all
+                            </button>
+                        </div>
                         {sessionHistory.map(s => (
                             <div key={s.id} className="session-hist-card">
                                 <div>
                                     <div className="session-hist-id">{s.id}</div>
                                     <div className="session-hist-meta">Season {s.year||THIS_YEAR} · {formatAge(s.ts)}</div>
                                 </div>
-                                <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
-                                    Rejoin
-                                </button>
+                                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                                    <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
+                                        Rejoin
+                                    </button>
+                                    <button onClick={()=>removeSession(s.id)}
+                                        style={{background:"none",border:"1px solid var(--border2)",borderRadius:6,color:"var(--text4)",fontSize:13,cursor:"pointer",padding:"5px 8px",lineHeight:1}}>
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -1430,6 +1496,7 @@ function Auction({ sid, user, onBack }) {
     const [actionError, setActionError] = useState(null);
     const [resetOpen, setResetOpen] = useState(false);
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
+    const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
     const auctionRef = useRef(db.ref(`auctions/${sid}`));
 
@@ -1455,6 +1522,39 @@ function Auction({ sid, user, onBack }) {
     const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
     const togglePin = id => { const n=pinnedTeam===id?null:id; setPinnedTeam(n); savePref("ta_pin",n); };
 
+    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
+
+    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
+    const TIMER_EFF = state.config?.timerMs || TIMER_MS;
+    const eff = getEffective(state);
+    const POOL_CAPS_EFF = {};
+    POOL_ORDER.forEach(key => {
+        const size = (state.playerPools[key] || []).length;
+        POOL_CAPS_EFF[key] = size === 0 ? 0 : size <= state.teams.length ? 1 : TEAM_SIZE_EFF - 1;
+    });
+    const isAdmin = user.role === "admin";
+    const myTeamId = user.teamId;
+
+    const validateBid = (teamId, amount) => {
+        if (!eff?.player) return "No player";
+        const team = state.teams.find(t=>t.id===teamId);
+        if (!team) return "Team not found";
+        if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
+        const utr = getUTR(eff.poolKey);
+        const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
+        if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
+        if (!amount||amount<=0) return "Enter amount";
+        if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
+        if ((amount - eff.player.price)%1000!==0) return "Base + ₹1k increments";
+        const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
+        if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
+        if (amount > team.budget) return "Exceeds budget";
+        const rem = TEAM_SIZE_EFF - team.players.length;
+        const minNeeded = rem>1?(rem-1)*5000:0;
+        if (amount > team.budget-minNeeded) return `Need ${fmtR(minNeeded)} for ${rem-1} more`;
+        return null;
+    };
+
     const placeBid = (teamId, amount) => {
         const n = parseInt(amount)||0;
         if (!eff?.player) return;
@@ -1465,32 +1565,12 @@ function Auction({ sid, user, onBack }) {
         auctionRef.current.child("currentBids").transaction(cur => {
             const bids = cur||{};
             const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
-            if (taken) return; // abort
+            if (taken) return;
             return {...bids,[teamId]:n};
         }, (err,committed) => {
             if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
             else { setBidInputs(p=>({...p,[teamId]:""})); auctionRef.current.update({lastUpdate:Date.now()}); }
         });
-    };
-
-    const validateBid = (teamId, amount) => {
-        if (!eff?.player) return "No player";
-        const team = state.teams.find(t=>t.id===teamId);
-        if (!team) return "Team not found";
-        if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
-        const utr = getUTR(eff.poolKey);
-        const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
-        if (fromPool >= (POOL_CAPS[eff.poolKey]||0)) return `Max ${POOL_CAPS[eff.poolKey]} at UTR ${utr}`;
-        if (!amount||amount<=0) return "Enter amount";
-        if (amount < eff.player.price) return `Min $${fmt(eff.player.price)}`;
-        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
-        const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
-        if (dup) return `$${fmt(amount)} taken by ${dup.name}`;
-        if (amount > team.budget) return "Exceeds budget";
-        const rem = TEAM_SIZE_EFF - team.players.length;
-        const minNeeded = rem>1?(rem-1)*5000:0;
-        if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
-        return null;
     };
 
     const finalize = () => {
@@ -1511,7 +1591,7 @@ function Auction({ sid, user, onBack }) {
         pools[eff.poolKey] = pool;
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
-        fbUpdate({teams,playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        fbUpdate({teams,playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
@@ -1524,21 +1604,28 @@ function Auction({ sid, user, onBack }) {
         pools[eff.poolKey] = pool;
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
-        fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
     const reset = () => {
-        auctionRef.current.set(initialDoc(sid));
+        const cfgPlayers = state.cfgPlayers || PLAYERS;
+        const cfgTeams   = state.cfgTeams   || TEAMS;
+        const budget     = state.config?.budget  || TEAM_BUDGET;
+        const capNames   = new Set(cfgTeams.map(t=>t.captain));
+        const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
+        const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
+        const doc = {
+            sessionId: sid,
+            teams: initTeams, playerPools: pools,
+            currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
+            timerEnd: Date.now()+TIMER_EFF, lastUpdate: Date.now(),
+            config: state.config || {budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS},
+            cfgPlayers, cfgTeams
+        };
+        auctionRef.current.set(doc);
         setBidInputs({}); setBidErrors({}); setActionError(null); setResetOpen(false);
     };
-
-    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
-    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
-
-    const eff = getEffective(state);
-    const isAdmin = user.role === "admin";
-    const myTeamId = user.teamId;
 
     // Auction complete
     if (eff.complete || !eff.player) {
@@ -1553,7 +1640,7 @@ function Auction({ sid, user, onBack }) {
                     <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>
                 </div>}
                 <div className="rosters-grid">
-                    {state.teams.map(t => <RosterCard key={t.id} team={t}/>)}
+                    {state.teams.map(t => <RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
                 {resetOpen && <ResetModal onCancel={()=>setResetOpen(false)} onConfirm={reset}/>}
             </div>
@@ -1576,7 +1663,7 @@ function Auction({ sid, user, onBack }) {
 
     const sortedTeams = [...state.teams].map(t => {
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price ||
-            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS[eff.poolKey]||0));
+            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id};
     }).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
@@ -1610,8 +1697,8 @@ function Auction({ sid, user, onBack }) {
             <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div className="sb-left">
                     <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
-                    <div className="sb-meta">UTR {eff.player.utr} · base ${fmt(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
-                    {highest>0 && <div className="sb-high">High ${fmt(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
+                    <div className="sb-meta">UTR {eff.player.utr} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
+                    {highest>0 && <div className="sb-high">High {fmtR(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
                 </div>
                 <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
             </div>
@@ -1627,6 +1714,36 @@ function Auction({ sid, user, onBack }) {
                     </button>
                 </div>
             )}
+
+            <div style={{margin:"0 12px 10px",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
+                <div onClick={()=>setShowUpcoming(v=>!v)}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                        padding:"9px 14px",cursor:"pointer",background:"var(--surface2)",userSelect:"none"}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"var(--text2)"}}>
+                        📋 Pool Queue · UTR {eff.player.utr} · {eff.pool.length} remaining
+                    </div>
+                    <span style={{fontSize:10,color:"var(--text4)"}}>{showUpcoming?"▲":"▼"}</span>
+                </div>
+                {showUpcoming && (
+                    <div style={{maxHeight:180,overflowY:"auto"}}>
+                        {eff.pool.map((p,i) => (
+                            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 14px",
+                                borderTop:"1px solid var(--border)",
+                                background:i===eff.effPlayer?"var(--surface3)":"transparent"}}>
+                                <span style={{fontSize:11,color:"var(--text4)",minWidth:18}}>{i+1}</span>
+                                <span style={{flex:1,fontSize:13,fontWeight:i===eff.effPlayer?700:400,
+                                    color:i===eff.effPlayer?"var(--text)":"var(--text2)"}}>
+                                    {p.Name}
+                                    {i===eff.effPlayer && <span style={{marginLeft:6,fontSize:10,color:"var(--gold)",fontWeight:600}}>← NOW</span>}
+                                    {p.isRetry && <span style={{marginLeft:4,fontSize:10,color:"var(--muted)"}}>retry</span>}
+                                </span>
+                                <span style={{fontSize:11,color:"var(--text3)"}}>UTR {p.utr}</span>
+                                <span style={{fontSize:11,color:"var(--text4)"}}>{fmtR(p.price)}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="bidding-grid">
                 {sortedTeams.map(team => {
@@ -1656,7 +1773,7 @@ function Auction({ sid, user, onBack }) {
                                     </div>
                                     <div className="team-captain">⭐ {team.captain}</div>
                                     <div className="team-budget-row">
-                                        <span className="team-budget-pill team-budget-left">${fmt(team.budget)}</span>
+                                        <span className="team-budget-pill team-budget-left">{fmtR(team.budget)}</span>
                                         <span className="team-slots">{team.players.length}/{TEAM_SIZE_EFF} players</span>
                                     </div>
                                 </div>
@@ -1667,7 +1784,7 @@ function Auction({ sid, user, onBack }) {
                                 <div className="bid-divider"/>
                                 <div className="bid-input-wrap">
                                     <input type="number" inputMode="numeric" className="bid-input"
-                                        placeholder={`Min $${fmt(eff.player.price)}`}
+                                        placeholder={`Min ${fmtR(eff.player.price)}`}
                                         value={bidInputs[team.id]||""}
                                         disabled={timeLeft===0}
                                         onChange={e=>{setBidInputs(p=>({...p,[team.id]:e.target.value}));setBidErrors(p=>({...p,[team.id]:null}));}}
@@ -1675,7 +1792,7 @@ function Auction({ sid, user, onBack }) {
                                     />
                                     <div className="quick-chips">
                                         {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            ${v/1000}k
+                                            ₹{v>=100000?`${(v/100000).toFixed(v%100000===0?0:1)}L`:`${v/1000}k`}
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
@@ -1688,7 +1805,7 @@ function Auction({ sid, user, onBack }) {
                             </>)}
 
                             <div className="bid-footer">
-                                <div className="bid-status">{teamBid>0?`Current bid: $${fmt(teamBid)}`:""}</div>
+                                <div className="bid-status">{teamBid>0?`Current bid: ${fmtR(teamBid)}`:""}</div>
                                 {isWin && <span className="bid-win-badge">WINNING</span>}
                                 {isTie && <span className="bid-tie-badge">TIED</span>}
                             </div>
@@ -1697,25 +1814,13 @@ function Auction({ sid, user, onBack }) {
                 })}
             </div>
 
-            <div className="pool-viewer">
-                <div className="pool-viewer-title">Current pool · UTR {getUTR(eff.poolKey)}</div>
-                <div className="pool-grid">
-                    {eff.pool.map((p,i)=>(
-                        <div key={p.id||i} className={`pool-chip ${i===eff.effPlayer?"active":""} ${p.isRetry?"retry":""}`} title={p.Name}>
-                            {i===eff.effPlayer?"▶ ":""}{p.Name.length>18?p.Name.slice(0,16)+"…":p.Name}
-                            {p.isRetry&&` (R${p.retryCount})`}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             <button className="section-toggle" onClick={toggleRosters}>
                 <span>Team rosters · {state.teams.length} teams</span>
                 <span>{showRosters?"Hide ▲":"Show ▼"}</span>
             </button>
             {showRosters && (
                 <div className="rosters-grid">
-                    {state.teams.map(t=><RosterCard key={t.id} team={t}/>)}
+                    {state.teams.map(t=><RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
             )}
 
@@ -1734,22 +1839,22 @@ function utrClass(utr) {
     return "utr-30";
 }
 
-function RosterCard({team}) {
+function RosterCard({team, teamSize}) {
     const cap = team.players[0];
     const rest = team.players.slice(1);
     const filled = team.players.length;
-    const fillPct = Math.round((filled / TEAM_SIZE_EFF) * 100);
+    const fillPct = Math.round((filled / teamSize) * 100);
     return (
         <div className="roster-card">
             <div className="roster-name">
                 {team.name}
                 <span style={{fontSize:10,fontWeight:600,color:"var(--muted)",marginLeft:6}}>
-                    {filled}/{TEAM_SIZE_EFF}
+                    {filled}/{teamSize}
                 </span>
             </div>
             <div className="roster-budget">
-                <span className="roster-spent">-${fmt(team.totalSpent)}</span>
-                <span className="roster-left">${fmt(team.budget)} left</span>
+                <span className="roster-spent">-{fmtR(team.totalSpent)}</span>
+                <span className="roster-left">{fmtR(team.budget)} left</span>
             </div>
             <div style={{height:3,background:"var(--border)",borderRadius:99,marginBottom:8,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${fillPct}%`,borderRadius:99,
@@ -1767,10 +1872,10 @@ function RosterCard({team}) {
                     <span className="roster-player-num">{i+2}</span>
                     <span className="roster-player-name">{p.Name}</span>
                     <span className={`roster-player-utr ${utrClass(p.utr)}`}>{p.utr}</span>
-                    <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
+                    <span className="roster-player-price">{fmtR(p.acquiredPrice)}</span>
                 </div>
             ))}
-            {Array.from({length: TEAM_SIZE_EFF - filled}).map((_,i)=>(
+            {Array.from({length: teamSize - filled}).map((_,i)=>(
                 <div key={`empty-${i}`} className="roster-player" style={{opacity:.25}}>
                     <span className="roster-player-num">{filled+i+1}</span>
                     <span className="roster-player-name" style={{fontStyle:"italic",color:"var(--muted2)"}}>— open slot —</span>
