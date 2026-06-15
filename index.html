@@ -1539,8 +1539,8 @@ function ResetModal({onCancel,onConfirm}) {
 }
 
 // ─── Root app ─────────────────────────────────────────────────────────────────
-const IDLE_MS = 30 * 60 * 1000; // 30 minutes
-const IDLE_WARN_MS = 25 * 60 * 1000; // warn at 25 min
+const IDLE_MS = 180 * 60 * 1000; // 180 minutes
+const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 
 function App() {
     const [user, setUser] = useState(() => pref("ta_user", null));
