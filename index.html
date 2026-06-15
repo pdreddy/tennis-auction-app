@@ -160,6 +160,39 @@
         .health-panel { font-size: 11px; color: var(--text3); margin-top: 16px; }
         .health-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); }
         .health-ok  { color: var(--win); font-weight: 700; }
+        .pool-section { margin-bottom: 14px; }
+        .pool-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; border-radius: 12px 12px 0 0;
+            background: var(--surface3); border: 1px solid var(--border2);
+            cursor: pointer; user-select: none;
+        }
+        .pool-header.open { border-radius: 12px 12px 0 0; border-bottom: none; }
+        .pool-header-left { display: flex; align-items: center; gap: 10px; }
+        .pool-utr-badge {
+            font-size: 13px; font-weight: 900; padding: 4px 10px;
+            border-radius: 8px; letter-spacing: .5px;
+        }
+        .pool-header-title { font-size: 14px; font-weight: 700; color: var(--text); }
+        .pool-header-meta { font-size: 11px; color: var(--text3); }
+        .pool-chevron { font-size: 12px; color: var(--text3); transition: transform .2s; }
+        .pool-chevron.open { transform: rotate(180deg); }
+        .pool-body {
+            border: 1px solid var(--border2); border-top: none;
+            border-radius: 0 0 12px 12px; overflow: hidden;
+        }
+        .pool-player-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 16px; border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .pool-player-row:last-child { border-bottom: none; }
+        .pool-player-row:hover { background: rgba(255,255,255,.03); }
+        .pool-player-num { color: var(--text4); font-size: 11px; min-width: 22px; }
+        .pool-player-name { color: var(--text); font-weight: 600; flex: 1; }
+        .pool-player-price { color: var(--gold); font-size: 12px; font-weight: 700; }
+        .pool-player-cap { font-size: 10px; color: var(--teal); font-weight: 700;
+            background: rgba(0,212,168,.1); border-radius: 4px; padding: 2px 6px; margin-left: 8px; }
         .health-bad { color: var(--danger); font-weight: 700; }
 
         /* ── Auction top bar ── */
@@ -842,6 +875,80 @@ function ManagePins() {
     );
 }
 
+// ─── Pool Viewer (admin) ──────────────────────────────────────────────────────
+const UTR_COLORS = {
+    6.0: {bg:"rgba(232,184,75,.15)",  border:"rgba(232,184,75,.4)",  text:"#e8b84b"},
+    5.5: {bg:"rgba(155,135,245,.15)", border:"rgba(155,135,245,.4)", text:"#9b87f5"},
+    5.0: {bg:"rgba(74,144,217,.15)",  border:"rgba(74,144,217,.4)",  text:"#4a90d9"},
+    4.5: {bg:"rgba(0,212,168,.15)",   border:"rgba(0,212,168,.4)",   text:"#00d4a8"},
+    4.0: {bg:"rgba(30,201,122,.15)",  border:"rgba(30,201,122,.4)",  text:"#1ec97a"},
+    3.5: {bg:"rgba(224,92,110,.15)",  border:"rgba(224,92,110,.4)",  text:"#e05c6e"},
+    3.0: {bg:"rgba(90,114,153,.15)",  border:"rgba(90,114,153,.4)",  text:"#5a7299"},
+};
+const POOL_LABELS = {
+    6.0:"Elite · UTR 6.0", 5.5:"Advanced · UTR 5.5", 5.0:"Strong · UTR 5.0",
+    4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
+    3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
+};
+function fmt(n){ return "₹"+n.toLocaleString("en-IN"); }
+
+function PoolViewer() {
+    const [open, setOpen] = React.useState({});
+    const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
+
+    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+
+    return (
+        <div className="card" style={{padding:"18px"}}>
+            <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
+            <div className="card-sub" style={{marginBottom:14}}>
+                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+            </div>
+            {POOL_ORDER.map(key => {
+                const utr = getUTR(key);
+                const players = PLAYER_POOLS[key];
+                if (!players || players.length === 0) return null;
+                const col = UTR_COLORS[utr] || UTR_COLORS[3.0];
+                const isOpen = !!open[key];
+                return (
+                    <div key={key} className="pool-section">
+                        <div className={`pool-header${isOpen?" open":""}`}
+                            style={{background:`linear-gradient(135deg,${col.bg},var(--surface3))`}}
+                            onClick={()=>toggle(key)}>
+                            <div className="pool-header-left">
+                                <span className="pool-utr-badge"
+                                    style={{background:col.bg,border:`1px solid ${col.border}`,color:col.text}}>
+                                    UTR {utr.toFixed(1)}
+                                </span>
+                                <div>
+                                    <div className="pool-header-title">{POOL_LABELS[utr]}</div>
+                                    <div className="pool-header-meta">{players.length} players · base {fmt(players[0]?.price||0)}</div>
+                                </div>
+                            </div>
+                            <span className={`pool-chevron${isOpen?" open":""}`}>▼</span>
+                        </div>
+                        {isOpen && (
+                            <div className="pool-body">
+                                {players.map((p,i) => {
+                                    const isCap = CAPTAIN_NAMES.has(p.Name);
+                                    return (
+                                        <div key={p.id} className="pool-player-row">
+                                            <span className="pool-player-num">{i+1}</span>
+                                            <span className="pool-player-name">{p.Name}</span>
+                                            {isCap && <span className="pool-player-cap">CAPTAIN</span>}
+                                            <span className="pool-player-price">{fmt(p.price)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ─── Session lobby ────────────────────────────────────────────────────────────
 function Lobby({ user, onJoin, onLogout }) {
     const [joinId, setJoinId] = useState("");
@@ -890,6 +997,7 @@ function Lobby({ user, onJoin, onLogout }) {
                     </button>
                 </div>
                 <ManagePins />
+                <PoolViewer />
                 </>
             ) : (
                 <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
