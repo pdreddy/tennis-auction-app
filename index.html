@@ -494,6 +494,49 @@
         .modal-body  { font-size: 13px; color: var(--text3); line-height: 1.7; margin: 0 0 20px; }
         .modal-btns  { display: flex; gap: 10px; }
         .modal-btns .btn { flex: 1; padding: 14px; }
+
+        /* ── Season Bar ── */
+        .season-bar { display:flex; gap:6px; justify-content:center; padding:10px 16px 0; flex-wrap:wrap; }
+        .season-pill {
+            padding:5px 14px; border-radius:20px; font-size:11px; font-weight:800;
+            letter-spacing:.8px; border:1px solid var(--border2); color:var(--text3);
+            background:var(--surface2); cursor:default; transition:all .2s;
+        }
+        .season-pill.active {
+            background:linear-gradient(135deg,rgba(232,184,75,.2),rgba(232,184,75,.05));
+            border-color:var(--gold); color:var(--gold);
+            box-shadow:0 0 12px rgba(232,184,75,.15);
+        }
+        .season-pill .s-label { font-size:9px; display:block; opacity:.6; margin-bottom:1px; }
+        /* ── Session History ── */
+        .session-hist-title { font-size:10px; font-weight:700; color:var(--text4); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+        .session-hist-card {
+            display:flex; align-items:center; justify-content:space-between;
+            background:var(--surface3); border:1px solid var(--border); border-radius:10px;
+            padding:10px 14px; margin-bottom:8px;
+        }
+        .session-hist-id { font-size:16px; font-weight:900; letter-spacing:3px; color:var(--text); }
+        .session-hist-meta { font-size:10px; color:var(--text3); margin-top:2px; }
+        .session-hist-btn { font-size:11px; font-weight:700; padding:6px 14px; border-radius:8px; }
+        /* ── Login improvements ── */
+        .login-welcome { font-size:12px; color:var(--teal); text-align:center; margin-bottom:8px; font-weight:600; }
+        .login-timestamp { font-size:10px; color:var(--text4); text-align:center; margin-top:4px; }
+        /* ── Idle warning ── */
+        .idle-banner {
+            position:fixed; bottom:0; left:0; right:0; z-index:9999;
+            background:linear-gradient(90deg,rgba(224,92,110,.95),rgba(180,50,70,.95));
+            color:#fff; padding:12px 20px; display:flex; align-items:center;
+            justify-content:space-between; font-size:13px; font-weight:600;
+            border-top:2px solid #e05c6e;
+        }
+        .idle-banner button { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4);
+            color:#fff; padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; }
+        /* ── Logout confirm ── */
+        .logout-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center; }
+        .logout-dialog { background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;max-width:320px;width:90%; }
+        .logout-dialog h3 { margin:0 0 8px;font-size:17px;color:var(--text); }
+        .logout-dialog p { margin:0 0 20px;font-size:13px;color:var(--text3);line-height:1.6; }
+        .logout-dialog .btn-row { display:flex;gap:10px; }
     </style>
 </head>
 <body>
@@ -741,12 +784,35 @@ function initialDoc(sid) {
         timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now() };
 }
 
+const THIS_YEAR = new Date().getFullYear();
+const SEASONS = Array.from({length:5}, (_,i) => THIS_YEAR + i);
+
+function SeasonBar({ selectedYear, onSelect }) {
+    return (
+        <div className="season-bar">
+            {SEASONS.map(yr => (
+                <div key={yr}
+                    className={`season-pill${yr===selectedYear?" active":""}`}
+                    onClick={()=>onSelect && onSelect(yr)}
+                    style={{cursor:onSelect?"pointer":"default"}}>
+                    <span className="s-label">SEASON</span>
+                    {yr}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Login screen ─────────────────────────────────────────────────────────────
 function Login({ onLogin }) {
-    const [account, setAccount] = useState(ACCOUNTS[0]);
+    const [account, setAccount] = useState(() => {
+        const saved = pref("ta_last_account", null);
+        return ACCOUNTS.find(a=>a.code===saved) || ACCOUNTS[0];
+    });
     const [pin, setPin] = useState("");
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
+    const lastLogin = pref("ta_last_login", null);
 
     const submit = async () => {
         setError(null);
@@ -761,36 +827,53 @@ function Login({ onLogin }) {
                 return;
             }
             if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
+            savePref("ta_last_account", account.code);
+            savePref("ta_last_login", { name: account.label, time: Date.now() });
             onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
         } catch(e) { setError("Error: " + e.message); setBusy(false); }
     };
 
+    const formatTime = ts => {
+        const d = new Date(ts);
+        return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    };
+
     return (
-        <div className="login-wrap">
-            <div className="login-title">🎾 TENNIS AUCTION</div>
-            <div className="login-sub">Live player draft · Real-time sync</div>
+        <div>
+            <SeasonBar selectedYear={THIS_YEAR} />
+            <div className="login-wrap">
+                <div className="login-title">🎾 TENNIS AUCTION</div>
+                <div className="login-sub">Live player draft · Real-time sync</div>
 
-            <div className="field-wrap">
-                <div className="field-label">ACCOUNT</div>
-                <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
-                    {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
-                </select>
+                {lastLogin && (
+                    <div className="login-welcome">
+                        👋 Welcome back, {lastLogin.name.split("·")[1]?.trim() || lastLogin.name}
+                        <div className="login-timestamp">Last login: {formatTime(lastLogin.time)}</div>
+                    </div>
+                )}
+
+                <div className="field-wrap">
+                    <div className="field-label">ACCOUNT</div>
+                    <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
+                        {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
+                    </select>
+                </div>
+
+                <div className="field-wrap">
+                    <div className="field-label">6-DIGIT PIN</div>
+                    <input type="password" value={pin} maxLength={6} inputMode="numeric"
+                        placeholder="● ● ● ● ● ●"
+                        style={{letterSpacing:8,textAlign:"center",fontSize:20}}
+                        onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
+                        onKeyPress={e => e.key==="Enter" && submit()} />
+                </div>
+
+                {error && <div className="login-error">{error}</div>}
+
+                <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
+                    {busy ? "Signing in…" : "Sign In"}
+                </button>
             </div>
-
-            <div className="field-wrap">
-                <div className="field-label">6-DIGIT PIN</div>
-                <input type="password" value={pin} maxLength={6} inputMode="numeric"
-                    placeholder="● ● ● ● ● ●"
-                    style={{letterSpacing:8,textAlign:"center",fontSize:20}}
-                    onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
-                    onKeyPress={e => e.key==="Enter" && submit()} />
-            </div>
-
-            {error && <div className="login-error">{error}</div>}
-
-            <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
-                {busy ? "Signing in…" : "Sign In"}
-            </button>
         </div>
     );
 }
@@ -950,85 +1033,132 @@ function PoolViewer() {
 }
 
 // ─── Session lobby ────────────────────────────────────────────────────────────
-function Lobby({ user, onJoin, onLogout }) {
+function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const [joinId, setJoinId] = useState("");
     const [creating, setCreating] = useState(false);
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const sessionHistory = pref("ta_sessions", []);
+
+    const saveSession = (sid) => {
+        const existing = pref("ta_sessions", []);
+        const updated = [
+            { id:sid, year:selectedYear||THIS_YEAR, ts:Date.now() },
+            ...existing.filter(s=>s.id!==sid)
+        ].slice(0,5);
+        savePref("ta_sessions", updated);
+        savePref("ta_last_session", sid);
+    };
 
     const createNew = async () => {
         setCreating(true); setError(null);
         const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         let sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
         await db.ref(`auctions/${sid}`).set(initialDoc(sid));
+        saveSession(sid);
         onJoin(sid);
     };
 
-    const joinExisting = async () => {
-        const id = joinId.trim().toUpperCase();
-        if (!id) { setError("Enter a session ID"); return; }
+    const joinExisting = async (id) => {
+        const sid = (id || joinId).trim().toUpperCase();
+        if (!sid) { setError("Enter a session ID"); return; }
         setJoining(true); setError(null);
-        const snap = await db.ref(`auctions/${id}`).once("value");
-        if (!snap.exists()) { setError(`Session ${id} not found`); setJoining(false); return; }
-        onJoin(id);
+        const snap = await db.ref(`auctions/${sid}`).once("value");
+        if (!snap.exists()) { setError(`Session ${sid} not found`); setJoining(false); return; }
+        saveSession(sid);
+        onJoin(sid);
     };
 
-    const poolPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+    const confirmLogout = () => setShowLogoutConfirm(true);
+
+    const formatAge = ts => {
+        const s = Math.floor((Date.now()-ts)/1000);
+        if (s<60) return "just now";
+        const m = Math.floor(s/60); if (m<60) return `${m}m ago`;
+        const h = Math.floor(m/60); if (h<24) return `${h}h ago`;
+        return `${Math.floor(h/24)}d ago`;
+    };
 
     return (
-        <div className="setup-wrap">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-                <div>
-                    <div style={{fontSize:11,color:"#888"}}>Signed in as</div>
-                    <div style={{fontWeight:700,color:"#fff"}}>{user.name}</div>
+        <div>
+            <SeasonBar selectedYear={selectedYear||THIS_YEAR} onSelect={onYearSelect} />
+            <div className="setup-wrap">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                    <div>
+                        <div style={{fontSize:11,color:"#888"}}>Signed in as</div>
+                        <div style={{fontWeight:700,color:"#fff"}}>{user.name}</div>
+                        {pref("ta_last_login",null) && (
+                            <div style={{fontSize:10,color:"var(--text4)"}}>
+                                Since {new Date(pref("ta_last_login",{time:Date.now()}).time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+                            </div>
+                        )}
+                    </div>
+                    <button className="btn btn-neutral" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={confirmLogout}>Log out</button>
                 </div>
-                <button className="btn btn-neutral" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={onLogout}>Log out</button>
-            </div>
 
-            {error && <div className="error-banner">{error}</div>}
+                {error && <div className="error-banner">{error}</div>}
 
-            {user.role === "admin" ? (
-                <>
+                {user.role === "admin" ? (
+                    <>
+                    <div className="card">
+                        <div className="card-title">Start new auction</div>
+                        <div className="card-sub">Creates a fresh session for <strong style={{color:"var(--gold)"}}>Season {selectedYear||THIS_YEAR}</strong>. Share the 6-letter ID with all captains.</div>
+                        <button className="btn btn-primary" onClick={createNew} disabled={creating}>
+                            {creating ? "Creating…" : `Create ${selectedYear||THIS_YEAR} Auction`}
+                        </button>
+                    </div>
+                    <ManagePins />
+                    <PoolViewer />
+                    </>
+                ) : (
+                    <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
+                        <div className="card-title">👋 Hi, {user.name.split("·")[1]?.trim()}</div>
+                        <div className="card-sub">Ask the Auctioneer for the Session ID, then join below.</div>
+                    </div>
+                )}
+
+                {sessionHistory.length > 0 && (
+                    <div className="card">
+                        <div className="session-hist-title">🕐 Recent Sessions</div>
+                        {sessionHistory.map(s => (
+                            <div key={s.id} className="session-hist-card">
+                                <div>
+                                    <div className="session-hist-id">{s.id}</div>
+                                    <div className="session-hist-meta">Season {s.year||THIS_YEAR} · {formatAge(s.ts)}</div>
+                                </div>
+                                <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
+                                    Rejoin
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="or-row"><div className="line"/><span>OR JOIN EXISTING</span><div className="line"/></div>
+
                 <div className="card">
-                    <div className="card-title">Start new auction</div>
-                    <div className="card-sub">Creates a fresh session. Share the 6-letter ID with all captains.</div>
-                    <button className="btn btn-primary" onClick={createNew} disabled={creating}>
-                        {creating ? "Creating…" : "Create New Auction"}
+                    <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
+                        value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
+                        onKeyPress={e=>e.key==="Enter" && joinExisting()}
+                        style={{marginBottom:14}} />
+                    <button className="btn btn-secondary" onClick={()=>joinExisting()} disabled={joining||joinId.length<6}>
+                        {joining ? "Joining…" : "Join Session"}
                     </button>
                 </div>
-                <ManagePins />
-                <PoolViewer />
-                </>
-            ) : (
-                <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
-                    <div className="card-title">👋 Hi, {user.name.split("·")[1]?.trim()}</div>
-                    <div className="card-sub">Ask the Auctioneer for the Session ID, then join below.</div>
-                </div>
-            )}
 
-            <div className="or-row"><div className="line"/><span>OR JOIN EXISTING</span><div className="line"/></div>
-
-            <div className="card">
-                <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
-                    value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
-                    onKeyPress={e=>e.key==="Enter"&&joinExisting()} />
-                <button className="btn btn-neutral" style={{marginTop:10}} onClick={joinExisting} disabled={joining||!joinId.trim()}>
-                    {joining ? "Joining…" : "Join Auction"}
-                </button>
-            </div>
-
-            <div className="health-panel">
-                <div style={{fontWeight:700,color:"#aaa",marginBottom:6}}>Setup check</div>
-                <div className="health-row"><span>Teams</span><span className={TEAMS.length===16?"health-ok":"health-bad"}>{TEAMS.length} / 16</span></div>
-                <div className="health-row"><span>Pool players</span><span>{poolPlayers}</span></div>
-                <div className="health-row"><span>Total players</span><span>{PLAYERS.length}</span></div>
-                {POOL_ORDER.map(key => {
-                    const c = PLAYER_POOLS[key].length;
-                    return <div className="health-row" key={key}>
-                        <span>UTR {getUTR(key)}</span>
-                        <span style={{color:"#666"}}>{c===0?"auto-skipped":`${c} players · max ${POOL_CAPS[key]}/team`}</span>
-                    </div>;
-                })}
+                {showLogoutConfirm && (
+                    <div className="logout-overlay">
+                        <div className="logout-dialog">
+                            <h3>Sign out?</h3>
+                            <p>You'll need your PIN to sign back in. Any active auction will remain open for others.</p>
+                            <div className="btn-row">
+                                <button className="btn btn-danger" style={{flex:1}} onClick={onLogout}>Sign Out</button>
+                                <button className="btn btn-neutral" style={{flex:1}} onClick={()=>setShowLogoutConfirm(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1409,16 +1539,64 @@ function ResetModal({onCancel,onConfirm}) {
 }
 
 // ─── Root app ─────────────────────────────────────────────────────────────────
+const IDLE_MS = 30 * 60 * 1000; // 30 minutes
+const IDLE_WARN_MS = 25 * 60 * 1000; // warn at 25 min
+
 function App() {
     const [user, setUser] = useState(() => pref("ta_user", null));
-    const [sessionId, setSessionId] = useState(null);
+    const [sessionId, setSessionId] = useState(() => null);
+    const [selectedYear, setSelectedYear] = useState(THIS_YEAR);
+    const [idleWarning, setIdleWarning] = useState(false);
+    const idleRef = useRef(null);
+    const warnRef = useRef(null);
+
+    const resetIdle = useCallback(() => {
+        clearTimeout(idleRef.current);
+        clearTimeout(warnRef.current);
+        setIdleWarning(false);
+        if (user) {
+            warnRef.current = setTimeout(() => setIdleWarning(true), IDLE_WARN_MS);
+            idleRef.current = setTimeout(() => handleLogout(), IDLE_MS);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        const events = ["mousemove","keydown","click","touchstart","scroll"];
+        events.forEach(e => window.addEventListener(e, resetIdle, {passive:true}));
+        resetIdle();
+        return () => {
+            events.forEach(e => window.removeEventListener(e, resetIdle));
+            clearTimeout(idleRef.current);
+            clearTimeout(warnRef.current);
+        };
+    }, [user, resetIdle]);
 
     const handleLogin = u => { setUser(u); savePref("ta_user",u); };
-    const handleLogout = () => { setUser(null); savePref("ta_user",null); setSessionId(null); };
+    const handleLogout = () => {
+        setUser(null); savePref("ta_user",null);
+        setSessionId(null); setIdleWarning(false);
+        clearTimeout(idleRef.current); clearTimeout(warnRef.current);
+    };
+    const handleJoin = sid => { setSessionId(sid); savePref("ta_last_session", sid); };
 
-    if (!user) return <Login onLogin={handleLogin}/>;
-    if (!sessionId) return <Lobby user={user} onJoin={setSessionId} onLogout={handleLogout}/>;
-    return <Auction sid={sessionId} user={user} onBack={()=>setSessionId(null)}/>;
+    return (
+        <div>
+            {idleWarning && user && (
+                <div className="idle-banner">
+                    <span>⚠️ You'll be signed out in 5 minutes due to inactivity</span>
+                    <button onClick={resetIdle}>Stay Signed In</button>
+                </div>
+            )}
+            {!user
+                ? <Login onLogin={handleLogin}/>
+                : !sessionId
+                    ? <Lobby user={user} onJoin={handleJoin} onLogout={handleLogout}
+                        selectedYear={selectedYear} onYearSelect={setSelectedYear}/>
+                    : <Auction sid={sessionId} user={user} onBack={()=>setSessionId(null)}/>
+            }
+        </div>
+    );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
