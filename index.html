@@ -140,9 +140,12 @@
         .health-bad { color: var(--danger); font-weight: 800; }
 
         /* ── Auction top bar ── */
-        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
-        .top-bar h1 {
-            font-size: 20px; font-weight: 900; margin: 0; letter-spacing: 1px;
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+        .session-back { background: none; border: none; color: var(--muted); font-size: 26px; cursor: pointer; padding: 0 4px; line-height: 1; transition: color .15s; }
+        .session-back:hover { color: #fff; }
+        .session-label { font-size: 9px; font-weight: 800; color: var(--muted2); letter-spacing: 2px; text-transform: uppercase; }
+        .session-id {
+            font-weight: 900; font-size: 20px; letter-spacing: 4px;
             background: linear-gradient(90deg, #fff, #a0c4ff);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
@@ -153,47 +156,50 @@
         }
         .dot { width: 9px; height: 9px; border-radius: 50%; }
         .dot-green { background: var(--neon); animation: pulse-green 2s ease-in-out infinite; }
-        .dot-red   { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-
-        /* ── Sticky player bar ── */
-        .sticky-bar {
-            position: sticky; top: 0; z-index: 900;
-            background: linear-gradient(135deg, #0e1a35, #131f40, #0e1a35);
-            border: 2px solid rgba(91,159,255,.5);
-            border-radius: 14px; padding: 12px 16px; margin-bottom: 12px;
-            display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            box-shadow: 0 2px 0 rgba(255,255,255,.04) inset,
-                        0 6px 30px rgba(91,159,255,.2), 0 12px 40px rgba(0,0,0,.6);
-        }
-        .sb-player { font-size: 17px; font-weight: 900; color: #fff; }
-        .sb-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
-        .sb-high   { font-size: 13px; color: var(--gold); font-weight: 800; margin-top: 4px; }
-        .sb-timer {
-            min-width: 66px; text-align: center; padding: 10px 12px; border-radius: 11px;
-            background: linear-gradient(135deg, rgba(91,159,255,.2), rgba(91,159,255,.08));
-            color: #7bbfff; font-size: 26px; font-weight: 900;
-            border: 1px solid rgba(91,159,255,.4);
-            box-shadow: 0 0 16px rgba(91,159,255,.25);
-        }
-        .sb-timer.warn {
-            background: linear-gradient(135deg, rgba(255,77,106,.25), rgba(255,77,106,.1));
-            color: #ff8099; border-color: rgba(255,77,106,.5);
-            box-shadow: 0 0 20px rgba(255,77,106,.35);
-        }
+        .dot-red   { background: var(--danger);  box-shadow: 0 0 8px var(--danger); }
 
         /* ── Progress ── */
-        .progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 0 0 4px; }
+        .progress-wrap { margin-bottom: 14px; }
+        .progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 0 0 5px; }
         .progress-fill {
             height: 100%; border-radius: 99px; transition: width .4s ease;
             background: linear-gradient(90deg, var(--blue), var(--purple), var(--neon));
             background-size: 200% auto;
             animation: progress-glow 2.5s ease-in-out infinite, shimmer 3s linear infinite;
         }
-        .progress-text { font-size: 11px; color: var(--muted); text-align: center; margin-bottom: 10px; font-weight: 600; }
+        .progress-text { font-size: 11px; color: var(--muted); text-align: center; font-weight: 600; letter-spacing: .3px; }
 
-        /* ── Admin controls ── */
-        .admin-bar { display: flex; gap: 8px; margin-bottom: 10px; }
-        .admin-bar .btn { flex: 1; padding: 12px 8px; font-size: 14px; }
+        /* ── Sticky player bar ── */
+        .sticky-bar {
+            position: sticky; top: 0; z-index: 900;
+            background: linear-gradient(135deg, #0a152e, #0f1c40, #0a152e);
+            border: 2px solid rgba(91,159,255,.55);
+            border-radius: 16px; padding: 14px 18px; margin-bottom: 14px;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            box-shadow: 0 1px 0 rgba(255,255,255,.05) inset,
+                        0 8px 32px rgba(91,159,255,.22), 0 16px 48px rgba(0,0,0,.65);
+        }
+        .sb-player { font-size: 18px; font-weight: 900; color: #fff; letter-spacing: .3px; }
+        .sb-meta   { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: .2px; }
+        .sb-high   { font-size: 13px; color: var(--gold); font-weight: 800; margin-top: 5px; }
+        .sb-retry  { color: var(--danger); font-size: 13px; font-weight: 700; }
+        .sb-timer {
+            min-width: 72px; text-align: center; padding: 12px 14px; border-radius: 13px;
+            background: linear-gradient(135deg, rgba(91,159,255,.22), rgba(91,159,255,.08));
+            color: #7bbfff; font-size: 28px; font-weight: 900;
+            border: 1px solid rgba(91,159,255,.4);
+            box-shadow: 0 0 20px rgba(91,159,255,.28);
+            line-height: 1;
+        }
+        .sb-timer.warn {
+            background: linear-gradient(135deg, rgba(255,77,106,.28), rgba(255,77,106,.1));
+            color: #ff8099; border-color: rgba(255,77,106,.55);
+            box-shadow: 0 0 24px rgba(255,77,106,.4);
+        }
+
+        /* ── Admin bar ── */
+        .admin-bar { display: flex; gap: 10px; margin-bottom: 14px; }
+        .admin-bar .btn { flex: 1; padding: 13px 8px; font-size: 14px; font-weight: 800; border-radius: 12px; }
 
         /* ── Bidding grid ── */
         .bidding-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
@@ -202,82 +208,114 @@
         @media (min-width: 1100px) { .bidding-grid { grid-template-columns: repeat(4,1fr); } }
 
         .bid-card {
-            background: linear-gradient(160deg, var(--card-hi), var(--card));
-            border: 1px solid var(--border); border-radius: 14px;
-            padding: 12px; display: flex; flex-direction: column; gap: 7px;
-            transition: border-color .2s, box-shadow .25s, transform .15s;
-            box-shadow: 0 2px 10px rgba(0,0,0,.4);
+            background: linear-gradient(160deg, #141e33, #0f1828);
+            border: 1px solid var(--border-hi); border-radius: 16px;
+            padding: 14px; display: flex; flex-direction: column; gap: 10px;
+            transition: transform .2s, box-shadow .2s, border-color .2s;
+            box-shadow: 0 4px 16px rgba(0,0,0,.45);
+            position: relative; overflow: hidden;
         }
-        .bid-card:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+        .bid-card::before {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+        }
+        .bid-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.55); border-color: #3a5580; }
         .bid-card.winning {
             border-color: var(--win); border-width: 2px;
-            background: linear-gradient(160deg, #082018, #0b2418);
-            box-shadow: 0 0 28px rgba(0,232,122,.22), 0 4px 16px rgba(0,0,0,.5);
+            background: linear-gradient(160deg, #071e10, #091c14, #071e10);
+            box-shadow: 0 0 32px rgba(0,232,122,.22), 0 6px 20px rgba(0,0,0,.5);
             animation: pulse-green 2.5s ease-in-out infinite;
         }
+        .bid-card.winning::before { background: linear-gradient(90deg, transparent, rgba(0,232,122,.2), transparent); }
         .bid-card.tied {
             border-color: var(--gold); border-width: 2px;
-            background: linear-gradient(160deg, #1e1600, #1a1300);
-            box-shadow: 0 0 22px rgba(255,216,77,.2), 0 4px 16px rgba(0,0,0,.5);
+            background: linear-gradient(160deg, #1c1500, #1a1200, #1c1500);
+            box-shadow: 0 0 26px rgba(255,216,77,.2), 0 6px 20px rgba(0,0,0,.5);
         }
-        .bid-card.pinned { border-color: var(--gold); box-shadow: 0 0 18px rgba(255,216,77,.15); }
+        .bid-card.tied::before { background: linear-gradient(90deg, transparent, rgba(255,216,77,.15), transparent); }
+        .bid-card.pinned { border-color: rgba(255,216,77,.6); }
         .bid-card.disabled-card {
-            display: flex; flex-direction: row; align-items: center;
-            justify-content: space-between; opacity: .32; padding: 8px 12px;
+            background: rgba(10,14,24,.6); border-color: var(--border);
+            opacity: .42; padding: 10px 14px; flex-direction: row;
+            align-items: center; justify-content: space-between; gap: 8px;
+            transform: none !important; box-shadow: none !important;
         }
-        .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; }
-        .team-name { font-size: 14px; font-weight: 800; color: #fff; }
-        .team-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
-        .pin-btn { background:none; border:none; cursor:pointer; font-size:15px; padding:0 2px; opacity:.25; transition: opacity .15s; }
+        .disabled-team-name { font-size: 12px; font-weight: 700; color: var(--muted); }
+        .disabled-reason {
+            font-size: 10px; color: var(--muted2); font-style: italic;
+            background: rgba(255,255,255,.04); padding: 2px 7px; border-radius: 5px;
+        }
+
+        .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .bid-team-info { flex: 1; min-width: 0; }
+        .team-name { font-size: 15px; font-weight: 900; color: #fff; letter-spacing: .2px; }
+        .team-you-tag {
+            display: inline-block; font-size: 9px; font-weight: 800; color: var(--neon);
+            background: rgba(0,245,196,.12); border: 1px solid rgba(0,245,196,.3);
+            border-radius: 5px; padding: 1px 6px; margin-left: 6px; letter-spacing: 1px;
+            vertical-align: middle;
+        }
+        .team-captain { font-size: 10px; color: var(--gold); font-weight: 700; margin-top: 2px; }
+        .team-budget-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+        .team-budget-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+        .team-budget-left { background: rgba(0,232,122,.12); color: #40e898; border: 1px solid rgba(0,232,122,.22); }
+        .team-slots { font-size: 10px; color: var(--muted2); font-weight: 600; }
+        .pin-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 3px; opacity: .22; transition: opacity .15s, transform .15s; flex-shrink: 0; }
+        .pin-btn:hover { opacity: .7; transform: scale(1.15); }
         .pin-btn.pinned { opacity: 1; }
-        .bid-input-wrap { display: flex; flex-direction: column; gap: 5px; }
-        .bid-input { font-size: 16px; padding: 9px 10px; border-radius: 9px; }
 
-        /* Quick chips */
-        .quick-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+        .bid-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 0; }
+        .bid-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+        .bid-input { font-size: 18px; padding: 12px 14px; border-radius: 10px; font-weight: 700; }
+
+        .quick-chips { display: flex; gap: 6px; }
         .chip {
-            flex: 1 1 auto; min-width: 52px; padding: 7px 4px; text-align: center;
-            font-size: 12px; font-weight: 800; border-radius: 8px;
+            flex: 1; padding: 9px 4px; text-align: center;
+            font-size: 12px; font-weight: 800; border-radius: 9px;
             border: 1px solid rgba(91,159,255,.35);
-            background: linear-gradient(135deg, rgba(91,159,255,.14), rgba(91,159,255,.06));
+            background: linear-gradient(135deg, rgba(91,159,255,.15), rgba(91,159,255,.04));
             color: #89bfff; cursor: pointer; touch-action: manipulation;
-            transition: all .15s;
+            transition: all .15s; letter-spacing: .3px;
         }
-        .chip:active { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 0 12px rgba(91,159,255,.5); }
-        .chip:hover:not(:disabled) { border-color: rgba(91,159,255,.6); color: #b0d4ff; }
-        .chip:disabled { opacity: .18; }
+        .chip:hover:not(:disabled) { background: linear-gradient(135deg,rgba(91,159,255,.3),rgba(91,159,255,.1)); color: #c0daff; border-color: rgba(91,159,255,.7); transform: translateY(-1px); }
+        .chip:active { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 0 14px rgba(91,159,255,.5); transform: scale(.96); }
+        .chip:disabled { opacity: .18; transform: none !important; }
 
-        .place-bid-btn { padding: 11px; font-size: 14px; min-height: 46px; }
-        .bid-status { font-size: 11px; color: var(--purple); font-weight: 700; }
+        .place-bid-btn { padding: 13px; font-size: 15px; min-height: 48px; border-radius: 12px; }
+
+        .bid-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
+        .bid-status { font-size: 12px; color: var(--purple); font-weight: 800; }
         .bid-win-badge {
             background: linear-gradient(135deg, var(--win), #009955);
-            color: #fff; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,232,122,.4);
+            color: #fff; font-size: 10px; font-weight: 900; padding: 4px 11px; border-radius: 8px;
+            box-shadow: 0 0 16px rgba(0,232,122,.5); letter-spacing: .8px;
         }
         .bid-tie-badge {
             background: linear-gradient(135deg, var(--gold), #c89a00);
-            color: #1a1000; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 10px;
+            color: #1a1000; font-size: 10px; font-weight: 900; padding: 4px 11px; border-radius: 8px;
+            letter-spacing: .8px;
         }
         .bid-error { color: #ff8099; font-size: 11px; font-weight: 700; }
 
         /* ── Pool viewer ── */
         .pool-viewer {
-            background: linear-gradient(135deg, #0c1220, #0a1018);
-            border: 1px solid var(--border-hi); border-radius: 13px;
-            padding: 12px; margin-bottom: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,.4);
+            background: linear-gradient(135deg, #0c1422, #0a1018);
+            border: 1px solid var(--border-hi); border-radius: 14px;
+            padding: 14px; margin-bottom: 14px;
+            box-shadow: 0 4px 18px rgba(0,0,0,.4);
         }
-        .pool-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+        .pool-viewer-title { font-size: 10px; font-weight: 800; color: var(--muted); margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+        .pool-grid { display: flex; flex-wrap: wrap; gap: 5px; }
         .pool-chip {
-            font-size: 10px; padding: 4px 9px; border-radius: 6px;
+            font-size: 10px; padding: 5px 10px; border-radius: 7px;
             border: 1px solid var(--border); background: var(--card); color: var(--muted);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
-            font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+            font-weight: 600; transition: all .15s;
         }
         .pool-chip.active {
-            background: linear-gradient(135deg, var(--gold), #d4a800);
-            color: #1a1000; font-weight: 800; border-color: var(--gold);
-            box-shadow: 0 0 10px rgba(255,216,77,.35);
+            background: linear-gradient(135deg, var(--gold), #c89a00);
+            color: #1a1000; font-weight: 900; border-color: var(--gold);
+            box-shadow: 0 0 14px rgba(255,216,77,.4); max-width: 200px;
         }
         .pool-chip.retry  { border-color: var(--danger); color: var(--danger); }
 
@@ -996,24 +1034,26 @@ function Auction({ sid, user, onBack }) {
         <div>
             <div className="top-bar">
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <button onClick={onBack} style={{background:"none",border:"none",color:"#888",fontSize:20,cursor:"pointer",padding:0}}>‹</button>
+                    <button onClick={onBack} className="session-back">‹</button>
                     <div>
-                        <div style={{fontSize:11,color:"#555",letterSpacing:1}}>SESSION</div>
-                        <div style={{fontWeight:800,fontSize:20,color:"#fff",letterSpacing:2}}>{sid}</div>
+                        <div className="session-label">Session</div>
+                        <div className="session-id">{sid}</div>
                     </div>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
-                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"6px 12px",fontSize:12}} onClick={()=>setResetOpen(true)}>Reset</button>}
+                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"7px 14px",fontSize:12,borderRadius:8}} onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
 
-            <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
-            <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
+            <div className="progress-wrap">
+                <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
+                <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
+            </div>
 
-            <div className={`sticky-bar`} style={warn?{borderColor:"#ff6b6b"}:{}}>
+            <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div style={{minWidth:0}}>
-                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span style={{color:"#ff6b6b",fontSize:13}}> · Retry #{eff.player.retryCount}</span>}</div>
+                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
                     <div className="sb-meta">UTR {eff.player.utr} · base ${fmt(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
                     {highest>0 && <div className="sb-high">High ${fmt(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
                 </div>
@@ -1038,30 +1078,37 @@ function Auction({ sid, user, onBack }) {
                     const isMyTeam = !isAdmin && team.id===myTeamId;
 
                     if (team.isDisabled && !isMyTeam) {
-                        const reason = team.players.length>=TEAM_SIZE?"Full":team.budget<eff.player.price?"Low budget":`Cap at UTR ${getUTR(eff.poolKey)}`;
+                        const reason = team.players.length>=TEAM_SIZE?"Full":team.budget<eff.player.price?"Low budget":`UTR cap`;
                         return (
                             <div key={team.id} className="bid-card disabled-card">
-                                <span style={{fontSize:12,color:"#555"}}>{team.name} ({team.players.length}/{TEAM_SIZE})</span>
-                                <span style={{fontSize:11,color:"#444",fontStyle:"italic"}}>{reason}</span>
+                                <span className="disabled-team-name">{team.name} · {team.players.length}/{TEAM_SIZE}</span>
+                                <span className="disabled-reason">{reason}</span>
                             </div>
                         );
                     }
 
                     const anchor = highest>0?highest+1000:eff.player.price;
                     const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=team.budget);
-                    const canBid = !isAdmin || isAdmin; // admin can bid for any team in test mode — captains only their own
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
                             <div className="bid-card-head">
-                                <div>
-                                    <div className="team-name">{team.name}{isMyTeam?" · You":""}</div>
-                                    <div className="team-meta">{team.captain} · ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}</div>
+                                <div className="bid-team-info">
+                                    <div className="team-name">
+                                        {team.name}
+                                        {isMyTeam && <span className="team-you-tag">YOU</span>}
+                                    </div>
+                                    <div className="team-captain">⭐ {team.captain}</div>
+                                    <div className="team-budget-row">
+                                        <span className="team-budget-pill team-budget-left">${fmt(team.budget)}</span>
+                                        <span className="team-slots">{team.players.length}/{TEAM_SIZE} players</span>
+                                    </div>
                                 </div>
-                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin my team">📌</button>
+                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
                             </div>
 
-                            {(isAdmin || isMyTeam) && (
+                            {(isAdmin || isMyTeam) && (<>
+                                <div className="bid-divider"/>
                                 <div className="bid-input-wrap">
                                     <input type="number" inputMode="numeric" className="bid-input"
                                         placeholder={`Min $${fmt(eff.player.price)}`}
@@ -1082,18 +1129,20 @@ function Auction({ sid, user, onBack }) {
                                         Place Bid
                                     </button>
                                 </div>
-                            )}
+                            </>)}
 
-                            {teamBid>0 && <div className="bid-status">Bid: ${fmt(teamBid)}</div>}
-                            {isWin && <span className="bid-win-badge">WINNING</span>}
-                            {isTie && <span className="bid-tie-badge">TIED</span>}
+                            <div className="bid-footer">
+                                <div className="bid-status">{teamBid>0?`Current bid: $${fmt(teamBid)}`:""}</div>
+                                {isWin && <span className="bid-win-badge">WINNING</span>}
+                                {isTie && <span className="bid-tie-badge">TIED</span>}
+                            </div>
                         </div>
                     );
                 })}
             </div>
 
             <div className="pool-viewer">
-                <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:4}}>Current pool · UTR {getUTR(eff.poolKey)}</div>
+                <div className="pool-viewer-title">Current pool · UTR {getUTR(eff.poolKey)}</div>
                 <div className="pool-grid">
                     {eff.pool.map((p,i)=>(
                         <div key={p.id||i} className={`pool-chip ${i===eff.effPlayer?"active":""} ${p.isRetry?"retry":""}`} title={p.Name}>
