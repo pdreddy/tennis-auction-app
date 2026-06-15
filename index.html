@@ -954,7 +954,7 @@ function AdminConfig() {
     const [tab, setTab]         = useState("players");
     const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
     const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
-    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS});
+    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS,playersPerGroup:5});
     const [saving, setSaving]   = useState(false);
     const [status, setStatus]   = useState(null);
     const [drag, setDrag]       = useState(false);
@@ -989,6 +989,21 @@ function AdminConfig() {
     const addTeam = () => { const nid=Math.max(0,...teams.map(t=>t.id))+1; setTeams(ts=>[...ts,{id:nid,name:`Team ${nid}`,captain:""}]); };
     const updTeam = (id,f,v) => setTeams(ts=>ts.map(t=>t.id===id?{...t,[f]:v}:t));
     const delTeam = id => setTeams(ts=>ts.filter(t=>t.id!==id));
+
+    const setNumTeams = n => {
+        const count = Math.max(1, Math.min(32, parseInt(n)||1));
+        setTeams(ts => {
+            if (count > ts.length) {
+                const extra = [];
+                for (let i=ts.length; i<count; i++) {
+                    const nid = Math.max(0,...ts.map(t=>t.id),...extra.map(t=>t.id))+1;
+                    extra.push({id:nid, name:`Team ${nid}`, captain:""});
+                }
+                return [...ts, ...extra];
+            }
+            return ts.slice(0, count);
+        });
+    };
 
     const saveAll = async () => {
         setSaving(true); setStatus(null);
@@ -1085,16 +1100,26 @@ function AdminConfig() {
                 {tab==="settings" && (
                     <div className="cfg-tab-panel">
                         <div style={{border:"1px solid var(--border)",borderRadius:10,padding:"0 14px"}}>
+                            <div className="setting-row">
+                                <div><div className="setting-label">Number of Teams</div><div className="setting-desc">How many teams participate in the auction</div></div>
+                                <div className="setting-control">
+                                    <input type="number" min={1} max={32} step={1}
+                                        value={teams.length}
+                                        onChange={e=>setNumTeams(e.target.value)} />
+                                    <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>teams</div>
+                                </div>
+                            </div>
                             {[
+                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size per team including the captain",    suffix:" players",min:3,     max:30, step:1},
+                                {key:"playersPerGroup", label:"Players per Group", desc:"How many players are divided into each auction group", suffix:" players", min:1, max:50, step:1},
                                 {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"₹",      min:5000,  step:5000},
-                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size including the captain",    suffix:" players",min:3,     max:30, step:1},
                                 {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
                             ].map(({key,label,desc,suffix,min,max,step,scale})=>(
                                 <div key={key} className="setting-row">
                                     <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
                                     <div className="setting-control">
                                         <input type="number" min={min} max={max} step={step}
-                                            value={scale?Math.round(settings[key]/scale):settings[key]}
+                                            value={scale?Math.round(settings[key]/scale):(settings[key]??min)}
                                             onChange={e=>{const v=parseInt(e.target.value)||min;setSettings(s=>({...s,[key]:scale?v*scale:v}));}} />
                                         <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>{suffix}</div>
                                     </div>
@@ -1103,7 +1128,9 @@ function AdminConfig() {
                         </div>
                         <div style={{marginTop:12,padding:"10px 14px",background:"var(--surface3)",borderRadius:10,fontSize:12,color:"var(--text3)"}}>
                             <strong style={{color:"var(--text)"}}>Summary: </strong>
-                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots · ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
+                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots
+                            {settings.playersPerGroup ? ` · ${settings.playersPerGroup} players/group` : ""}
+                            {" "}· ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
                         </div>
                     </div>
                 )}
