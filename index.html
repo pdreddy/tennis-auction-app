@@ -767,7 +767,8 @@ const ACCOUNTS = [
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = n => (n||0).toLocaleString();
+const fmt = n => (n||0).toLocaleString("en-IN");
+const fmtR = n => "₹"+(n||0).toLocaleString("en-IN");
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
@@ -1016,7 +1017,7 @@ function AdminConfig() {
         const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
         try {
             await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
-            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ₹${settings.budget.toLocaleString()} budget`});
+            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget`});
         } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
         setSaving(false);
     };
@@ -1132,7 +1133,7 @@ function AdminConfig() {
                             <strong style={{color:"var(--text)"}}>Summary: </strong>
                             {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots
                             {settings.playersPerGroup ? ` · ${settings.playersPerGroup} players/group` : ""}
-                            {" "}· ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
+                            {" "}· {fmtR(settings.budget)} budget · {Math.round(settings.timerMs/1000)}s timer
                         </div>
                     </div>
                 )}
@@ -1241,8 +1242,6 @@ const POOL_LABELS = {
     4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
     3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
 };
-function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
-
 function PoolViewer() {
     const [open, setOpen] = useState({});
     const [pools, setPools] = useState(PLAYER_POOLS);
@@ -1545,14 +1544,14 @@ function Auction({ sid, user, onBack }) {
         const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
         if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
-        if (amount < eff.player.price) return `Min $${fmt(eff.player.price)}`;
-        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
+        if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
+        if ((amount - eff.player.price)%1000!==0) return "Base + ₹1k increments";
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
-        if (dup) return `$${fmt(amount)} taken by ${dup.name}`;
+        if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
         const rem = TEAM_SIZE_EFF - team.players.length;
         const minNeeded = rem>1?(rem-1)*5000:0;
-        if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
+        if (amount > team.budget-minNeeded) return `Need ${fmtR(minNeeded)} for ${rem-1} more`;
         return null;
     };
 
@@ -1698,8 +1697,8 @@ function Auction({ sid, user, onBack }) {
             <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div className="sb-left">
                     <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
-                    <div className="sb-meta">UTR {eff.player.utr} · base ${fmt(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
-                    {highest>0 && <div className="sb-high">High ${fmt(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
+                    <div className="sb-meta">UTR {eff.player.utr} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
+                    {highest>0 && <div className="sb-high">High {fmtR(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
                 </div>
                 <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
             </div>
@@ -1739,7 +1738,7 @@ function Auction({ sid, user, onBack }) {
                                     {p.isRetry && <span style={{marginLeft:4,fontSize:10,color:"var(--muted)"}}>retry</span>}
                                 </span>
                                 <span style={{fontSize:11,color:"var(--text3)"}}>UTR {p.utr}</span>
-                                <span style={{fontSize:11,color:"var(--text4)"}}>₹{fmt(p.price)}</span>
+                                <span style={{fontSize:11,color:"var(--text4)"}}>{fmtR(p.price)}</span>
                             </div>
                         ))}
                     </div>
@@ -1774,7 +1773,7 @@ function Auction({ sid, user, onBack }) {
                                     </div>
                                     <div className="team-captain">⭐ {team.captain}</div>
                                     <div className="team-budget-row">
-                                        <span className="team-budget-pill team-budget-left">${fmt(team.budget)}</span>
+                                        <span className="team-budget-pill team-budget-left">{fmtR(team.budget)}</span>
                                         <span className="team-slots">{team.players.length}/{TEAM_SIZE_EFF} players</span>
                                     </div>
                                 </div>
@@ -1785,7 +1784,7 @@ function Auction({ sid, user, onBack }) {
                                 <div className="bid-divider"/>
                                 <div className="bid-input-wrap">
                                     <input type="number" inputMode="numeric" className="bid-input"
-                                        placeholder={`Min $${fmt(eff.player.price)}`}
+                                        placeholder={`Min ${fmtR(eff.player.price)}`}
                                         value={bidInputs[team.id]||""}
                                         disabled={timeLeft===0}
                                         onChange={e=>{setBidInputs(p=>({...p,[team.id]:e.target.value}));setBidErrors(p=>({...p,[team.id]:null}));}}
@@ -1793,7 +1792,7 @@ function Auction({ sid, user, onBack }) {
                                     />
                                     <div className="quick-chips">
                                         {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            ${v/1000}k
+                                            ₹{v>=100000?`${(v/100000).toFixed(v%100000===0?0:1)}L`:`${v/1000}k`}
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
@@ -1806,25 +1805,13 @@ function Auction({ sid, user, onBack }) {
                             </>)}
 
                             <div className="bid-footer">
-                                <div className="bid-status">{teamBid>0?`Current bid: $${fmt(teamBid)}`:""}</div>
+                                <div className="bid-status">{teamBid>0?`Current bid: ${fmtR(teamBid)}`:""}</div>
                                 {isWin && <span className="bid-win-badge">WINNING</span>}
                                 {isTie && <span className="bid-tie-badge">TIED</span>}
                             </div>
                         </div>
                     );
                 })}
-            </div>
-
-            <div className="pool-viewer">
-                <div className="pool-viewer-title">Current pool · UTR {getUTR(eff.poolKey)}</div>
-                <div className="pool-grid">
-                    {eff.pool.map((p,i)=>(
-                        <div key={p.id||i} className={`pool-chip ${i===eff.effPlayer?"active":""} ${p.isRetry?"retry":""}`} title={p.Name}>
-                            {i===eff.effPlayer?"▶ ":""}{p.Name.length>18?p.Name.slice(0,16)+"…":p.Name}
-                            {p.isRetry&&` (R${p.retryCount})`}
-                        </div>
-                    ))}
-                </div>
             </div>
 
             <button className="section-toggle" onClick={toggleRosters}>
@@ -1866,8 +1853,8 @@ function RosterCard({team, teamSize}) {
                 </span>
             </div>
             <div className="roster-budget">
-                <span className="roster-spent">-${fmt(team.totalSpent)}</span>
-                <span className="roster-left">${fmt(team.budget)} left</span>
+                <span className="roster-spent">-{fmtR(team.totalSpent)}</span>
+                <span className="roster-left">{fmtR(team.budget)} left</span>
             </div>
             <div style={{height:3,background:"var(--border)",borderRadius:99,marginBottom:8,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${fillPct}%`,borderRadius:99,
@@ -1885,7 +1872,7 @@ function RosterCard({team, teamSize}) {
                     <span className="roster-player-num">{i+2}</span>
                     <span className="roster-player-name">{p.Name}</span>
                     <span className={`roster-player-utr ${utrClass(p.utr)}`}>{p.utr}</span>
-                    <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
+                    <span className="roster-player-price">{fmtR(p.acquiredPrice)}</span>
                 </div>
             ))}
             {Array.from({length: teamSize - filled}).map((_,i)=>(
