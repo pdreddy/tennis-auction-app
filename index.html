@@ -1321,7 +1321,17 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const sessionHistory = pref("ta_sessions", []);
+    const [sessionHistory, setSessionHistory] = useState(() => pref("ta_sessions", []));
+
+    const removeSession = id => {
+        const updated = sessionHistory.filter(s => s.id !== id);
+        savePref("ta_sessions", updated);
+        setSessionHistory(updated);
+    };
+    const clearAllSessions = () => {
+        savePref("ta_sessions", []);
+        setSessionHistory([]);
+    };
 
     const saveSession = (sid) => {
         const existing = pref("ta_sessions", []);
@@ -1421,16 +1431,28 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
 
                 {sessionHistory.length > 0 && (
                     <div className="card">
-                        <div className="session-hist-title">🕐 Recent Sessions</div>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <div className="session-hist-title" style={{marginBottom:0}}>🕐 Recent Sessions</div>
+                            <button onClick={clearAllSessions}
+                                style={{background:"none",border:"none",color:"var(--text4)",fontSize:11,cursor:"pointer",padding:"2px 6px"}}>
+                                Clear all
+                            </button>
+                        </div>
                         {sessionHistory.map(s => (
                             <div key={s.id} className="session-hist-card">
                                 <div>
                                     <div className="session-hist-id">{s.id}</div>
                                     <div className="session-hist-meta">Season {s.year||THIS_YEAR} · {formatAge(s.ts)}</div>
                                 </div>
-                                <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
-                                    Rejoin
-                                </button>
+                                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                                    <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
+                                        Rejoin
+                                    </button>
+                                    <button onClick={()=>removeSession(s.id)}
+                                        style={{background:"none",border:"1px solid var(--border2)",borderRadius:6,color:"var(--text4)",fontSize:13,cursor:"pointer",padding:"5px 8px",lineHeight:1}}>
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -1475,6 +1497,7 @@ function Auction({ sid, user, onBack }) {
     const [actionError, setActionError] = useState(null);
     const [resetOpen, setResetOpen] = useState(false);
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
+    const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
     const auctionRef = useRef(db.ref(`auctions/${sid}`));
 
@@ -1692,6 +1715,36 @@ function Auction({ sid, user, onBack }) {
                     </button>
                 </div>
             )}
+
+            <div style={{margin:"0 12px 10px",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
+                <div onClick={()=>setShowUpcoming(v=>!v)}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                        padding:"9px 14px",cursor:"pointer",background:"var(--surface2)",userSelect:"none"}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"var(--text2)"}}>
+                        📋 Pool Queue · UTR {eff.player.utr} · {eff.pool.length} remaining
+                    </div>
+                    <span style={{fontSize:10,color:"var(--text4)"}}>{showUpcoming?"▲":"▼"}</span>
+                </div>
+                {showUpcoming && (
+                    <div style={{maxHeight:180,overflowY:"auto"}}>
+                        {eff.pool.map((p,i) => (
+                            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 14px",
+                                borderTop:"1px solid var(--border)",
+                                background:i===eff.effPlayer?"var(--surface3)":"transparent"}}>
+                                <span style={{fontSize:11,color:"var(--text4)",minWidth:18}}>{i+1}</span>
+                                <span style={{flex:1,fontSize:13,fontWeight:i===eff.effPlayer?700:400,
+                                    color:i===eff.effPlayer?"var(--text)":"var(--text2)"}}>
+                                    {p.Name}
+                                    {i===eff.effPlayer && <span style={{marginLeft:6,fontSize:10,color:"var(--gold)",fontWeight:600}}>← NOW</span>}
+                                    {p.isRetry && <span style={{marginLeft:4,fontSize:10,color:"var(--muted)"}}>retry</span>}
+                                </span>
+                                <span style={{fontSize:11,color:"var(--text3)"}}>UTR {p.utr}</span>
+                                <span style={{fontSize:11,color:"var(--text4)"}}>₹{fmt(p.price)}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="bidding-grid">
                 {sortedTeams.map(team => {
