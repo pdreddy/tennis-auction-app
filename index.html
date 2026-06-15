@@ -16,6 +16,22 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script>
+        // Initialise Firebase synchronously before Babel processes the JSX bundle
+        (function() {
+            var cfg = {
+                apiKey:            "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
+                authDomain:        "koc2-20fb8.firebaseapp.com",
+                databaseURL:       "https://koc2-20fb8-default-rtdb.firebaseio.com",
+                projectId:         "koc2-20fb8",
+                storageBucket:     "koc2-20fb8.firebasestorage.app",
+                messagingSenderId: "317734341461",
+                appId:             "1:317734341461:web:1bcad5a1792fac0e46bddc"
+            };
+            if (!firebase.apps.length) firebase.initializeApp(cfg);
+            window.__db = firebase.database();
+        })();
+    </script>
 
     <style>
         /* ── Design tokens — Premium Dark ── */
@@ -580,18 +596,8 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
-// ─── Firebase ────────────────────────────────────────────────────────────────
-const firebaseConfig = {
-    apiKey: "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
-    authDomain: "koc2-20fb8.firebaseapp.com",
-    databaseURL: "https://koc2-20fb8-default-rtdb.firebaseio.com",
-    projectId: "koc2-20fb8",
-    storageBucket: "koc2-20fb8.firebasestorage.app",
-    messagingSenderId: "317734341461",
-    appId: "1:317734341461:web:1bcad5a1792fac0e46bddc"
-};
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// ─── Firebase (initialised in plain <script> above; db exposed as window.__db) ──
+const db = window.__db;
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 const TEAM_BUDGET = 100000;
