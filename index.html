@@ -290,20 +290,64 @@
             transition: all .2s; letter-spacing: .2px;
         }
         .section-toggle:hover { background: var(--border); border-color: #3a5580; }
-        .rosters-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 80px; }
+        .rosters-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 80px; }
         @media (min-width: 640px) { .rosters-grid { grid-template-columns: repeat(3,1fr); } }
         @media (min-width: 900px) { .rosters-grid { grid-template-columns: repeat(4,1fr); } }
         .roster-card {
-            background: linear-gradient(160deg, var(--card-hi), var(--card));
-            border: 1px solid var(--border); border-radius: 11px;
-            padding: 10px; font-size: 11px;
+            background: linear-gradient(160deg, #141e33, #0f1828);
+            border: 1px solid var(--border-hi); border-radius: 14px;
+            padding: 12px; font-size: 11px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.45);
         }
-        .roster-name { font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 3px; }
-        .roster-budget { display: flex; gap: 8px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
-        .roster-spent { color: #ff7088; font-weight: 700; }
-        .roster-left  { color: var(--win); font-weight: 700; }
-        .roster-player  { color: #8a9dc0; margin-top: 2px; }
-        .roster-captain { color: var(--gold); font-weight: 800; }
+        .roster-name {
+            font-size: 13px; font-weight: 900; color: #fff; margin-bottom: 4px; letter-spacing: .3px;
+        }
+        .roster-budget {
+            display: flex; gap: 6px; margin-bottom: 8px; font-weight: 700; font-size: 11px;
+        }
+        .roster-spent {
+            background: rgba(255,112,136,.12); color: #ff7088;
+            border: 1px solid rgba(255,112,136,.25); border-radius: 6px;
+            padding: 2px 7px;
+        }
+        .roster-left {
+            background: rgba(0,232,122,.12); color: var(--win);
+            border: 1px solid rgba(0,232,122,.25); border-radius: 6px;
+            padding: 2px 7px;
+        }
+        .roster-divider { height: 1px; background: var(--border); margin: 6px 0; }
+        .roster-player {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+            font-size: 11px; color: #a0b4d0; font-weight: 600;
+        }
+        .roster-player:last-child { border-bottom: none; }
+        .roster-player-num {
+            min-width: 16px; font-size: 9px; font-weight: 800; color: var(--muted2);
+            text-align: right;
+        }
+        .roster-player-name { flex: 1; color: #c8daee; font-weight: 600; }
+        .roster-player-utr {
+            font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px;
+            letter-spacing: .3px;
+        }
+        .utr-55 { background: rgba(255,77,106,.2);  color: #ff7088; border: 1px solid rgba(255,77,106,.3); }
+        .utr-52 { background: rgba(255,160,64,.2);  color: #ffb060; border: 1px solid rgba(255,160,64,.3); }
+        .utr-50 { background: rgba(255,216,77,.2);  color: var(--gold); border: 1px solid rgba(255,216,77,.3); }
+        .utr-45 { background: rgba(91,159,255,.2);  color: #89bfff; border: 1px solid rgba(91,159,255,.3); }
+        .utr-40 { background: rgba(167,139,250,.2); color: #c4b0ff; border: 1px solid rgba(167,139,250,.3); }
+        .utr-35 { background: rgba(0,232,122,.15);  color: #40e898; border: 1px solid rgba(0,232,122,.25); }
+        .utr-30 { background: rgba(100,120,160,.15);color: #8a9dc0; border: 1px solid rgba(100,120,160,.25); }
+        .roster-player-price { font-size: 10px; color: #5b9fff; font-weight: 800; white-space: nowrap; }
+        .roster-captain-row {
+            display: flex; align-items: center; gap: 6px;
+            padding: 5px 7px; border-radius: 8px; margin-bottom: 4px;
+            background: linear-gradient(135deg, rgba(255,216,77,.12), rgba(255,216,77,.04));
+            border: 1px solid rgba(255,216,77,.2);
+        }
+        .roster-captain-star { font-size: 11px; }
+        .roster-captain-name { flex: 1; color: var(--gold); font-weight: 800; font-size: 11px; }
+        .roster-captain-utr  { font-size: 9px; font-weight: 800; color: rgba(255,216,77,.7); }
 
         /* ── Complete screen ── */
         .complete-banner {
@@ -1075,18 +1119,58 @@ function Auction({ sid, user, onBack }) {
     );
 }
 
+function utrClass(utr) {
+    if (utr>=5.5) return "utr-55";
+    if (utr>=5.25) return "utr-52";
+    if (utr>=5.0) return "utr-50";
+    if (utr>=4.5) return "utr-45";
+    if (utr>=4.0) return "utr-40";
+    if (utr>=3.5) return "utr-35";
+    return "utr-30";
+}
+
 function RosterCard({team}) {
     const cap = team.players[0];
     const rest = team.players.slice(1);
+    const filled = team.players.length;
+    const fillPct = Math.round((filled / TEAM_SIZE) * 100);
     return (
         <div className="roster-card">
-            <div className="roster-name">{team.name} ({team.players.length}/{TEAM_SIZE})</div>
+            <div className="roster-name">
+                {team.name}
+                <span style={{fontSize:10,fontWeight:600,color:"var(--muted)",marginLeft:6}}>
+                    {filled}/{TEAM_SIZE}
+                </span>
+            </div>
             <div className="roster-budget">
                 <span className="roster-spent">-${fmt(team.totalSpent)}</span>
                 <span className="roster-left">${fmt(team.budget)} left</span>
             </div>
-            {cap && <div className="roster-player roster-captain">⭐ {cap.Name} ({cap.utr})</div>}
-            {rest.map(p=><div key={p.id} className="roster-player">{p.Name} · ${fmt(p.acquiredPrice)}</div>)}
+            <div style={{height:3,background:"var(--border)",borderRadius:99,marginBottom:8,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${fillPct}%`,borderRadius:99,
+                    background:`linear-gradient(90deg,var(--blue),var(--purple))`,transition:"width .4s"}}/>
+            </div>
+            {cap && (
+                <div className="roster-captain-row">
+                    <span className="roster-captain-star">⭐</span>
+                    <span className="roster-captain-name">{cap.Name}</span>
+                    <span className={`roster-player-utr ${utrClass(cap.utr)}`}>{cap.utr}</span>
+                </div>
+            )}
+            {rest.map((p,i)=>(
+                <div key={p.id} className="roster-player">
+                    <span className="roster-player-num">{i+2}</span>
+                    <span className="roster-player-name">{p.Name}</span>
+                    <span className={`roster-player-utr ${utrClass(p.utr)}`}>{p.utr}</span>
+                    <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
+                </div>
+            ))}
+            {Array.from({length: TEAM_SIZE - filled}).map((_,i)=>(
+                <div key={`empty-${i}`} className="roster-player" style={{opacity:.25}}>
+                    <span className="roster-player-num">{filled+i+1}</span>
+                    <span className="roster-player-name" style={{fontStyle:"italic",color:"var(--muted2)"}}>— open slot —</span>
+                </div>
+            ))}
         </div>
     );
 }
