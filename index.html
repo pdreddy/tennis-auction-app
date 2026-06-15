@@ -782,7 +782,9 @@ function normalize(data) {
     if (Array.isArray(cb)) cb = Object.fromEntries(cb.map((v,i)=>[String(i),v]).filter(([,v])=>v));
     const currentBids = {};
     Object.entries(cb).forEach(([k,v]) => { currentBids[String(k)] = v; });
-    return { ...data, teams, playerPools, currentBids,
+    const cfgPlayers = Array.isArray(data.cfgPlayers) ? data.cfgPlayers : null;
+    const cfgTeams   = Array.isArray(data.cfgTeams)   ? data.cfgTeams   : null;
+    return { ...data, teams, playerPools, currentBids, cfgPlayers, cfgTeams,
         currentPoolIndex: data.currentPoolIndex||0,
         currentPlayerIndex: data.currentPlayerIndex||0,
         timerEnd: data.timerEnd || Date.now() };
@@ -1243,20 +1245,34 @@ function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
 
 function PoolViewer() {
     const [open, setOpen] = useState({});
+    const [pools, setPools] = useState(PLAYER_POOLS);
+    const [captainNames, setCaptainNames] = useState(CAPTAIN_NAMES);
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
-    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+    useEffect(() => {
+        db.ref(CFG_PATH).once("value").then(snap => {
+            const d = snap.val();
+            if (!d) return;
+            const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players : PLAYERS;
+            const cfgTeams   = Array.isArray(d.teams)   && d.teams.length   ? d.teams   : TEAMS;
+            const capNames   = new Set(cfgTeams.map(t=>t.captain));
+            setCaptainNames(capNames);
+            setPools(buildPools(cfgPlayers, POOL_ORDER, capNames));
+        });
+    }, []);
+
+    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+(pools[k]||[]).length, 0);
 
     return (
         <div className="card" style={{padding:"18px"}}>
             <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
             <div className="card-sub" style={{marginBottom:14}}>
-                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+                {totalPlayers} players across {POOL_ORDER.filter(k=>(pools[k]||[]).length>0).length} pools · auction runs highest UTR first
             </div>
             {POOL_ORDER.map(key => {
                 const utr = getUTR(key);
-                const players = PLAYER_POOLS[key];
-                if (!players || players.length === 0) return null;
+                const players = pools[key] || [];
+                if (!players.length) return null;
                 const col = UTR_COLORS[utr] || UTR_COLORS[3.0];
                 const isOpen = !!open[key];
                 return (
@@ -1279,7 +1295,7 @@ function PoolViewer() {
                         {isOpen && (
                             <div className="pool-body">
                                 {players.map((p,i) => {
-                                    const isCap = CAPTAIN_NAMES.has(p.Name);
+                                    const isCap = captainNames.has(p.Name);
                                     return (
                                         <div key={p.id} className="pool-player-row">
                                             <span className="pool-player-num">{i+1}</span>
@@ -1324,9 +1340,10 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
             const cfg = cfgSnap.val();
             const cfgPlayers = (cfg?.players?.length ? cfg.players : PLAYERS);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
-            const budget     = cfg?.settings?.budget  || TEAM_BUDGET;
-            const teamSize   = cfg?.settings?.teamSize || TEAM_SIZE;
-            const timerMs    = cfg?.settings?.timerMs  || TIMER_MS;
+            const budget          = cfg?.settings?.budget          || TEAM_BUDGET;
+            const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
+            const timerMs         = cfg?.settings?.timerMs         || TIMER_MS;
+            const playersPerGroup = cfg?.settings?.playersPerGroup || 5;
             const capNames   = new Set(cfgTeams.map(t=>t.captain));
             const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
             const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
@@ -1336,7 +1353,8 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
                 sessionId:sid, teams:initTeams, playerPools:pools,
                 currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
                 timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
-                config:{budget,teamSize,timerMs}
+                config:{budget,teamSize,timerMs,playersPerGroup},
+                cfgPlayers, cfgTeams
             });
             saveSession(sid);
             onJoin(sid);
@@ -1487,6 +1505,11 @@ function Auction({ sid, user, onBack }) {
     const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
     const TIMER_EFF = state.config?.timerMs || TIMER_MS;
     const eff = getEffective(state);
+    const POOL_CAPS_EFF = {};
+    POOL_ORDER.forEach(key => {
+        const size = (state.playerPools[key] || []).length;
+        POOL_CAPS_EFF[key] = size === 0 ? 0 : size <= state.teams.length ? 1 : TEAM_SIZE_EFF - 1;
+    });
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
 
@@ -1497,7 +1520,7 @@ function Auction({ sid, user, onBack }) {
         if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
         const utr = getUTR(eff.poolKey);
         const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
-        if (fromPool >= (POOL_CAPS[eff.poolKey]||0)) return `Max ${POOL_CAPS[eff.poolKey]} at UTR ${utr}`;
+        if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min $${fmt(eff.player.price)}`;
         if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
@@ -1564,7 +1587,20 @@ function Auction({ sid, user, onBack }) {
     };
 
     const reset = () => {
-        const doc = {...initialDoc(sid), timerEnd: Date.now()+TIMER_EFF, config: state.config};
+        const cfgPlayers = state.cfgPlayers || PLAYERS;
+        const cfgTeams   = state.cfgTeams   || TEAMS;
+        const budget     = state.config?.budget  || TEAM_BUDGET;
+        const capNames   = new Set(cfgTeams.map(t=>t.captain));
+        const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
+        const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
+        const doc = {
+            sessionId: sid,
+            teams: initTeams, playerPools: pools,
+            currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
+            timerEnd: Date.now()+TIMER_EFF, lastUpdate: Date.now(),
+            config: state.config || {budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS},
+            cfgPlayers, cfgTeams
+        };
         auctionRef.current.set(doc);
         setBidInputs({}); setBidErrors({}); setActionError(null); setResetOpen(false);
     };
@@ -1605,7 +1641,7 @@ function Auction({ sid, user, onBack }) {
 
     const sortedTeams = [...state.teams].map(t => {
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price ||
-            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS[eff.poolKey]||0));
+            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id};
     }).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
