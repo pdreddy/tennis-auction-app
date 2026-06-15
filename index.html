@@ -1580,7 +1580,7 @@ function Auction({ sid, user, onBack }) {
                     <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>
                 </div>}
                 <div className="rosters-grid">
-                    {state.teams.map(t => <RosterCard key={t.id} team={t}/>)}
+                    {state.teams.map(t => <RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
                 {resetOpen && <ResetModal onCancel={()=>setResetOpen(false)} onConfirm={reset}/>}
             </div>
@@ -1742,7 +1742,7 @@ function Auction({ sid, user, onBack }) {
             </button>
             {showRosters && (
                 <div className="rosters-grid">
-                    {state.teams.map(t=><RosterCard key={t.id} team={t}/>)}
+                    {state.teams.map(t=><RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
             )}
 
@@ -1761,17 +1761,17 @@ function utrClass(utr) {
     return "utr-30";
 }
 
-function RosterCard({team}) {
+function RosterCard({team, teamSize}) {
     const cap = team.players[0];
     const rest = team.players.slice(1);
     const filled = team.players.length;
-    const fillPct = Math.round((filled / TEAM_SIZE_EFF) * 100);
+    const fillPct = Math.round((filled / teamSize) * 100);
     return (
         <div className="roster-card">
             <div className="roster-name">
                 {team.name}
                 <span style={{fontSize:10,fontWeight:600,color:"var(--muted)",marginLeft:6}}>
-                    {filled}/{TEAM_SIZE_EFF}
+                    {filled}/{teamSize}
                 </span>
             </div>
             <div className="roster-budget">
@@ -1797,7 +1797,7 @@ function RosterCard({team}) {
                     <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
                 </div>
             ))}
-            {Array.from({length: TEAM_SIZE_EFF - filled}).map((_,i)=>(
+            {Array.from({length: teamSize - filled}).map((_,i)=>(
                 <div key={`empty-${i}`} className="roster-player" style={{opacity:.25}}>
                     <span className="roster-player-num">{filled+i+1}</span>
                     <span className="roster-player-name" style={{fontStyle:"italic",color:"var(--muted2)"}}>— open slot —</span>
