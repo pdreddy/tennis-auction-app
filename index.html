@@ -495,6 +495,41 @@
         .modal-btns  { display: flex; gap: 10px; }
         .modal-btns .btn { flex: 1; padding: 14px; }
 
+        /* ── Admin Config ── */
+        .cfg-tabs{display:flex;gap:2px;background:var(--surface3);border-radius:12px;padding:4px;margin-bottom:16px;}
+        .cfg-tab{flex:1;padding:9px 4px;font-size:12px;font-weight:700;text-align:center;border-radius:9px;cursor:pointer;color:var(--text3);border:none;background:none;transition:all .2s;letter-spacing:.3px;}
+        .cfg-tab.active{background:var(--surface);color:var(--blue-lt);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+        .cfg-tab-panel{animation:cfgFade .15s ease;}
+        @keyframes cfgFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        .ptable{width:100%;border-collapse:collapse;font-size:12px;}
+        .ptable th{padding:7px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+        .ptable td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+        .ptable tr:last-child td{border-bottom:none;}
+        .ptable input,.ptable select{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 7px;font-size:12px;width:100%;outline:none;}
+        .ptable input:focus,.ptable select:focus{border-color:var(--blue);}
+        .ptable-wrap{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;}
+        .import-zone{border:2px dashed var(--border2);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;}
+        .import-zone:hover,.import-zone.drag{border-color:var(--blue);background:rgba(74,144,217,.06);}
+        .import-zone-icon{font-size:26px;margin-bottom:6px;}
+        .import-zone-text{font-size:13px;color:var(--text2);font-weight:600;}
+        .import-zone-sub{font-size:11px;color:var(--text4);margin-top:4px;}
+        .team-cfg-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);}
+        .team-cfg-row:last-child{border-bottom:none;}
+        .team-cfg-num{width:22px;height:22px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);font-size:10px;font-weight:700;color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+        .team-cfg-inputs{flex:1;display:flex;gap:6px;}
+        .team-cfg-inputs input,.team-cfg-inputs select{flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 10px;font-size:12px;outline:none;}
+        .team-cfg-inputs input:focus,.team-cfg-inputs select:focus{border-color:var(--blue);}
+        .team-cfg-del{color:var(--danger);background:rgba(224,92,110,.1);border:1px solid rgba(224,92,110,.3);border-radius:7px;padding:5px 9px;font-size:13px;cursor:pointer;}
+        .setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);}
+        .setting-row:last-child{border-bottom:none;}
+        .setting-label{font-size:13px;font-weight:600;color:var(--text);}
+        .setting-desc{font-size:11px;color:var(--text3);margin-top:2px;}
+        .setting-control input,.setting-control select{background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 10px;font-size:13px;font-weight:700;text-align:center;width:90px;outline:none;}
+        .setting-control input:focus{border-color:var(--blue);}
+        .cfg-status{font-size:12px;padding:10px 14px;border-radius:9px;margin-top:10px;}
+        .cfg-status.ok{background:rgba(30,201,122,.1);color:var(--win);border:1px solid rgba(30,201,122,.2);}
+        .cfg-status.err{background:rgba(224,92,110,.1);color:var(--danger);border:1px solid rgba(224,92,110,.2);}
+
         /* ── Season Bar ── */
         .season-bar { display:flex; gap:6px; justify-content:center; padding:10px 16px 0; flex-wrap:wrap; }
         .season-pill {
@@ -562,6 +597,9 @@ const db = firebase.database();
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
+const CFG_PATH    = "config";
+const UTR_TIERS   = [6.0,5.5,5.0,4.5,4.0,3.5,3.0];
+const UTR_PRICES  = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 
 const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
 const getUTR = k => parseFloat(k.replace("utr_","").replace("_","."));
@@ -787,6 +825,39 @@ function initialDoc(sid) {
 const THIS_YEAR = new Date().getFullYear();
 const SEASONS = Array.from({length:5}, (_,i) => THIS_YEAR + i);
 
+function parseCSV(text) {
+    const rows = text.trim().split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+    if (!rows.length) return [];
+    const hdr = rows[0].map(h=>h.toLowerCase());
+    const ni = hdr.findIndex(h=>h.includes('name')||h.includes('player'));
+    const ui = hdr.findIndex(h=>h.includes('utr')||h.includes('rating'));
+    const pi = hdr.findIndex(h=>h.includes('price')||h.includes('cost'));
+    if (ni<0) return [];
+    return rows.slice(1).map((r,i)=>{
+        const utr = ui>=0 ? parseFloat(r[ui])||3.0 : 3.0;
+        return { id:Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 };
+    }).filter(p=>p.Name);
+}
+
+function buildPools(players, poolOrder, captainNames) {
+    const pools = {};
+    poolOrder.forEach(key => {
+        const utr = getUTR(key);
+        pools[key] = players.filter(p=>p.utr===utr && !captainNames.has(p.Name)).map(x=>({...x}));
+    });
+    return pools;
+}
+
+function buildInitialTeams(cfgTeams, cfgPlayers, budget) {
+    const byName = Object.fromEntries(cfgPlayers.map(p=>[p.Name,p]));
+    return cfgTeams.map(team => {
+        const cap = byName[team.captain];
+        const price = cap?.price||0;
+        return { ...team, budget:budget-price, totalSpent:price,
+            players: cap?[{id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}]:[] };
+    });
+}
+
 function SeasonBar({ selectedYear, onSelect }) {
     return (
         <div className="season-bar">
@@ -872,6 +943,174 @@ function Login({ onLogin }) {
 
                 <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
                     {busy ? "Signing in…" : "Sign In"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Admin Config (Players · Teams · Settings) ───────────────────────────────
+function AdminConfig() {
+    const [tab, setTab]         = useState("players");
+    const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
+    const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
+    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS});
+    const [saving, setSaving]   = useState(false);
+    const [status, setStatus]   = useState(null);
+    const [drag, setDrag]       = useState(false);
+    const fileRef = useRef(null);
+
+    useEffect(() => {
+        db.ref(CFG_PATH).once("value").then(snap => {
+            const d = snap.val();
+            if (!d) return;
+            if (Array.isArray(d.players) && d.players.length) setPlayers(d.players);
+            if (Array.isArray(d.teams)   && d.teams.length)   setTeams(d.teams);
+            if (d.settings) setSettings(s=>({...s,...d.settings}));
+        });
+    }, []);
+
+    const handleFile = file => {
+        if (!file || !file.name.match(/\.(csv|txt)$/i)) { setStatus({ok:false,text:"Please upload a .csv file"}); return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+            const parsed = parseCSV(e.target.result);
+            if (!parsed.length) { setStatus({ok:false,text:"No players found — check CSV has a Name column"}); return; }
+            setPlayers(parsed);
+            setStatus({ok:true,text:`Imported ${parsed.length} players`});
+        };
+        reader.readAsText(file);
+    };
+
+    const addPlayer = () => setPlayers(ps=>[...ps,{id:Date.now(),Name:"",utr:3.0,price:5000}]);
+    const updPlayer = (id,f,v) => setPlayers(ps=>ps.map(p=>p.id===id?{...p,[f]:v}:p));
+    const delPlayer = id => setPlayers(ps=>ps.filter(p=>p.id!==id));
+
+    const addTeam = () => { const nid=Math.max(0,...teams.map(t=>t.id))+1; setTeams(ts=>[...ts,{id:nid,name:`Team ${nid}`,captain:""}]); };
+    const updTeam = (id,f,v) => setTeams(ts=>ts.map(t=>t.id===id?{...t,[f]:v}:t));
+    const delTeam = id => setTeams(ts=>ts.filter(t=>t.id!==id));
+
+    const saveAll = async () => {
+        setSaving(true); setStatus(null);
+        const vp = players.filter(p=>p.Name.trim());
+        const vt = teams.filter(t=>t.name.trim());
+        if (!vp.length) { setStatus({ok:false,text:"Add at least one player"}); setSaving(false); return; }
+        if (!vt.length) { setStatus({ok:false,text:"Add at least one team"}); setSaving(false); return; }
+        const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
+        try {
+            await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
+            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ₹${settings.budget.toLocaleString()} budget`});
+        } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
+        setSaving(false);
+    };
+
+    const playerNames = players.map(p=>p.Name).filter(Boolean);
+
+    return (
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+            <div style={{padding:"18px 18px 0"}}>
+                <div className="card-title" style={{marginBottom:12}}>⚙️ Auction Configuration</div>
+                <div className="cfg-tabs">
+                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
+                        <button key={k} className={`cfg-tab${tab===k?" active":""}`} onClick={()=>setTab(k)}>{l}</button>
+                    ))}
+                </div>
+            </div>
+            <div style={{padding:"0 18px 18px"}}>
+
+                {tab==="players" && (
+                    <div className="cfg-tab-panel">
+                        <div className={`import-zone${drag?" drag":""}`}
+                            onDragOver={e=>{e.preventDefault();setDrag(true)}}
+                            onDragLeave={()=>setDrag(false)}
+                            onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0])}}
+                            onClick={()=>fileRef.current?.click()}>
+                            <div className="import-zone-icon">📄</div>
+                            <div className="import-zone-text">Drop CSV or click to import players</div>
+                            <div className="import-zone-sub">Columns: Name, UTR, Price (Price auto-fills from UTR if omitted)</div>
+                        </div>
+                        <input ref={fileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])} />
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                            <span style={{fontSize:12,color:"var(--text3)"}}>{players.filter(p=>p.Name).length} players</span>
+                            <button className="btn btn-secondary" style={{width:"auto",padding:"5px 12px",fontSize:11}} onClick={addPlayer}>+ Add Player</button>
+                        </div>
+                        <div className="ptable-wrap">
+                            <table className="ptable">
+                                <thead><tr><th>#</th><th>Name</th><th>UTR</th><th>Price</th><th></th></tr></thead>
+                                <tbody>
+                                    {players.map((p,i)=>(
+                                        <tr key={p.id}>
+                                            <td style={{color:"var(--text4)",width:24,fontSize:10}}>{i+1}</td>
+                                            <td><input value={p.Name} onChange={e=>updPlayer(p.id,"Name",e.target.value)} placeholder="Player name" /></td>
+                                            <td style={{width:72}}>
+                                                <select value={p.utr} onChange={e=>{const u=parseFloat(e.target.value);updPlayer(p.id,"utr",u);updPlayer(p.id,"price",UTR_PRICES[u]||5000);}}>
+                                                    {UTR_TIERS.map(u=><option key={u} value={u}>{u.toFixed(1)}</option>)}
+                                                </select>
+                                            </td>
+                                            <td style={{width:80}}><input type="number" step={500} value={p.price} onChange={e=>updPlayer(p.id,"price",parseInt(e.target.value)||0)} /></td>
+                                            <td style={{width:28}}><button className="team-cfg-del" onClick={()=>delPlayer(p.id)}>✕</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {tab==="teams" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <span style={{fontSize:12,color:"var(--text3)"}}>{teams.length} teams · {teams.length*settings.teamSize} total slots</span>
+                            <button className="btn btn-secondary" style={{width:"auto",padding:"5px 12px",fontSize:11}} onClick={addTeam}>+ Add Team</button>
+                        </div>
+                        <div style={{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",maxHeight:360,overflowY:"auto"}}>
+                            {teams.map((t,i)=>(
+                                <div key={t.id} className="team-cfg-row">
+                                    <div className="team-cfg-num">{i+1}</div>
+                                    <div className="team-cfg-inputs">
+                                        <input value={t.name} onChange={e=>updTeam(t.id,"name",e.target.value)} placeholder="Team name" />
+                                        <select value={t.captain} onChange={e=>updTeam(t.id,"captain",e.target.value)}
+                                            style={{flex:1,background:"var(--surface3)",border:"1px solid var(--border2)",borderRadius:8,color:t.captain?"var(--text)":"var(--text4)",padding:"7px 10px",fontSize:12,outline:"none"}}>
+                                            <option value="">— Captain —</option>
+                                            {playerNames.map(n=><option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                    </div>
+                                    <button className="team-cfg-del" onClick={()=>delTeam(t.id)}>✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {tab==="settings" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{border:"1px solid var(--border)",borderRadius:10,padding:"0 14px"}}>
+                            {[
+                                {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"₹",      min:5000,  step:5000},
+                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size including the captain",    suffix:" players",min:3,     max:30, step:1},
+                                {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
+                            ].map(({key,label,desc,suffix,min,max,step,scale})=>(
+                                <div key={key} className="setting-row">
+                                    <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
+                                    <div className="setting-control">
+                                        <input type="number" min={min} max={max} step={step}
+                                            value={scale?Math.round(settings[key]/scale):settings[key]}
+                                            onChange={e=>{const v=parseInt(e.target.value)||min;setSettings(s=>({...s,[key]:scale?v*scale:v}));}} />
+                                        <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>{suffix}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{marginTop:12,padding:"10px 14px",background:"var(--surface3)",borderRadius:10,fontSize:12,color:"var(--text3)"}}>
+                            <strong style={{color:"var(--text)"}}>Summary: </strong>
+                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots · ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
+                        </div>
+                    </div>
+                )}
+
+                {status && <div className={`cfg-status ${status.ok?"ok":"err"}`}>{status.text}</div>}
+                <button className="btn btn-primary" style={{marginTop:12}} onClick={saveAll} disabled={saving}>
+                    {saving?"Saving…":"💾 Save Configuration"}
                 </button>
             </div>
         </div>
@@ -1053,11 +1292,28 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
 
     const createNew = async () => {
         setCreating(true); setError(null);
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-        await db.ref(`auctions/${sid}`).set(initialDoc(sid));
-        saveSession(sid);
-        onJoin(sid);
+        try {
+            const cfgSnap = await db.ref(CFG_PATH).once("value");
+            const cfg = cfgSnap.val();
+            const cfgPlayers = (cfg?.players?.length ? cfg.players : PLAYERS);
+            const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
+            const budget     = cfg?.settings?.budget  || TEAM_BUDGET;
+            const teamSize   = cfg?.settings?.teamSize || TEAM_SIZE;
+            const timerMs    = cfg?.settings?.timerMs  || TIMER_MS;
+            const capNames   = new Set(cfgTeams.map(t=>t.captain));
+            const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
+            const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+            await db.ref(`auctions/${sid}`).set({
+                sessionId:sid, teams:initTeams, playerPools:pools,
+                currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
+                timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
+                config:{budget,teamSize,timerMs}
+            });
+            saveSession(sid);
+            onJoin(sid);
+        } catch(e) { setError("Failed to create: "+e.message); setCreating(false); }
     };
 
     const joinExisting = async (id) => {
@@ -1108,8 +1364,8 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
                             {creating ? "Creating…" : `Create ${selectedYear||THIS_YEAR} Auction`}
                         </button>
                     </div>
+                    <AdminConfig />
                     <ManagePins />
-                    <PoolViewer />
                     </>
                 ) : (
                     <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
@@ -1221,7 +1477,7 @@ function Auction({ sid, user, onBack }) {
         if (!eff?.player) return "No player";
         const team = state.teams.find(t=>t.id===teamId);
         if (!team) return "Team not found";
-        if (team.players.length >= TEAM_SIZE) return `Team full`;
+        if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
         const utr = getUTR(eff.poolKey);
         const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
         if (fromPool >= (POOL_CAPS[eff.poolKey]||0)) return `Max ${POOL_CAPS[eff.poolKey]} at UTR ${utr}`;
@@ -1231,7 +1487,7 @@ function Auction({ sid, user, onBack }) {
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `$${fmt(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
-        const rem = TEAM_SIZE - team.players.length;
+        const rem = TEAM_SIZE_EFF - team.players.length;
         const minNeeded = rem>1?(rem-1)*5000:0;
         if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
         return null;
@@ -1278,6 +1534,7 @@ function Auction({ sid, user, onBack }) {
     };
 
     if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
+    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
 
     const eff = getEffective(state);
     const isAdmin = user.role === "admin";
@@ -1318,7 +1575,7 @@ function Auction({ sid, user, onBack }) {
     };
 
     const sortedTeams = [...state.teams].map(t => {
-        const isDisabled = t.players.length>=TEAM_SIZE || t.budget<eff.player.price ||
+        const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price ||
             (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id};
     }).sort((a,b) => {
@@ -1377,10 +1634,10 @@ function Auction({ sid, user, onBack }) {
                     const isMyTeam = !isAdmin && team.id===myTeamId;
 
                     if (team.isDisabled && !isMyTeam) {
-                        const reason = team.players.length>=TEAM_SIZE?"Full":team.budget<eff.player.price?"Low budget":`UTR cap`;
+                        const reason = team.players.length>=TEAM_SIZE_EFF?"Full":team.budget<eff.player.price?"Low budget":`UTR cap`;
                         return (
                             <div key={team.id} className="bid-card disabled-card">
-                                <span className="disabled-team-name">{team.name} · {team.players.length}/{TEAM_SIZE}</span>
+                                <span className="disabled-team-name">{team.name} · {team.players.length}/{TEAM_SIZE_EFF}</span>
                                 <span className="disabled-reason">{reason}</span>
                             </div>
                         );
@@ -1400,7 +1657,7 @@ function Auction({ sid, user, onBack }) {
                                     <div className="team-captain">⭐ {team.captain}</div>
                                     <div className="team-budget-row">
                                         <span className="team-budget-pill team-budget-left">${fmt(team.budget)}</span>
-                                        <span className="team-slots">{team.players.length}/{TEAM_SIZE} players</span>
+                                        <span className="team-slots">{team.players.length}/{TEAM_SIZE_EFF} players</span>
                                     </div>
                                 </div>
                                 <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
@@ -1481,13 +1738,13 @@ function RosterCard({team}) {
     const cap = team.players[0];
     const rest = team.players.slice(1);
     const filled = team.players.length;
-    const fillPct = Math.round((filled / TEAM_SIZE) * 100);
+    const fillPct = Math.round((filled / TEAM_SIZE_EFF) * 100);
     return (
         <div className="roster-card">
             <div className="roster-name">
                 {team.name}
                 <span style={{fontSize:10,fontWeight:600,color:"var(--muted)",marginLeft:6}}>
-                    {filled}/{TEAM_SIZE}
+                    {filled}/{TEAM_SIZE_EFF}
                 </span>
             </div>
             <div className="roster-budget">
@@ -1513,7 +1770,7 @@ function RosterCard({team}) {
                     <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
                 </div>
             ))}
-            {Array.from({length: TEAM_SIZE - filled}).map((_,i)=>(
+            {Array.from({length: TEAM_SIZE_EFF - filled}).map((_,i)=>(
                 <div key={`empty-${i}`} className="roster-player" style={{opacity:.25}}>
                     <span className="roster-player-num">{filled+i+1}</span>
                     <span className="roster-player-name" style={{fontStyle:"italic",color:"var(--muted2)"}}>— open slot —</span>
