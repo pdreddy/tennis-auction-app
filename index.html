@@ -1485,6 +1485,7 @@ function Auction({ sid, user, onBack }) {
     if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
 
     const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
+    const TIMER_EFF = state.config?.timerMs || TIMER_MS;
     const eff = getEffective(state);
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
@@ -1545,7 +1546,7 @@ function Auction({ sid, user, onBack }) {
         pools[eff.poolKey] = pool;
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
-        fbUpdate({teams,playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        fbUpdate({teams,playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
@@ -1558,12 +1559,13 @@ function Auction({ sid, user, onBack }) {
         pools[eff.poolKey] = pool;
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
-        fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_MS});
+        fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
     const reset = () => {
-        auctionRef.current.set(initialDoc(sid));
+        const doc = {...initialDoc(sid), timerEnd: Date.now()+TIMER_EFF, config: state.config};
+        auctionRef.current.set(doc);
         setBidInputs({}); setBidErrors({}); setActionError(null); setResetOpen(false);
     };
 
