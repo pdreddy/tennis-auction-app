@@ -277,13 +277,14 @@ function AdminConfig() {
     };
 
     const playerNames = players.map(p=>p.Name).filter(Boolean);
+    const playerCountForUtr = utr => players.filter(p=>p.Name?.trim() && p.utr===utr).length;
 
     return (
         <div className="card" style={{padding:0,overflow:"hidden"}}>
             <div style={{padding:"18px 18px 0"}}>
                 <div className="card-title" style={{marginBottom:12}}>⚙️ Auction Configuration</div>
                 <div className="cfg-tabs">
-                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
+                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["pools","🎾 Pools"],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
                         <button key={k} className={`cfg-tab${tab===k?" active":""}`} onClick={()=>setTab(k)}>{l}</button>
                     ))}
                 </div>
@@ -325,6 +326,51 @@ function AdminConfig() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {tab==="pools" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>
+                            Review and edit the players in each auction pool. Changing a player's UTR moves them to that pool when saved.
+                        </div>
+                        <div style={{display:"grid",gap:12,maxHeight:520,overflowY:"auto",paddingRight:4}}>
+                            {UTR_TIERS.map(utr => {
+                                const poolPlayers = players.filter(p=>p.utr===utr);
+                                return (
+                                    <div key={utr} style={{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",background:"var(--surface2)"}}>
+                                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",borderBottom:"1px solid var(--border)",background:"var(--surface3)"}}>
+                                            <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>UTR {utr.toFixed(1)} Pool</div>
+                                            <div style={{fontSize:11,color:"var(--text3)"}}>{playerCountForUtr(utr)} players · base {fmtR(UTR_PRICES[utr]||5000)}</div>
+                                        </div>
+                                        {poolPlayers.length ? (
+                                            <div className="ptable-wrap" style={{border:0,borderRadius:0,maxHeight:260}}>
+                                                <table className="ptable">
+                                                    <thead><tr><th>#</th><th>Name</th><th>UTR</th><th>Price</th><th></th></tr></thead>
+                                                    <tbody>
+                                                        {poolPlayers.map((p,i)=>(
+                                                            <tr key={p.id}>
+                                                                <td style={{color:"var(--text4)",width:24,fontSize:10}}>{i+1}</td>
+                                                                <td><input value={p.Name} onChange={e=>updPlayer(p.id,"Name",e.target.value)} placeholder="Player name" /></td>
+                                                                <td style={{width:72}}>
+                                                                    <select value={p.utr} onChange={e=>{const u=parseFloat(e.target.value);updPlayer(p.id,"utr",u);updPlayer(p.id,"price",UTR_PRICES[u]||5000);}}>
+                                                                        {UTR_TIERS.map(u=><option key={u} value={u}>{u.toFixed(1)}</option>)}
+                                                                    </select>
+                                                                </td>
+                                                                <td style={{width:80}}><input type="number" step={500} value={p.price} onChange={e=>updPlayer(p.id,"price",parseInt(e.target.value)||0)} /></td>
+                                                                <td style={{width:28}}><button className="team-cfg-del" onClick={()=>delPlayer(p.id)}>✕</button></td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div style={{padding:"12px",fontSize:12,color:"var(--text4)",fontStyle:"italic"}}>No players in this pool.</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
