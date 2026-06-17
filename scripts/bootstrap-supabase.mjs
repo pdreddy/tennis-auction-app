@@ -19,9 +19,20 @@ if (!adminPin || !/^\d{6}$/.test(adminPin) || !teamPin || !/^\d{6}$/.test(teamPi
 }
 
 const supabase = createClient(url, key, { auth: { persistSession: false } });
+const missingSchemaHint = table => [
+  `${table}: table not found in Supabase schema cache.`,
+  "Run the SQL in supabase/migrations/001_initial_schema.sql in your Supabase project first,",
+  "or run `supabase db push`, then rerun this bootstrap command.",
+].join(" ");
+
 const upsert = async (table, rows, opts = {}) => {
   const { error } = await supabase.from(table).upsert(rows, opts);
-  if (error) throw new Error(`${table}: ${error.message}`);
+  if (!error) return;
+  const message = String(error.message || "");
+  if (error.code === "PGRST205" || message.includes("schema cache") || message.includes("Could not find the table")) {
+    throw new Error(missingSchemaHint(table));
+  }
+  throw new Error(`${table}: ${error.message}`);
 };
 
 const users = [

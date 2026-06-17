@@ -71,6 +71,17 @@ supabase db push
 
 The migration creates normalized tables for profiles, players, teams, categories, tournaments, registrations, bids, rosters, matches, storage-oriented metadata, and compatibility tables used by the converted PWA.
 
+
+### Troubleshooting: `public.app_users` not found
+
+If you see `Could not find the table 'public.app_users' in the schema cache`, the Supabase database schema has not been installed in the project your app is connected to, or Supabase needs a schema cache refresh. Run the SQL migration first:
+
+```bash
+supabase db push
+```
+
+Or open Supabase Dashboard → SQL Editor, paste the contents of `supabase/migrations/001_initial_schema.sql`, and run it. Then rerun `npm run supabase:bootstrap` and refresh the app.
+
 ## Firebase data migration
 
 Export Firebase Realtime Database as JSON, then run:

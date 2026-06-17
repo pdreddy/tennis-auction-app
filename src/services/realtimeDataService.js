@@ -1,6 +1,17 @@
 import { supabase } from "../config/supabase.js";
 
 const getAtPath = (obj, parts) => parts.reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
+const missingSchemaMessage = table => `Supabase table public.${table} was not found. Run supabase/migrations/001_initial_schema.sql (or \`supabase db push\`) in this Supabase project, then run \`npm run supabase:bootstrap\`.`;
+
+const throwIfSupabaseError = (error, table) => {
+  if (!error) return;
+  const message = String(error.message || "");
+  if (error.code === "PGRST205" || error.code === "PGRST202" || message.includes("schema cache") || message.includes("Could not find the table")) {
+    throw new Error(missingSchemaMessage(table));
+  }
+  throw error;
+};
+
 const setAtPath = (obj, parts, value) => {
   if (!parts.length) return value;
   const copy = Array.isArray(obj) ? [...obj] : { ...(obj || {}) };
@@ -51,19 +62,19 @@ async function readPath(path) {
   if (path === ".info/connected") return true;
   if (root === "config") {
     const { data, error } = await supabase.from("app_config").select("data").eq("id", "default").maybeSingle();
-    if (error) throw error;
+    throwIfSupabaseError(error, "app_config");
     return getAtPath(data?.data ?? null, [id, ...rest].filter(Boolean));
   }
   if (root === "users") {
     const query = supabase.from("app_users").select("*");
     const { data, error } = id ? await query.eq("code", id).maybeSingle() : await query;
-    if (error) throw error;
+    throwIfSupabaseError(error, "app_users");
     if (!id) return Object.fromEntries((data || []).map(u => [u.code, u]));
     return getAtPath(data ?? null, rest);
   }
   if (root === "auctions") {
     const { data, error } = await supabase.from("auction_sessions").select("state").eq("session_id", id).maybeSingle();
-    if (error) throw error;
+    throwIfSupabaseError(error, "auction_sessions");
     return getAtPath(data?.state ?? null, rest);
   }
   return null;
@@ -75,19 +86,19 @@ async function writePath(path, value) {
     const current = rest.length || id ? ((await readPath("config")) || {}) : value;
     const data = rest.length || id ? setAtPath(current, [id, ...rest].filter(Boolean), value) : value;
     const { error } = await supabase.from("app_config").upsert({ id: "default", data, updated_at: new Date().toISOString() });
-    if (error) throw error;
+    throwIfSupabaseError(error, "app_config");
     return;
   }
   if (root === "users") {
     const row = rest.length ? setAtPath((await readPath(`users/${id}`)) || {}, rest, value) : value;
     const { error } = await supabase.from("app_users").upsert({ ...row, code: id || row.code, updated_at: new Date().toISOString() });
-    if (error) throw error;
+    throwIfSupabaseError(error, "app_users");
     return;
   }
   if (root === "auctions") {
     const state = rest.length ? setAtPath((await readPath(`auctions/${id}`)) || {}, rest, value) : value;
     const { error } = await supabase.from("auction_sessions").upsert({ session_id: id, state, updated_at: new Date().toISOString() });
-    if (error) throw error;
+    throwIfSupabaseError(error, "auction_sessions");
   }
 }
 
