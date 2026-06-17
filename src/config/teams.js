@@ -10,10 +10,10 @@ export const TEAMS = [
     {id:8, name:"Mega Lions 🦁",                captain:"Anil Kunda"},
     {id:9, name:"Court Conquerors 🏹",          captain:"Rajasekhar Chintha"},
     {id:10,name:"Royal Chill Badgers 🦡",       captain:"Krishna Vennapusa"},
-    {id:11,name:"Volly Vipers 🐍",              captain:"Magi Kailas"},
-    {id:12,name:"Dallas Chargers ⚡",            captain:"Vivek Reddy"},
+    {id:11,name:"Volly Vipers 🐍",              captain:"Kailas Magi"},
+    {id:12,name:"Dallas Chargers ⚡",            captain:"Vivekvardhan Reddy Mereddy"},
     {id:13,name:"Grand Slam Gladiators 🏛️⚔️",  captain:"Sashank T"},
     {id:14,name:"Deuce Devils 😈",              captain:"Hari Mothukuri"},
-    {id:15,name:"Chill Super Kings 👑❄️",       captain:"Anand Krishnamoorthy"},
+    {id:15,name:"Chill Super Kings 👑❄️",       captain:"Anand Krishnamurthy"},
     {id:16,name:"Smash Masters 💥🎾",           captain:"Dinkar Bhardwaj"},
 ];
