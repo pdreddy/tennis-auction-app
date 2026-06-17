@@ -900,6 +900,7 @@ export const RAW_PLAYERS = [
 ];
 
 const normalizeName = name => (name || "").trim().toLowerCase();
+const withoutUndefined = obj => Object.fromEntries(Object.entries(obj).filter(([,value]) => value !== undefined));
 const toPlayer = (player, index) => {
     const utr = CATEGORY_UTR[player.cat] || 3.0;
     return {
@@ -922,8 +923,8 @@ export function withPlayerMeta(player) {
     if (!player) return player;
     const name = player.Name || player.name || "";
     const catalogPlayer = PLAYER_BY_NAME.get(normalizeName(name));
-    if (!catalogPlayer) return {...player, Name: name};
-    return {
+    if (!catalogPlayer) return withoutUndefined({...player, Name: name});
+    return withoutUndefined({
         ...player,
         ...catalogPlayer,
         id: player.id ?? catalogPlayer.id,
@@ -931,5 +932,5 @@ export function withPlayerMeta(player) {
         acquiredPrice: player.acquiredPrice,
         isRetry: player.isRetry,
         retryCount: player.retryCount
-    };
+    });
 }
