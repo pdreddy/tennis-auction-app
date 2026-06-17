@@ -249,10 +249,10 @@ const POOL_LABELS = {
     4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
     3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
 };
-function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
+function fmtR(n){ return "$"+(n||0).toLocaleString(); }
 
 function PoolViewer() {
-    const [open, setOpen] = useState({});
+    const [open, setOpen] = useState({[POOL_ORDER[0]]:true});
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
     const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
@@ -261,7 +261,7 @@ function PoolViewer() {
         <div className="card" style={{padding:"18px"}}>
             <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
             <div className="card-sub" style={{marginBottom:14}}>
-                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs lowest UTR first
             </div>
             {POOL_ORDER.map(key => {
                 const utr = getUTR(key);
