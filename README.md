@@ -61,3 +61,31 @@ Firebase settings, teams, players, and generated pool defaults are split into sm
 The app still uses Firebase Realtime Database in the browser. Internet access is required for Firebase and the Firebase CDN scripts to load.
 
 The app remains PWA-installable: `index.html` links `/manifest.json`, and the same manifest is kept in `public/manifest.json` so Vite copies it into `dist/` during production builds.
+
+## Firebase migration and security
+
+The app stores required runtime data in these Realtime Database paths:
+
+- `config` — players, teams, and auction settings.
+- `users` — account metadata and PINs needed for sign-in.
+
+Live `auctions` sessions are intentionally not part of the required migration set because they are temporary event state. To copy only the required paths from the current Firebase Realtime Database to another Firebase project, pass service account JSON through environment variables instead of committing key files:
+
+```bash
+TARGET_DATABASE_URL="https://pdrdata-bcdc9-default-rtdb.firebaseio.com" \
+TARGET_SERVICE_ACCOUNT_JSON="$(cat ./target-service-account.json)" \
+npm run firebase:migrate:required
+```
+
+The migration runs as a dry run by default. After confirming the source, target, and path counts, run the same command with `DRY_RUN=false` to write to the target database:
+
+```bash
+DRY_RUN=false \
+TARGET_DATABASE_URL="https://pdrdata-bcdc9-default-rtdb.firebaseio.com" \
+TARGET_SERVICE_ACCOUNT_JSON="$(cat ./target-service-account.json)" \
+npm run firebase:migrate:required
+```
+
+If the source database no longer allows unauthenticated reads, also provide `SOURCE_ACCESS_TOKEN` for a Google access token that can read the current Firebase project.
+
+Security rules for the target database are in `firebase/database.rules.json`. They deny default access and are designed for authenticated users with an `accountCode` auth token claim. Do not deploy these rules until the client sign-in flow issues Firebase Auth custom tokens, otherwise the browser app will be denied by the database. Any service account private key shared in chat, email, or source control should be treated as compromised and rotated in Google Cloud IAM before production use.
