@@ -106,7 +106,7 @@ export default function Session() {
                   <Text style={styles.cardTitle}>Start a new auction</Text>
                 </View>
                 <Text style={styles.cardSub}>
-                  Creates a fresh session with all 14 teams and a 6-character ID to share.
+                  Creates a fresh session with all 16 teams and a 6-character ID to share.
                 </Text>
                 <Pressable
                   testID="create-auction-button"
@@ -176,7 +176,7 @@ export default function Session() {
           {config && (
             <View style={styles.health} testID="health-panel">
               <Text style={styles.healthTitle}>Setup check</Text>
-              <HealthRow label="Teams" value={`${config.teams} / 14`} ok={config.teams === 14} />
+              <HealthRow label="Teams" value={`${config.teams} / 16`} ok={config.teams === 16} />
               <HealthRow
                 label="Auction-pool players"
                 value={`${config.poolPlayers}`}

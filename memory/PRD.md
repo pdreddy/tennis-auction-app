@@ -9,7 +9,7 @@ Convert a real-time, Firebase-based "Tennis Player Auction" web app into a nativ
 - **Frontend**: Expo Router (stack). Screens: `/login`, `/session`, `/auction/[id]`. Polls auction state every 1.5s; timer computed via server-time offset. Dark "Signal Orange / obsidian" theme, Barlow Condensed + DM Sans fonts.
 
 ## Core Rules (static)
-14 teams · 98 players · $100k budget · 7-player rosters · captains pre-assigned & excluded from pools · UTR pools auctioned highest-first · unique-bid rule (no two teams same amount) · base + $1000 increments · budget reserve ($5k/remaining slot) · 60s timer · award to single highest bidder · skip-to-end · reset.
+16 teams · 112 players · $100k budget · 7-player rosters · captains pre-assigned & excluded from pools · UTR pools auctioned lowest-first (3.0 → 6.0) · unique-bid rule (no two teams same amount) · base + $1000 increments · budget reserve ($5k/remaining slot) · 60s timer · award to single highest bidder · skip-to-end · reset.
 
 ## Implemented (2026-06-11)
 - JWT auth (register/login/logout, secure token storage). Seeded QA user `test@auction.com` / `Test1234`.
