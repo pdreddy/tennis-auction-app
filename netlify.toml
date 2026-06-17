@@ -1,4 +1,18 @@
 [build]
+  command = "echo 'Static site — no build step'"
+  publish = "."
+
+# Override per deploy context so PR previews also work
+[context.production]
+  command = "echo 'Static site — no build step'"
+  publish = "."
+
+[context.deploy-preview]
+  command = "echo 'Static site — no build step'"
+  publish = "."
+
+[context.branch-deploy]
+  command = "echo 'Static site — no build step'"
   publish = "."
 
 [[redirects]]

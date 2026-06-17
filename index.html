@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#07090f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tennis Auction">
@@ -16,355 +16,760 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script>
+        // Initialise Firebase synchronously before Babel processes the JSX bundle
+        window.__firebaseError = null;
+        try {
+            var cfg = {
+                apiKey:            "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
+                authDomain:        "koc2-20fb8.firebaseapp.com",
+                databaseURL:       "https://koc2-20fb8-default-rtdb.firebaseio.com",
+                projectId:         "koc2-20fb8",
+                storageBucket:     "koc2-20fb8.firebasestorage.app",
+                messagingSenderId: "317734341461",
+                appId:             "1:317734341461:web:1bcad5a1792fac0e46bddc"
+            };
+            if (!firebase.apps.length) firebase.initializeApp(cfg);
+            window.__db = firebase.database();
+        } catch(e) {
+            window.__firebaseError = e.message || String(e);
+            console.error("Firebase init failed:", e);
+        }
+    </script>
 
     <style>
-        *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,123,255,0.12); }
+        /* ── Design tokens — Premium Dark ── */
+        :root {
+            --gold:      #e8b84b;   /* warm antique gold                    */
+            --gold-lt:   #f5d080;   /* light gold for highlights            */
+            --blue:      #4a90d9;   /* steel blue — actions                 */
+            --blue-lt:   #6cb0f0;
+            --teal:      #00d4a8;   /* teal — live indicator only           */
+            --purple:    #9b87f5;   /* soft purple — bid status             */
+            --danger:    #e05c6e;
+            --win:       #1ec97a;   /* emerald green — winning ONLY         */
+            --win-lt:    #40e898;
+            --bg:        #060810;   /* near-black with blue undertone       */
+            --bg2:       #0a0d18;
+            --surface:   #0e1220;   /* card surface                         */
+            --surface2:  #131828;   /* elevated surface                     */
+            --surface3:  #18203a;   /* highest surface                      */
+            --border:    #1a2540;
+            --border2:   #243358;
+            --border3:   #2e4070;   /* interactive border                   */
+            --text:      #dce8f8;
+            --text2:     #a8bcd8;   /* secondary text                       */
+            --text3:     #5a7299;   /* tertiary / muted                     */
+            --text4:     #334466;   /* very muted                           */
+        }
+
+        @keyframes live-pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(0,212,168,.6), 0 0 6px rgba(0,212,168,.4); }
+            50%      { box-shadow: 0 0 0 5px rgba(0,212,168,0), 0 0 16px rgba(0,212,168,.7); }
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% center; }
+            100% { background-position: -200% center; }
+        }
+        @keyframes win-pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(30,201,122,.5),  0 4px 20px rgba(0,0,0,.5); }
+            50%     { box-shadow: 0 0 0 6px rgba(30,201,122,0), 0 4px 24px rgba(30,201,122,.2); }
+        }
+        @keyframes bar-shimmer {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html { -webkit-text-size-adjust: 100%; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0; padding: 10px;
-            padding-top: max(10px, env(safe-area-inset-top));
-            padding-bottom: max(10px, env(safe-area-inset-bottom));
-            background: #0a0b0e; color: #f0f0f0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 12px;
+            padding-top: max(12px, env(safe-area-inset-top));
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse 80% 40% at 20% -5%,  rgba(74,144,217,.1)  0%, transparent 100%),
+                radial-gradient(ellipse 60% 30% at 80% -5%,  rgba(155,135,245,.07) 0%, transparent 100%),
+                radial-gradient(ellipse 50% 25% at 50% 105%, rgba(0,212,168,.05)   0%, transparent 100%);
         }
 
         /* ── Login ── */
         .login-wrap {
-            max-width: 420px; margin: 60px auto; padding: 28px;
-            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 14px;
+            max-width: 400px; margin: 70px auto; padding: 40px 32px;
+            background: linear-gradient(170deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 22px;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,.03),
+                inset 0 1px 0 rgba(255,255,255,.06),
+                0 40px 80px rgba(0,0,0,.8),
+                0 8px 24px rgba(74,144,217,.08);
         }
-        .login-title { font-size: 28px; font-weight: 800; letter-spacing: 1px; color: #fff; text-align: center; margin: 0 0 4px; }
-        .login-sub { text-align: center; color: #888; font-size: 13px; margin: 0 0 24px; }
-        .field-label { font-size: 12px; font-weight: 600; color: #888; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .field-wrap { margin-bottom: 16px; }
+        .login-title {
+            font-size: 28px; font-weight: 900; letter-spacing: 2px; text-align: center; margin: 0 0 6px;
+            text-transform: uppercase;
+            background: linear-gradient(120deg, #fff 10%, var(--gold-lt) 45%, #fff 55%, var(--blue-lt) 90%);
+            background-size: 250% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: shimmer 5s linear infinite;
+        }
+        .login-sub { text-align: center; color: var(--text3); font-size: 12px; margin: 0 0 32px; letter-spacing: .6px; text-transform: uppercase; }
+        .field-label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+        .field-wrap { margin-bottom: 20px; }
         select, input[type="password"], input[type="text"], input[type="number"] {
-            width: 100%; padding: 12px 14px; font-size: 16px; border-radius: 8px;
-            border: 1px solid #2a2b30; background: #111215; color: #f0f0f0;
+            width: 100%; padding: 14px 16px; font-size: 16px; border-radius: 12px;
+            border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
             outline: none; appearance: none; -webkit-appearance: none;
+            transition: border-color .2s, box-shadow .25s;
+            letter-spacing: .3px;
         }
-        select:focus, input:focus { border-color: #4f9eff; }
+        select:focus, input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(74,144,217,.18), 0 0 20px rgba(74,144,217,.1);
+        }
+
+        /* ── Buttons ── */
         .btn {
-            width: 100%; padding: 14px; font-size: 16px; font-weight: 700;
-            border: none; border-radius: 8px; cursor: pointer; transition: opacity .15s;
+            width: 100%; padding: 15px; font-size: 14px; font-weight: 700;
+            border: none; border-radius: 12px; cursor: pointer;
+            transition: transform .12s, box-shadow .2s, filter .15s;
+            letter-spacing: .8px; text-transform: uppercase;
         }
-        .btn:active { opacity: .8; }
-        .btn-primary { background: #4f9eff; color: #000; }
-        .btn-danger  { background: #dc3545; color: #fff; }
-        .btn-warning { background: #ffc107; color: #000; }
-        .btn-success { background: #28a745; color: #fff; }
-        .btn-neutral { background: #2a2b30; color: #f0f0f0; border: 1px solid #3a3b40; }
-        .btn:disabled { opacity: .4; cursor: default; }
-        .login-error { color: #ff6b6b; font-size: 13px; margin-top: 8px; text-align: center; }
+        .btn:active { transform: scale(.97); filter: brightness(.92); }
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90d9 0%, #2d6ab5 60%, #1e52a0 100%);
+            color: #fff;
+            box-shadow: 0 4px 24px rgba(74,144,217,.4), inset 0 1px 0 rgba(255,255,255,.12);
+        }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(74,144,217,.6); transform: translateY(-1px); }
+        .btn-success {
+            background: linear-gradient(135deg, #1ec97a 0%, #129958 60%, #0a7840 100%);
+            color: #fff;
+            box-shadow: 0 4px 24px rgba(30,201,122,.42), inset 0 1px 0 rgba(255,255,255,.12);
+        }
+        .btn-success:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(30,201,122,.6); transform: translateY(-1px); }
+        .btn-danger {
+            background: linear-gradient(135deg, #e05c6e 0%, #b83348 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(224,92,110,.38), inset 0 1px 0 rgba(255,255,255,.1);
+        }
+        .btn-warning { background: linear-gradient(135deg, var(--gold), #c49020); color: #0a0800; font-weight: 800; }
+        .btn-neutral {
+            background: var(--surface3); color: var(--text2);
+            border: 1px solid var(--border2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .btn-neutral:hover:not(:disabled) { background: var(--border); border-color: var(--border3); color: var(--text); }
+        .btn:disabled { opacity: .28; cursor: default; transform: none !important; box-shadow: none !important; filter: none !important; }
+        .login-error { color: #e8778a; font-size: 12px; margin-top: 12px; text-align: center; font-weight: 700; letter-spacing: .3px; }
 
         /* ── Setup / lobby ── */
-        .setup-wrap { max-width: 480px; margin: 40px auto; }
-        .card { background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
-        .card-title { font-size: 17px; font-weight: 700; margin: 0 0 8px; color: #fff; }
-        .card-sub { font-size: 13px; color: #888; margin: 0 0 14px; line-height: 1.5; }
-        .or-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
-        .or-row .line { flex:1; height:1px; background:#2a2b30; }
-        .or-row span { font-size: 12px; color: #555; }
-        .code-input { font-size: 26px; font-weight: 700; letter-spacing: 8px; text-align: center; }
-        .health-panel { font-size: 12px; color: #888; margin-top: 14px; }
-        .health-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #222; }
-        .health-ok { color: #28a745; font-weight: 700; }
-        .health-bad { color: #dc3545; font-weight: 700; }
-
-        /* ── Auction header ── */
-        .top-bar {
+        .setup-wrap { max-width: 460px; margin: 40px auto; }
+        .card {
+            background: linear-gradient(160deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 18px;
+            padding: 22px; margin-bottom: 14px;
+            box-shadow: 0 4px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .card-title { font-size: 16px; font-weight: 800; margin: 0 0 8px; color: var(--text); letter-spacing: .3px; }
+        .card-sub { font-size: 12px; color: var(--text3); margin: 0 0 16px; line-height: 1.7; }
+        .or-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+        .or-row .line { flex:1; height:1px; background: var(--border); }
+        .or-row span { font-size: 9px; font-weight: 700; color: var(--text4); letter-spacing: 2px; text-transform: uppercase; }
+        .code-input { font-size: 28px; font-weight: 900; letter-spacing: 10px; text-align: center; }
+        .health-panel { font-size: 11px; color: var(--text3); margin-top: 16px; }
+        .health-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); }
+        .health-ok  { color: var(--win); font-weight: 700; }
+        .pool-section { margin-bottom: 14px; }
+        .pool-header {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 10px; gap: 8px;
+            padding: 12px 16px; border-radius: 12px 12px 0 0;
+            background: var(--surface3); border: 1px solid var(--border2);
+            cursor: pointer; user-select: none;
         }
-        .top-bar h1 { font-size: 18px; font-weight: 800; margin: 0; color: #fff; letter-spacing: .5px; }
+        .pool-header.open { border-radius: 12px 12px 0 0; border-bottom: none; }
+        .pool-header-left { display: flex; align-items: center; gap: 10px; }
+        .pool-utr-badge {
+            font-size: 13px; font-weight: 900; padding: 4px 10px;
+            border-radius: 8px; letter-spacing: .5px;
+        }
+        .pool-header-title { font-size: 14px; font-weight: 700; color: var(--text); }
+        .pool-header-meta { font-size: 11px; color: var(--text3); }
+        .pool-chevron { font-size: 12px; color: var(--text3); transition: transform .2s; }
+        .pool-chevron.open { transform: rotate(180deg); }
+        .pool-body {
+            border: 1px solid var(--border2); border-top: none;
+            border-radius: 0 0 12px 12px; overflow: hidden;
+        }
+        .pool-player-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 16px; border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .pool-player-row:last-child { border-bottom: none; }
+        .pool-player-row:hover { background: rgba(255,255,255,.03); }
+        .pool-player-num { color: var(--text4); font-size: 11px; min-width: 22px; }
+        .pool-player-name { color: var(--text); font-weight: 600; flex: 1; }
+        .pool-player-price { color: var(--gold); font-size: 12px; font-weight: 700; }
+        .pool-player-cap { font-size: 10px; color: var(--teal); font-weight: 700;
+            background: rgba(0,212,168,.1); border-radius: 4px; padding: 2px 6px; margin-left: 8px; }
+        .health-bad { color: var(--danger); font-weight: 700; }
+
+        /* ── Auction top bar ── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 8px; }
+        .session-back { background: none; border: none; color: var(--text3); font-size: 28px; cursor: pointer; padding: 0 2px; line-height: 1; transition: color .15s; }
+        .session-back:hover { color: var(--text); }
+        .session-label { font-size: 8px; font-weight: 700; color: var(--text4); letter-spacing: 2.5px; text-transform: uppercase; }
+        .session-id {
+            font-weight: 900; font-size: 19px; letter-spacing: 5px; text-transform: uppercase;
+            background: linear-gradient(90deg, var(--text), var(--blue-lt));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
         .sync-dot {
-            display: flex; align-items: center; gap: 5px;
-            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 20px;
-            padding: 5px 10px; font-size: 11px; color: #888;
+            display: flex; align-items: center; gap: 7px;
+            background: var(--surface2); border: 1px solid var(--border2); border-radius: 30px;
+            padding: 7px 14px; font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: .3px;
         }
-        .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .dot-green { background: #28a745; }
-        .dot-red   { background: #dc3545; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dot-green { background: var(--teal); animation: live-pulse 2.2s ease-in-out infinite; }
+        .dot-red   { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+        /* ── Progress ── */
+        .progress-wrap { margin-bottom: 16px; }
+        .progress-track {
+            height: 4px; background: var(--border); border-radius: 99px;
+            overflow: hidden; margin: 0 0 6px;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 99px; transition: width .5s ease;
+            background: linear-gradient(90deg, var(--blue), var(--purple), var(--teal), var(--blue));
+            background-size: 300% 100%;
+            animation: bar-shimmer 4s linear infinite;
+        }
+        .progress-text { font-size: 10px; color: var(--text3); text-align: center; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; }
 
         /* ── Sticky player bar ── */
         .sticky-bar {
             position: sticky; top: 0; z-index: 900;
-            background: #1a1b20; border: 2px solid #ffc107;
-            border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,.5);
+            background: linear-gradient(135deg, #0c1530 0%, #111e42 50%, #0c1530 100%);
+            border: 1px solid var(--border3);
+            border-radius: 18px; padding: 16px 20px; margin-bottom: 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,.06),
+                inset 0 -1px 0 rgba(0,0,0,.3),
+                0 2px 0 rgba(74,144,217,.15),
+                0 12px 40px rgba(74,144,217,.14),
+                0 24px 60px rgba(0,0,0,.7);
         }
-        .sb-player { font-size: 16px; font-weight: 700; color: #fff; }
-        .sb-meta { font-size: 11px; color: #888; margin-top: 2px; }
-        .sb-high { font-size: 12px; color: #4f9eff; font-weight: 700; margin-top: 3px; }
+        .sb-left { flex: 1; min-width: 0; }
+        .sb-player { font-size: 19px; font-weight: 900; color: #fff; letter-spacing: .2px; line-height: 1.2; }
+        .sb-meta   { font-size: 10px; color: var(--text3); margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
+        .sb-high   { font-size: 13px; color: var(--gold); font-weight: 700; margin-top: 6px; letter-spacing: .2px; }
+        .sb-retry  { color: var(--danger); font-weight: 700; }
         .sb-timer {
-            min-width: 58px; text-align: center; padding: 8px 10px; border-radius: 8px;
-            background: #1c3a6e; color: #4f9eff; font-size: 22px; font-weight: 800;
+            min-width: 76px; text-align: center; padding: 14px 16px; border-radius: 14px;
+            background: linear-gradient(160deg, rgba(74,144,217,.18), rgba(74,144,217,.06));
+            color: var(--blue-lt); font-size: 30px; font-weight: 900;
+            border: 1px solid rgba(74,144,217,.35);
+            box-shadow: 0 0 24px rgba(74,144,217,.22), inset 0 1px 0 rgba(255,255,255,.05);
+            line-height: 1; flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
         }
-        .sb-timer.warn { background: #5a1a1a; color: #ff6b6b; }
+        .sb-timer.warn {
+            background: linear-gradient(160deg, rgba(224,92,110,.22), rgba(224,92,110,.06));
+            color: #f08090; border-color: rgba(224,92,110,.45);
+            box-shadow: 0 0 28px rgba(224,92,110,.32), inset 0 1px 0 rgba(255,255,255,.05);
+        }
 
-        /* ── Progress ── */
-        .progress-track { height: 6px; background: #2a2b30; border-radius: 99px; overflow: hidden; margin: 0 0 4px; }
-        .progress-fill { height: 100%; background: #28a745; border-radius: 99px; transition: width .4s ease; }
-        .progress-text { font-size: 11px; color: #555; text-align: center; margin-bottom: 10px; }
-
-        /* ── Admin controls ── */
-        .admin-bar { display: flex; gap: 8px; margin-bottom: 10px; }
-        .admin-bar .btn { flex: 1; padding: 12px 8px; font-size: 14px; }
+        /* ── Admin bar ── */
+        .admin-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+        .admin-bar .btn { flex: 1; padding: 14px 8px; font-size: 13px; font-weight: 700; border-radius: 13px; }
 
         /* ── Bidding grid ── */
-        .bidding-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px; margin-bottom: 12px;
-        }
+        .bidding-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
         @media (min-width: 520px)  { .bidding-grid { grid-template-columns: repeat(2,1fr); } }
         @media (min-width: 800px)  { .bidding-grid { grid-template-columns: repeat(3,1fr); } }
         @media (min-width: 1100px) { .bidding-grid { grid-template-columns: repeat(4,1fr); } }
 
         .bid-card {
-            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 10px;
-            padding: 10px; display: flex; flex-direction: column; gap: 6px;
+            background: linear-gradient(160deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 18px;
+            padding: 16px; display: flex; flex-direction: column; gap: 12px;
+            transition: transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s, border-color .2s;
+            box-shadow: 0 2px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.035);
+            position: relative; overflow: hidden;
         }
-        .bid-card.winning { border-color: #28a745; border-width: 2px; background: #0d1f12; }
-        .bid-card.tied    { border-color: #ffc107; border-width: 2px; background: #1f1a0d; }
-        .bid-card.pinned  { border-color: #ffc107; }
+        .bid-card::after {
+            content: ""; pointer-events: none;
+            position: absolute; inset: 0; border-radius: 18px;
+            background: linear-gradient(160deg, rgba(255,255,255,.025) 0%, transparent 60%);
+        }
+        .bid-card:hover { transform: translateY(-3px) scale(1.005); box-shadow: 0 14px 36px rgba(0,0,0,.55), 0 2px 8px rgba(74,144,217,.08), inset 0 1px 0 rgba(255,255,255,.05); border-color: var(--border3); }
+
+        .bid-card.winning {
+            border-color: var(--win);
+            background: linear-gradient(160deg, #081d10, #0a1a10, #081a0e);
+            box-shadow: 0 0 0 1px rgba(30,201,122,.3), 0 8px 28px rgba(0,0,0,.5);
+            animation: win-pulse 2.5s ease-in-out infinite;
+        }
+        .bid-card.winning::after { background: linear-gradient(160deg, rgba(30,201,122,.06) 0%, transparent 60%); }
+
+        .bid-card.tied {
+            border-color: var(--gold);
+            background: linear-gradient(160deg, #1c1400, #191200, #1a1300);
+            box-shadow: 0 0 0 1px rgba(232,184,75,.22), 0 8px 28px rgba(0,0,0,.5);
+        }
+        .bid-card.tied::after { background: linear-gradient(160deg, rgba(232,184,75,.06) 0%, transparent 60%); }
+
+        .bid-card.pinned { border-color: rgba(232,184,75,.55); }
         .bid-card.disabled-card {
-            display: flex; flex-direction: row; align-items: center;
-            justify-content: space-between; opacity: .5; padding: 8px 12px;
+            background: linear-gradient(160deg, var(--surface), var(--bg2));
+            border-color: var(--border); opacity: .38;
+            padding: 10px 16px; flex-direction: row;
+            align-items: center; justify-content: space-between; gap: 8px;
+            transform: none !important; box-shadow: none !important;
         }
-        .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; }
-        .team-name { font-size: 14px; font-weight: 700; color: #fff; }
-        .team-meta { font-size: 10px; color: #666; margin-top: 1px; }
-        .pin-btn { background:none; border:none; cursor:pointer; font-size:15px; padding:0 2px; opacity:.4; }
-        .pin-btn.pinned { opacity: 1; }
-        .bid-input-wrap { display: flex; flex-direction: column; gap: 4px; }
-        .bid-input { font-size: 16px; padding: 9px 10px; border-radius: 7px; }
-        .quick-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+        .disabled-team-name { font-size: 12px; font-weight: 600; color: var(--text3); }
+        .disabled-reason {
+            font-size: 10px; color: var(--text4);
+            background: rgba(255,255,255,.03); border: 1px solid var(--border);
+            padding: 3px 8px; border-radius: 6px; letter-spacing: .3px;
+        }
+
+        .bid-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .bid-team-info { flex: 1; min-width: 0; }
+        .team-name { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: .2px; }
+        .team-you-tag {
+            display: inline-block; font-size: 8px; font-weight: 800; color: var(--teal);
+            background: rgba(0,212,168,.1); border: 1px solid rgba(0,212,168,.28);
+            border-radius: 4px; padding: 2px 6px; margin-left: 7px; letter-spacing: 1.2px;
+            vertical-align: middle; text-transform: uppercase;
+        }
+        .team-captain { font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 3px; opacity: .85; }
+        .team-budget-row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+        .team-budget-left {
+            font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 7px;
+            background: rgba(30,201,122,.1); color: var(--win-lt); border: 1px solid rgba(30,201,122,.2);
+        }
+        .team-slots { font-size: 10px; color: var(--text4); font-weight: 600; letter-spacing: .3px; }
+        .pin-btn { background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; opacity: .18; transition: opacity .15s, transform .15s; flex-shrink: 0; margin-top: 1px; }
+        .pin-btn:hover { opacity: .6; transform: scale(1.2) rotate(10deg); }
+        .pin-btn.pinned { opacity: .9; }
+
+        .bid-divider { height: 1px; background: linear-gradient(90deg, transparent 0%, var(--border2) 30%, var(--border2) 70%, transparent 100%); }
+
+        .bid-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+        .bid-input {
+            font-size: 20px; padding: 13px 16px; border-radius: 12px; font-weight: 700;
+            letter-spacing: .5px;
+        }
+
+        .quick-chips { display: flex; gap: 6px; }
         .chip {
-            flex: 1 1 auto; min-width: 52px; padding: 6px 4px; text-align: center;
-            font-size: 12px; font-weight: 700; border-radius: 6px;
-            border: 1px solid #2a5a9f; background: #0f1f3a; color: #4f9eff;
-            cursor: pointer; touch-action: manipulation;
+            flex: 1; padding: 10px 4px; text-align: center;
+            font-size: 12px; font-weight: 700; border-radius: 10px;
+            border: 1px solid var(--border3);
+            background: var(--surface3);
+            color: var(--blue-lt); cursor: pointer; touch-action: manipulation;
+            transition: all .15s cubic-bezier(.2,.8,.3,1); letter-spacing: .5px;
         }
-        .chip:active { background: #4f9eff; color: #000; }
-        .chip:disabled { opacity: .3; }
-        .place-bid-btn { padding: 10px; font-size: 14px; font-weight: 700; min-height: 44px; }
-        .bid-status { font-size: 11px; color: #4f9eff; }
-        .bid-win-badge { background: #28a745; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
-        .bid-tie-badge { background: #ffc107; color: #000; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
-        .bid-error { color: #ff6b6b; font-size: 11px; font-weight: 600; }
+        .chip:hover:not(:disabled) { background: rgba(74,144,217,.18); color: #c0daff; border-color: rgba(74,144,217,.55); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(74,144,217,.2); }
+        .chip:active { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 0 16px rgba(74,144,217,.5); transform: scale(.95); }
+        .chip:disabled { opacity: .15; transform: none !important; }
+
+        .place-bid-btn { padding: 14px; font-size: 14px; min-height: 50px; border-radius: 13px; letter-spacing: 1px; }
+
+        .bid-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+        .bid-status { font-size: 11px; color: var(--purple); font-weight: 700; letter-spacing: .3px; }
+        .bid-win-badge {
+            background: linear-gradient(135deg, var(--win), #0e7a44);
+            color: #fff; font-size: 9px; font-weight: 900; padding: 4px 12px; border-radius: 7px;
+            box-shadow: 0 0 18px rgba(30,201,122,.45); letter-spacing: 1.5px; text-transform: uppercase;
+        }
+        .bid-tie-badge {
+            background: linear-gradient(135deg, var(--gold), #9a6e10);
+            color: #0a0800; font-size: 9px; font-weight: 900; padding: 4px 12px; border-radius: 7px;
+            letter-spacing: 1.5px; text-transform: uppercase;
+        }
+        .bid-error { color: #e8778a; font-size: 11px; font-weight: 700; letter-spacing: .2px; }
 
         /* ── Pool viewer ── */
         .pool-viewer {
-            background: #0f1420; border: 1px solid #1e2a3a; border-radius: 10px;
-            padding: 10px; margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 16px;
+            padding: 16px; margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.03);
         }
-        .pool-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .pool-viewer-title { font-size: 9px; font-weight: 800; color: var(--text4); margin-bottom: 12px; letter-spacing: 2px; text-transform: uppercase; }
+        .pool-grid { display: flex; flex-wrap: wrap; gap: 5px; }
         .pool-chip {
-            font-size: 10px; padding: 4px 7px; border-radius: 5px;
-            border: 1px solid #1e2a3a; background: #111520; color: #888;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+            font-size: 10px; padding: 5px 11px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text3);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+            font-weight: 600; transition: all .15s; letter-spacing: .2px;
         }
-        .pool-chip.active { background: #ffc107; color: #000; font-weight: 700; border-color: #ffc107; }
-        .pool-chip.retry  { border-color: #ff6b6b; color: #ff6b6b; }
+        .pool-chip.active {
+            background: linear-gradient(135deg, var(--gold), #9a6e10);
+            color: #0a0800; font-weight: 800; border-color: var(--gold);
+            box-shadow: 0 0 16px rgba(232,184,75,.4); max-width: 220px; letter-spacing: .3px;
+        }
+        .pool-chip.retry { border-color: var(--danger); color: var(--danger); background: rgba(224,92,110,.07); }
 
         /* ── Rosters ── */
         .section-toggle {
             display: flex; align-items: center; justify-content: space-between;
-            width: 100%; background: #1a1b1f; border: 1px solid #2a2b30;
-            color: #f0f0f0; border-radius: 10px; padding: 12px 14px;
-            font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
+            width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+            color: var(--text2); border-radius: 13px; padding: 14px 18px;
+            font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+            transition: all .2s; letter-spacing: .4px; text-transform: uppercase;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
         }
-        .rosters-grid {
-            display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 80px;
-        }
+        .section-toggle:hover { background: var(--surface3); border-color: var(--border3); color: var(--text); }
+        .rosters-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 80px; }
         @media (min-width: 640px) { .rosters-grid { grid-template-columns: repeat(3,1fr); } }
         @media (min-width: 900px) { .rosters-grid { grid-template-columns: repeat(4,1fr); } }
         .roster-card {
-            background: #1a1b1f; border: 1px solid #2a2b30; border-radius: 10px;
-            padding: 10px; font-size: 11px;
+            background: linear-gradient(160deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 16px;
+            padding: 14px; font-size: 11px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.03);
+            position: relative; overflow: hidden;
         }
-        .roster-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
-        .roster-budget { display: flex; gap: 8px; color: #888; margin-bottom: 5px; }
-        .roster-spent { color: #dc3545; }
-        .roster-left  { color: #28a745; }
-        .roster-player { color: #aaa; margin-top: 2px; }
-        .roster-captain { color: #ffc107; font-weight: 700; }
+        .roster-card::after {
+            content: ""; pointer-events: none;
+            position: absolute; inset: 0; border-radius: 16px;
+            background: linear-gradient(160deg, rgba(255,255,255,.02) 0%, transparent 50%);
+        }
+        .roster-name { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 5px; letter-spacing: .2px; }
+        .roster-budget { display: flex; gap: 7px; margin-bottom: 10px; }
+        .roster-spent {
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px;
+            background: rgba(224,92,110,.1); color: #e8778a; border: 1px solid rgba(224,92,110,.2);
+        }
+        .roster-left {
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px;
+            background: rgba(30,201,122,.1); color: var(--win-lt); border: 1px solid rgba(30,201,122,.2);
+        }
+        .roster-divider { height: 1px; background: var(--border); margin: 6px 0; }
+        .roster-player {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.03);
+            font-size: 11px; color: var(--text2);
+        }
+        .roster-player:last-child { border-bottom: none; }
+        .roster-player-num { min-width: 16px; font-size: 9px; font-weight: 700; color: var(--text4); text-align: right; }
+        .roster-player-name { flex: 1; color: var(--text2); font-weight: 600; }
+        .roster-player-utr { font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 4px; letter-spacing: .3px; }
+        .utr-55 { background: rgba(224,92,110,.18);  color: #e8778a; border: 1px solid rgba(224,92,110,.28); }
+        .utr-52 { background: rgba(220,140,60,.18);  color: #e0a060; border: 1px solid rgba(220,140,60,.28); }
+        .utr-50 { background: rgba(232,184,75,.18);  color: var(--gold); border: 1px solid rgba(232,184,75,.28); }
+        .utr-45 { background: rgba(74,144,217,.18);  color: var(--blue-lt); border: 1px solid rgba(74,144,217,.28); }
+        .utr-40 { background: rgba(155,135,245,.18); color: #b8a8f8; border: 1px solid rgba(155,135,245,.28); }
+        .utr-35 { background: rgba(30,201,122,.14);  color: var(--win-lt); border: 1px solid rgba(30,201,122,.22); }
+        .utr-30 { background: rgba(90,114,153,.14);  color: var(--text3); border: 1px solid rgba(90,114,153,.22); }
+        .roster-player-price { font-size: 10px; color: var(--blue-lt); font-weight: 700; white-space: nowrap; opacity: .8; }
+        .roster-captain-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 6px 8px; border-radius: 9px; margin-bottom: 6px;
+            background: linear-gradient(135deg, rgba(232,184,75,.1), rgba(232,184,75,.04));
+            border: 1px solid rgba(232,184,75,.18);
+        }
+        .roster-captain-star { font-size: 10px; }
+        .roster-captain-name { flex: 1; color: var(--gold); font-weight: 700; font-size: 11px; letter-spacing: .1px; }
+        .roster-captain-utr  { font-size: 9px; font-weight: 800; color: rgba(232,184,75,.6); }
 
         /* ── Complete screen ── */
         .complete-banner {
-            background: #28a745; color: #fff; text-align: center;
-            font-size: 20px; font-weight: 800; padding: 16px; border-radius: 10px;
-            margin-bottom: 14px;
+            background: linear-gradient(135deg, #062014, #0a2c1a, #062014);
+            border: 1px solid rgba(30,201,122,.35);
+            color: var(--win-lt); text-align: center;
+            font-size: 20px; font-weight: 900; padding: 22px; border-radius: 16px;
+            margin-bottom: 16px; letter-spacing: .5px;
+            box-shadow: 0 0 40px rgba(30,201,122,.18), 0 8px 32px rgba(0,0,0,.5),
+                        inset 0 1px 0 rgba(30,201,122,.12);
         }
 
         /* ── Error banner ── */
         .error-banner {
-            background: #2a1010; border: 1px solid #dc3545; color: #ff6b6b;
-            border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px;
+            background: rgba(224,92,110,.08); border: 1px solid rgba(224,92,110,.3); color: #e8778a;
+            border-radius: 12px; padding: 12px 16px; margin-bottom: 12px;
+            font-size: 12px; font-weight: 600; letter-spacing: .2px;
         }
 
         /* ── Reset modal ── */
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,.7);
+            position: fixed; inset: 0; background: rgba(4,6,14,.88);
             display: flex; align-items: center; justify-content: center;
-            z-index: 9999; padding: 20px;
+            z-index: 9999; padding: 20px; backdrop-filter: blur(10px) saturate(1.2);
         }
         .modal-card {
-            background: #1a1b1f; border: 1px solid #3a3b40; border-radius: 14px;
-            padding: 24px; width: 100%; max-width: 360px;
+            background: linear-gradient(170deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 22px;
+            padding: 30px; width: 100%; max-width: 360px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 40px 80px rgba(0,0,0,.85),
+                        inset 0 1px 0 rgba(255,255,255,.05);
         }
-        .modal-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 8px; }
-        .modal-body  { font-size: 14px; color: #888; line-height: 1.5; margin: 0 0 16px; }
+        .modal-title { font-size: 20px; font-weight: 800; color: var(--text); margin: 0 0 10px; letter-spacing: .2px; }
+        .modal-body  { font-size: 13px; color: var(--text3); line-height: 1.7; margin: 0 0 20px; }
         .modal-btns  { display: flex; gap: 10px; }
-        .modal-btns .btn { flex: 1; padding: 12px; }
+        .modal-btns .btn { flex: 1; padding: 14px; }
+
+        /* ── Admin Config ── */
+        .cfg-tabs{display:flex;gap:2px;background:var(--surface3);border-radius:12px;padding:4px;margin-bottom:16px;}
+        .cfg-tab{flex:1;padding:9px 4px;font-size:12px;font-weight:700;text-align:center;border-radius:9px;cursor:pointer;color:var(--text3);border:none;background:none;transition:all .2s;letter-spacing:.3px;}
+        .cfg-tab.active{background:var(--surface);color:var(--blue-lt);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+        .cfg-tab-panel{animation:cfgFade .15s ease;}
+        @keyframes cfgFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        .ptable{width:100%;border-collapse:collapse;font-size:12px;}
+        .ptable th{padding:7px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+        .ptable td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+        .ptable tr:last-child td{border-bottom:none;}
+        .ptable input,.ptable select{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 7px;font-size:12px;width:100%;outline:none;}
+        .ptable input:focus,.ptable select:focus{border-color:var(--blue);}
+        .ptable-wrap{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;}
+        .import-zone{border:2px dashed var(--border2);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;}
+        .import-zone:hover,.import-zone.drag{border-color:var(--blue);background:rgba(74,144,217,.06);}
+        .import-zone-icon{font-size:26px;margin-bottom:6px;}
+        .import-zone-text{font-size:13px;color:var(--text2);font-weight:600;}
+        .import-zone-sub{font-size:11px;color:var(--text4);margin-top:4px;}
+        .team-cfg-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);}
+        .team-cfg-row:last-child{border-bottom:none;}
+        .team-cfg-num{width:22px;height:22px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);font-size:10px;font-weight:700;color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+        .team-cfg-inputs{flex:1;display:flex;gap:6px;}
+        .team-cfg-inputs input,.team-cfg-inputs select{flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 10px;font-size:12px;outline:none;}
+        .team-cfg-inputs input:focus,.team-cfg-inputs select:focus{border-color:var(--blue);}
+        .team-cfg-del{color:var(--danger);background:rgba(224,92,110,.1);border:1px solid rgba(224,92,110,.3);border-radius:7px;padding:5px 9px;font-size:13px;cursor:pointer;}
+        .setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);}
+        .setting-row:last-child{border-bottom:none;}
+        .setting-label{font-size:13px;font-weight:600;color:var(--text);}
+        .setting-desc{font-size:11px;color:var(--text3);margin-top:2px;}
+        .setting-control input,.setting-control select{background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 10px;font-size:13px;font-weight:700;text-align:center;width:90px;outline:none;}
+        .setting-control input:focus{border-color:var(--blue);}
+        .cfg-status{font-size:12px;padding:10px 14px;border-radius:9px;margin-top:10px;}
+        .cfg-status.ok{background:rgba(30,201,122,.1);color:var(--win);border:1px solid rgba(30,201,122,.2);}
+        .cfg-status.err{background:rgba(224,92,110,.1);color:var(--danger);border:1px solid rgba(224,92,110,.2);}
+
+        /* ── Season Bar ── */
+        .season-bar { display:flex; gap:6px; justify-content:center; padding:10px 16px 0; flex-wrap:wrap; }
+        .season-pill {
+            padding:5px 14px; border-radius:20px; font-size:11px; font-weight:800;
+            letter-spacing:.8px; border:1px solid var(--border2); color:var(--text3);
+            background:var(--surface2); cursor:default; transition:all .2s;
+        }
+        .season-pill.active {
+            background:linear-gradient(135deg,rgba(232,184,75,.2),rgba(232,184,75,.05));
+            border-color:var(--gold); color:var(--gold);
+            box-shadow:0 0 12px rgba(232,184,75,.15);
+        }
+        .season-pill .s-label { font-size:9px; display:block; opacity:.6; margin-bottom:1px; }
+        /* ── Session History ── */
+        .session-hist-title { font-size:10px; font-weight:700; color:var(--text4); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+        .session-hist-card {
+            display:flex; align-items:center; justify-content:space-between;
+            background:var(--surface3); border:1px solid var(--border); border-radius:10px;
+            padding:10px 14px; margin-bottom:8px;
+        }
+        .session-hist-id { font-size:16px; font-weight:900; letter-spacing:3px; color:var(--text); }
+        .session-hist-meta { font-size:10px; color:var(--text3); margin-top:2px; }
+        .session-hist-btn { font-size:11px; font-weight:700; padding:6px 14px; border-radius:8px; }
+        /* ── Login improvements ── */
+        .login-welcome { font-size:12px; color:var(--teal); text-align:center; margin-bottom:8px; font-weight:600; }
+        .login-timestamp { font-size:10px; color:var(--text4); text-align:center; margin-top:4px; }
+        /* ── Idle warning ── */
+        .idle-banner {
+            position:fixed; bottom:0; left:0; right:0; z-index:9999;
+            background:linear-gradient(90deg,rgba(224,92,110,.95),rgba(180,50,70,.95));
+            color:#fff; padding:12px 20px; display:flex; align-items:center;
+            justify-content:space-between; font-size:13px; font-weight:600;
+            border-top:2px solid #e05c6e;
+        }
+        .idle-banner button { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4);
+            color:#fff; padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; }
+        /* ── Logout confirm ── */
+        .logout-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center; }
+        .logout-dialog { background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;max-width:320px;width:90%; }
+        .logout-dialog h3 { margin:0 0 8px;font-size:17px;color:var(--text); }
+        .logout-dialog p { margin:0 0 20px;font-size:13px;color:var(--text3);line-height:1.6; }
+        .logout-dialog .btn-row { display:flex;gap:10px; }
     </style>
 </head>
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useCallback } = React;
 
-// ─── Firebase ────────────────────────────────────────────────────────────────
-const firebaseConfig = {
-    apiKey: "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
-    authDomain: "koc2-20fb8.firebaseapp.com",
-    databaseURL: "https://koc2-20fb8-default-rtdb.firebaseio.com",
-    projectId: "koc2-20fb8",
-    storageBucket: "koc2-20fb8.firebasestorage.app",
-    messagingSenderId: "317734341461",
-    appId: "1:317734341461:web:1bcad5a1792fac0e46bddc"
-};
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// ─── Firebase (initialised in plain <script> above; db exposed as window.__db) ──
+const db = window.__db;
+
+// ─── Error Boundary ──────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  componentDidCatch(e) { this.setState({ err: e }); }
+  render() {
+    if (this.state.err) return (
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>&#9888;</div>
+        <h2 style={{marginBottom:'0.5rem'}}>Something went wrong</h2>
+        <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{this.state.err.message}</p>
+        <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Reload</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
+const CFG_PATH    = "config";
+const UTR_TIERS   = [6.0,5.5,5.0,4.5,4.0,3.5,3.0];
+const UTR_PRICES  = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 
-const POOL_ORDER = ["utr_5_5","utr_5_25","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
+const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
 const getUTR = k => parseFloat(k.replace("utr_","").replace("_","."));
 
 const PLAYERS = [
-    {id:1,Name:"Satish Reddy Orugunta",utr:5.5,price:14000},
-    {id:2,Name:"Rajasekhar Chintha",utr:5.5,price:14000},
-    {id:3,Name:"Anil Kunda",utr:5.5,price:14000},
-    {id:4,Name:"Krishna Vennapusa",utr:5.5,price:14000},
-    {id:5,Name:"Nagarjuna Saladi",utr:5.5,price:14000},
-    {id:6,Name:"Dinesh Reddy Timmareddy",utr:5.5,price:14000},
-    {id:7,Name:"Sudhakara Nallapati",utr:5.5,price:14000},
-    {id:8,Name:"Dinkar Bhardwaj",utr:5.5,price:14000},
-    {id:9,Name:"Yogesh Dhadge",utr:5.25,price:13000},
-    {id:10,Name:"Uma Vommi",utr:5.25,price:13000},
-    {id:11,Name:"Manish Jangid",utr:5.25,price:13000},
-    {id:12,Name:"Vinod Aripaka",utr:5.25,price:13000},
-    {id:13,Name:"Narayan Prasad",utr:5.25,price:13000},
-    {id:14,Name:"Chandrakant Dharme",utr:5.0,price:12000},
-    {id:15,Name:"Rajasekhar Karru",utr:5.0,price:12000},
-    {id:16,Name:"Hari Mothukuri",utr:5.0,price:12000},
-    {id:17,Name:"Lloyd Prasana Kumar",utr:5.0,price:12000},
-    {id:18,Name:"Ritesh Kumar",utr:5.0,price:12000},
-    {id:19,Name:"Sandeep Gengineri",utr:4.5,price:10000},
-    {id:20,Name:"Venky Dh",utr:4.5,price:10000},
-    {id:21,Name:"Jitender Kumar",utr:4.5,price:10000},
-    {id:22,Name:"Srinidhi Kulkarni",utr:4.5,price:10000},
-    {id:23,Name:"Naveenkumar Mohanram",utr:4.5,price:10000},
-    {id:24,Name:"Srikant Tenni",utr:4.0,price:8000},
-    {id:25,Name:"Bhaskar Boddireddy",utr:4.0,price:8000},
-    {id:26,Name:"Mohan Koripuri",utr:4.0,price:8000},
-    {id:27,Name:"Anshul Goyal",utr:4.0,price:8000},
-    {id:28,Name:"Jaweed Ibrahim",utr:4.0,price:8000},
-    {id:29,Name:"Janaki Ram Kantheti",utr:4.0,price:8000},
-    {id:30,Name:"Biju Koshy",utr:4.0,price:8000},
-    {id:31,Name:"Damodhara Palavali",utr:4.0,price:8000},
-    {id:32,Name:"Naseer Mohammad",utr:4.0,price:8000},
-    {id:33,Name:"Trinadh Cheepilla",utr:3.5,price:6000},
-    {id:34,Name:"Malla Reddy Cheerke",utr:3.5,price:6000},
-    {id:35,Name:"Charan Macharla",utr:3.5,price:6000},
-    {id:36,Name:"Mohamed Noufal",utr:3.5,price:6000},
-    {id:37,Name:"Rajasekhar Chejerla",utr:3.5,price:6000},
-    {id:38,Name:"Nivas Nazeer",utr:3.0,price:5000},
-    {id:39,Name:"Venice Robinson Amal Doss",utr:3.0,price:5000},
-    {id:40,Name:"Volkan Bal",utr:3.0,price:5000},
-    {id:41,Name:"Premkumar Balakrishnan",utr:3.0,price:5000},
-    {id:42,Name:"Guru Bavirisetty",utr:3.0,price:5000},
-    {id:43,Name:"Sidharth Behera",utr:3.0,price:5000},
-    {id:44,Name:"Sreekanth Bobbala",utr:3.0,price:5000},
-    {id:45,Name:"Hariprashanth Ganapathy",utr:3.0,price:5000},
-    {id:46,Name:"Prashanth Gourineni",utr:3.0,price:5000},
-    {id:47,Name:"Amit Gundewar",utr:3.0,price:5000},
-    {id:48,Name:"Jitin Jaitly",utr:3.0,price:5000},
-    {id:49,Name:"Prashanth Jayantha Kumar",utr:3.0,price:5000},
-    {id:50,Name:"Kalyan Kalidindi",utr:3.0,price:5000},
-    {id:51,Name:"Dineshkumar Kaliyaperumal",utr:3.0,price:5000},
-    {id:52,Name:"Joel Kodoru",utr:3.0,price:5000},
-    {id:53,Name:"Anand Krishnamurthy",utr:3.0,price:5000},
-    {id:54,Name:"Karthik Kumaresan",utr:3.0,price:5000},
-    {id:55,Name:"Sankara Lakshmanan",utr:3.0,price:5000},
-    {id:56,Name:"Chandu M",utr:3.0,price:5000},
-    {id:57,Name:"Satya Maddipati",utr:3.0,price:5000},
-    {id:58,Name:"Kailas Magi",utr:3.0,price:5000},
-    {id:59,Name:"Ninad Mahajan",utr:3.0,price:5000},
-    {id:60,Name:"Asif Mohammed",utr:3.0,price:5000},
-    {id:61,Name:"Boopesh Natarajan",utr:3.0,price:5000},
-    {id:62,Name:"Venky Pantham",utr:3.0,price:5000},
-    {id:63,Name:"Abhishek Patel",utr:3.0,price:5000},
-    {id:64,Name:"Mayur Patel",utr:3.0,price:5000},
-    {id:65,Name:"Shailendra Patidar",utr:3.0,price:5000},
-    {id:66,Name:"Prashanth Pendli",utr:3.0,price:5000},
-    {id:67,Name:"Mahidhar Penigi",utr:3.0,price:5000},
-    {id:68,Name:"Vinod Punati",utr:3.0,price:5000},
-    {id:69,Name:"Addy R",utr:3.0,price:5000},
-    {id:70,Name:"Raja R",utr:3.0,price:5000},
-    {id:71,Name:"Karthik Ragunathan",utr:3.0,price:5000},
-    {id:72,Name:"Saket Raizada",utr:3.0,price:5000},
-    {id:73,Name:"Jagapathi Raju",utr:3.0,price:5000},
-    {id:74,Name:"Arpit Rawat",utr:3.0,price:5000},
-    {id:75,Name:"Rajib Sarkar",utr:3.0,price:5000},
-    {id:76,Name:"Karthik Ram Senthilvel",utr:3.0,price:5000},
-    {id:77,Name:"Gopal Setty",utr:3.0,price:5000},
-    {id:78,Name:"Chandan Singh",utr:3.0,price:5000},
-    {id:79,Name:"Vipul Sud",utr:3.0,price:5000},
-    {id:80,Name:"Bharath Sunku",utr:3.0,price:5000},
-    {id:81,Name:"Avinash Terala",utr:3.0,price:5000},
-    {id:82,Name:"Vivek Tiku",utr:3.0,price:5000},
-    {id:83,Name:"Tushar Tipatre",utr:3.0,price:5000},
-    {id:84,Name:"Koushik Venkatasubramanian",utr:3.0,price:5000},
-    {id:85,Name:"Venu Sarvepalli",utr:3.0,price:5000},
-    {id:86,Name:"Vivek Bihani",utr:3.0,price:5000},
-    {id:87,Name:"Jay Sermadevi",utr:3.0,price:5000},
-    {id:88,Name:"Veeresh Kurni",utr:3.0,price:5000},
-    {id:89,Name:"Srinath Elitem",utr:3.0,price:5000},
-    {id:90,Name:"Prashant Janmatti",utr:3.0,price:5000},
-    {id:91,Name:"Rajesh Mishra",utr:3.0,price:5000},
-    {id:92,Name:"Samir Junnarkar",utr:3.0,price:5000},
-    {id:93,Name:"Amol Patwardhan",utr:3.0,price:5000},
-    {id:94,Name:"Shiva Kumar",utr:3.0,price:5000},
-    {id:95,Name:"Harsha Beeram",utr:3.0,price:5000},
-    {id:96,Name:"Raj Chava",utr:3.0,price:5000},
-    {id:97,Name:"Vijay Gate",utr:3.0,price:5000},
-    {id:98,Name:"Vinoth Duraisamy",utr:3.0,price:5000},
+    // ── UTR 6.0 · 16 players · ₹20,000 ──────────────────────────────────────
+    {id:1,  Name:"Satish Reddy Orugunta",      utr:6.0, price:20000},
+    {id:2,  Name:"Rajasekhar Chintha",          utr:6.0, price:20000},
+    {id:3,  Name:"Anil Kunda",                  utr:6.0, price:20000},
+    {id:4,  Name:"Krishna Vennapusa",           utr:6.0, price:20000},
+    {id:5,  Name:"Nagarjuna Saladi",            utr:6.0, price:20000},
+    {id:6,  Name:"Dinesh Reddy Timmareddy",     utr:6.0, price:20000},
+    {id:7,  Name:"Sudhakara Nallapati",         utr:6.0, price:20000},
+    {id:8,  Name:"Dinkar Bhardwaj",             utr:6.0, price:20000},
+    {id:9,  Name:"Yogesh Dhadge",               utr:6.0, price:20000},
+    {id:10, Name:"Uma Vommi",                   utr:6.0, price:20000},
+    {id:11, Name:"Manish Jangid",               utr:6.0, price:20000},
+    {id:12, Name:"Vinod Aripaka",               utr:6.0, price:20000},
+    {id:13, Name:"Narayan Prasad",              utr:6.0, price:20000},
+    {id:14, Name:"Chandrakant Dharme",          utr:6.0, price:20000},
+    {id:15, Name:"Rajasekhar Karru",            utr:6.0, price:20000},
+    {id:16, Name:"Hari Mothukuri",              utr:6.0, price:20000},
+    // ── UTR 5.5 · 16 players · ₹14,000 ──────────────────────────────────────
+    {id:17, Name:"Lloyd Prasana Kumar",         utr:5.5, price:14000},
+    {id:18, Name:"Ritesh Kumar",                utr:5.5, price:14000},
+    {id:19, Name:"Sandeep Gengineri",           utr:5.5, price:14000},
+    {id:20, Name:"Venky Dh",                    utr:5.5, price:14000},
+    {id:21, Name:"Jitender Kumar",              utr:5.5, price:14000},
+    {id:22, Name:"Srinidhi Kulkarni",           utr:5.5, price:14000},
+    {id:23, Name:"Naveenkumar Mohanram",        utr:5.5, price:14000},
+    {id:24, Name:"Srikant Tenni",               utr:5.5, price:14000},
+    {id:53, Name:"Anand Krishnamoorthy",        utr:5.5, price:14000},
+    {id:58, Name:"Magi Kailas",                 utr:5.5, price:14000},
+    {id:99, Name:"Vivek Reddy",                 utr:5.5, price:14000},
+    {id:100,Name:"Sashank T",                   utr:5.5, price:14000},
+    {id:101,Name:"Venkat Thimmisetty",          utr:5.5, price:14000},
+    {id:106,Name:"Satish K",                    utr:5.5, price:14000},
+    {id:111,Name:"Vamsi Atluri",                utr:5.5, price:14000},
+    {id:102,Name:"Nikhil Katakam",              utr:5.5, price:14000},
+    // ── UTR 5.0 · 16 players · ₹12,000 ──────────────────────────────────────
+    {id:25, Name:"Bhaskar Boddireddy",          utr:5.0, price:12000},
+    {id:26, Name:"Mohan Koripuri",              utr:5.0, price:12000},
+    {id:27, Name:"Anshul Goyal",                utr:5.0, price:12000},
+    {id:28, Name:"Jaweed Ibrahim",              utr:5.0, price:12000},
+    {id:29, Name:"Janaki Ram Kantheti",         utr:5.0, price:12000},
+    {id:30, Name:"Biju Koshy",                  utr:5.0, price:12000},
+    {id:31, Name:"Damodhara Palavali",          utr:5.0, price:12000},
+    {id:32, Name:"Naseer Mohammad",             utr:5.0, price:12000},
+    {id:33, Name:"Trinadh Cheepilla",           utr:5.0, price:12000},
+    {id:34, Name:"Malla Reddy Cheerke",         utr:5.0, price:12000},
+    {id:35, Name:"Charan Macharla",             utr:5.0, price:12000},
+    {id:36, Name:"Mohamed Noufal",              utr:5.0, price:12000},
+    {id:37, Name:"Rajasekhar Chejerla",         utr:5.0, price:12000},
+    {id:107,Name:"Praveen Vijay Kumar",         utr:5.0, price:12000},
+    {id:110,Name:"Tarun Chicholi",              utr:5.0, price:12000},
+    {id:113,Name:"Sai Varun Polisetty",         utr:5.0, price:12000},
+    // ── UTR 4.5 · 16 players · ₹10,000 ──────────────────────────────────────
+    {id:38, Name:"Nivas Nazeer",                utr:4.5, price:10000},
+    {id:39, Name:"Venice Robinson Amal Doss",   utr:4.5, price:10000},
+    {id:40, Name:"Volkan Bal",                  utr:4.5, price:10000},
+    {id:41, Name:"Premkumar Balakrishnan",      utr:4.5, price:10000},
+    {id:42, Name:"Guru Bavirisetty",            utr:4.5, price:10000},
+    {id:43, Name:"Sidharth Behera",             utr:4.5, price:10000},
+    {id:44, Name:"Sreekanth Bobbala",           utr:4.5, price:10000},
+    {id:45, Name:"Hariprashanth Ganapathy",     utr:4.5, price:10000},
+    {id:46, Name:"Prashanth Gourineni",         utr:4.5, price:10000},
+    {id:47, Name:"Amit Gundewar",               utr:4.5, price:10000},
+    {id:48, Name:"Jitin Jaitly",                utr:4.5, price:10000},
+    {id:49, Name:"Prashanth Jayantha Kumar",    utr:4.5, price:10000},
+    {id:50, Name:"Kalyan Kalidindi",            utr:4.5, price:10000},
+    {id:51, Name:"Dineshkumar Kaliyaperumal",   utr:4.5, price:10000},
+    {id:52, Name:"Joel Kodoru",                 utr:4.5, price:10000},
+    {id:54, Name:"Karthik Kumaresan",           utr:4.5, price:10000},
+    // ── UTR 4.0 · 16 players · ₹8,000 ───────────────────────────────────────
+    {id:55, Name:"Sankara Lakshmanan",          utr:4.0, price:8000},
+    {id:56, Name:"Chandu M",                    utr:4.0, price:8000},
+    {id:57, Name:"Satya Maddipati",             utr:4.0, price:8000},
+    {id:59, Name:"Ninad Mahajan",               utr:4.0, price:8000},
+    {id:60, Name:"Asif Mohammed",               utr:4.0, price:8000},
+    {id:61, Name:"Boopesh Natarajan",           utr:4.0, price:8000},
+    {id:62, Name:"Venky Pantham",               utr:4.0, price:8000},
+    {id:63, Name:"Abhishek Patel",              utr:4.0, price:8000},
+    {id:64, Name:"Mayur Patel",                 utr:4.0, price:8000},
+    {id:65, Name:"Shailendra Patidar",          utr:4.0, price:8000},
+    {id:66, Name:"Prashanth Pendli",            utr:4.0, price:8000},
+    {id:67, Name:"Mahidhar Penigi",             utr:4.0, price:8000},
+    {id:68, Name:"Vinod Punati",                utr:4.0, price:8000},
+    {id:69, Name:"Addy R",                      utr:4.0, price:8000},
+    {id:70, Name:"Raja R",                      utr:4.0, price:8000},
+    {id:71, Name:"Karthik Ragunathan",          utr:4.0, price:8000},
+    // ── UTR 3.5 · 16 players · ₹6,000 ───────────────────────────────────────
+    {id:72, Name:"Saket Raizada",               utr:3.5, price:6000},
+    {id:73, Name:"Jagapathi Raju",              utr:3.5, price:6000},
+    {id:74, Name:"Arpit Rawat",                 utr:3.5, price:6000},
+    {id:75, Name:"Rajib Sarkar",                utr:3.5, price:6000},
+    {id:76, Name:"Karthik Ram Senthilvel",      utr:3.5, price:6000},
+    {id:77, Name:"Gopal Setty",                 utr:3.5, price:6000},
+    {id:78, Name:"Chandan Singh",               utr:3.5, price:6000},
+    {id:79, Name:"Vipul Sud",                   utr:3.5, price:6000},
+    {id:80, Name:"Bharath Sunku",               utr:3.5, price:6000},
+    {id:81, Name:"Avinash Terala",              utr:3.5, price:6000},
+    {id:82, Name:"Vivek Tiku",                  utr:3.5, price:6000},
+    {id:83, Name:"Tushar Tipatre",              utr:3.5, price:6000},
+    {id:84, Name:"Koushik Venkatasubramanian",  utr:3.5, price:6000},
+    {id:85, Name:"Venu Sarvepalli",             utr:3.5, price:6000},
+    {id:86, Name:"Vivek Bihani",                utr:3.5, price:6000},
+    {id:87, Name:"Jay Sermadevi",               utr:3.5, price:6000},
+    // ── UTR 3.0 · 16 players · ₹5,000 ───────────────────────────────────────
+    {id:88, Name:"Veeresh Kurni",               utr:3.0, price:5000},
+    {id:89, Name:"Srinath Elitem",              utr:3.0, price:5000},
+    {id:90, Name:"Prashant Janmatti",           utr:3.0, price:5000},
+    {id:91, Name:"Rajesh Mishra",               utr:3.0, price:5000},
+    {id:92, Name:"Samir Junnarkar",             utr:3.0, price:5000},
+    {id:93, Name:"Amol Patwardhan",             utr:3.0, price:5000},
+    {id:94, Name:"Shiva Kumar",                 utr:3.0, price:5000},
+    {id:95, Name:"Harsha Beeram",               utr:3.0, price:5000},
+    {id:96, Name:"Raj Chava",                   utr:3.0, price:5000},
+    {id:97, Name:"Vijay Gate",                  utr:3.0, price:5000},
+    {id:98, Name:"Vinoth Duraisamy",            utr:3.0, price:5000},
+    {id:103,Name:"Azim",                        utr:3.0, price:5000},
+    {id:104,Name:"Raja M",                      utr:3.0, price:5000},
+    {id:105,Name:"Jayesh",                      utr:3.0, price:5000},
+    {id:109,Name:"Raghu G",                     utr:3.0, price:5000},
+    {id:112,Name:"Kalyan Ghanta",               utr:3.0, price:5000},
 ];
 
 const TEAMS = [
-    {id:1,name:"Team 1",captain:"Yogesh Dhadge"},
-    {id:2,name:"Team 2",captain:"Srikant Tenni"},
-    {id:3,name:"Team 3",captain:"Uma Vommi"},
-    {id:4,name:"Team 4",captain:"Narayan Prasad"},
-    {id:5,name:"Team 5",captain:"Manish Jangid"},
-    {id:6,name:"Team 6",captain:"Vinod Aripaka"},
-    {id:7,name:"Team 7",captain:"Satish Reddy Orugunta"},
-    {id:8,name:"Team 8",captain:"Anil Kunda"},
-    {id:9,name:"Team 9",captain:"Rajasekhar Chintha"},
-    {id:10,name:"Team 10",captain:"Krishna Vennapusa"},
-    {id:11,name:"Team 11",captain:"Nagarjuna Saladi"},
-    {id:12,name:"Team 12",captain:"Dinesh Reddy Timmareddy"},
-    {id:13,name:"Team 13",captain:"Sudhakara Nallapati"},
-    {id:14,name:"Team 14",captain:"Dinkar Bhardwaj"},
-    {id:15,name:"Team 15",captain:"Chandrakant Dharme"},
-    {id:16,name:"Team 16",captain:"Rajasekhar Karru"},
+    {id:1, name:"Rally Royals 👑",             captain:"Yogesh Dhadge"},
+    {id:2, name:"Karna's Crusaders ⚔️",        captain:"Srikant Tenni"},
+    {id:3, name:"Spin Kings 🎾👑",              captain:"Uma Vommi"},
+    {id:4, name:"KOC Challengers 🏆",           captain:"Narayan Prasad"},
+    {id:5, name:"Rally Squad 🎾",               captain:"Ritesh Kumar"},
+    {id:6, name:"POSH 😎",                      captain:"Vinod Aripaka"},
+    {id:7, name:"Chill Titans ❄️⚔️",           captain:"Satish Reddy Orugunta"},
+    {id:8, name:"Mega Lions 🦁",                captain:"Anil Kunda"},
+    {id:9, name:"Court Conquerors 🏹",          captain:"Rajasekhar Chintha"},
+    {id:10,name:"Royal Chill Badgers 🦡",       captain:"Krishna Vennapusa"},
+    {id:11,name:"Volly Vipers 🐍",              captain:"Magi Kailas"},
+    {id:12,name:"Dallas Chargers ⚡",            captain:"Vivek Reddy"},
+    {id:13,name:"Grand Slam Gladiators 🏛️⚔️",  captain:"Sashank T"},
+    {id:14,name:"Deuce Devils 😈",              captain:"Hari Mothukuri"},
+    {id:15,name:"Chill Super Kings 👑❄️",       captain:"Anand Krishnamoorthy"},
+    {id:16,name:"Smash Masters 💥🎾",           captain:"Dinkar Bhardwaj"},
 ];
 
 const CAPTAIN_NAMES = new Set(TEAMS.map(t => t.captain));
@@ -382,12 +787,10 @@ POOL_ORDER.forEach(key => {
 });
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
-const ADMIN_PIN = "731902";
-const TEAM_PINS = {1:"481027",2:"635914",3:"217658",4:"859302",5:"374186",6:"196540",7:"742839",8:"503271",9:"618495",10:"285063",11:"947612",12:"360728",13:"814359",14:"572046",15:"639021",16:"184756"};
-
+// PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
 const ACCOUNTS = [
-    {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null,pin:ADMIN_PIN},
-    ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id,pin:TEAM_PINS[t.id]}))
+    {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
+    ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -446,12 +849,68 @@ function initialDoc(sid) {
         timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now() };
 }
 
+const THIS_YEAR = new Date().getFullYear();
+const SEASONS = Array.from({length:5}, (_,i) => THIS_YEAR + i);
+
+function parseCSV(text) {
+    const rows = text.trim().split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+    if (!rows.length) return [];
+    const hdr = rows[0].map(h=>h.toLowerCase());
+    const ni = hdr.findIndex(h=>h.includes('name')||h.includes('player'));
+    const ui = hdr.findIndex(h=>h.includes('utr')||h.includes('rating'));
+    const pi = hdr.findIndex(h=>h.includes('price')||h.includes('cost'));
+    if (ni<0) return [];
+    return rows.slice(1).map((r,i)=>{
+        const utr = ui>=0 ? parseFloat(r[ui])||3.0 : 3.0;
+        return { id:Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 };
+    }).filter(p=>p.Name);
+}
+
+function buildPools(players, poolOrder, captainNames) {
+    const pools = {};
+    poolOrder.forEach(key => {
+        const utr = getUTR(key);
+        pools[key] = players.filter(p=>p.utr===utr && !captainNames.has(p.Name)).map(x=>({...x}));
+    });
+    return pools;
+}
+
+function buildInitialTeams(cfgTeams, cfgPlayers, budget) {
+    const byName = Object.fromEntries(cfgPlayers.map(p=>[p.Name,p]));
+    return cfgTeams.map(team => {
+        const cap = byName[team.captain];
+        const price = cap?.price||0;
+        return { ...team, budget:budget-price, totalSpent:price,
+            players: cap?[{id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}]:[] };
+    });
+}
+
+function SeasonBar({ selectedYear, onSelect }) {
+    return (
+        <div className="season-bar">
+            {SEASONS.map(yr => (
+                <div key={yr}
+                    className={`season-pill${yr===selectedYear?" active":""}`}
+                    onClick={()=>onSelect && onSelect(yr)}
+                    style={{cursor:onSelect?"pointer":"default"}}>
+                    <span className="s-label">SEASON</span>
+                    {yr}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Login screen ─────────────────────────────────────────────────────────────
 function Login({ onLogin }) {
-    const [account, setAccount] = useState(ACCOUNTS[0]);
+    const [account, setAccount] = useState(() => {
+        const saved = pref("ta_last_account", null);
+        return ACCOUNTS.find(a=>a.code===saved) || ACCOUNTS[0];
+    });
     const [pin, setPin] = useState("");
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
+    const lastLogin = pref("ta_last_login", null);
 
     const submit = async () => {
         setError(null);
@@ -459,125 +918,530 @@ function Login({ onLogin }) {
         setBusy(true);
         try {
             const snap = await db.ref(`users/${account.code}`).once("value");
-            let user = snap.val();
-            // Seed (or re-seed) if user missing or stored in old bcrypt format
+            const user = snap.val();
             if (!user || !user.pin) {
-                const updates = {};
-                ACCOUNTS.forEach(a => { updates[`users/${a.code}`] = {code:a.code,pin:a.pin,role:a.role,teamId:a.teamId,name:a.label}; });
-                await db.ref().update(updates);
-                user = { code:account.code, pin:account.pin, role:account.role, teamId:account.teamId };
+                setError("Account not set up yet. Ask the admin to configure PINs.");
+                setBusy(false);
+                return;
             }
             if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
+            savePref("ta_last_account", account.code);
+            savePref("ta_last_login", { name: account.label, time: Date.now() });
             onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
         } catch(e) { setError("Error: " + e.message); setBusy(false); }
     };
 
+    const formatTime = ts => {
+        const d = new Date(ts);
+        return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    };
+
     return (
-        <div className="login-wrap">
-            <div className="login-title">🎾 TENNIS AUCTION</div>
-            <div className="login-sub">Live player draft · Real-time sync</div>
+        <div>
+            <SeasonBar selectedYear={THIS_YEAR} />
+            <div className="login-wrap">
+                <div className="login-title">🎾 TENNIS AUCTION</div>
+                <div className="login-sub">Live player draft · Real-time sync</div>
 
-            <div className="field-wrap">
-                <div className="field-label">ACCOUNT</div>
-                <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
-                    {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
-                </select>
+                {lastLogin && (
+                    <div className="login-welcome">
+                        👋 Welcome back, {lastLogin.name.split("·")[1]?.trim() || lastLogin.name}
+                        <div className="login-timestamp">Last login: {formatTime(lastLogin.time)}</div>
+                    </div>
+                )}
+
+                <div className="field-wrap">
+                    <div className="field-label">ACCOUNT</div>
+                    <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
+                        {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
+                    </select>
+                </div>
+
+                <div className="field-wrap">
+                    <div className="field-label">6-DIGIT PIN</div>
+                    <input type="password" value={pin} maxLength={6} inputMode="numeric"
+                        placeholder="● ● ● ● ● ●"
+                        style={{letterSpacing:8,textAlign:"center",fontSize:20}}
+                        onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
+                        onKeyPress={e => e.key==="Enter" && submit()} />
+                </div>
+
+                {error && <div className="login-error">{error}</div>}
+
+                <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
+                    {busy ? "Signing in…" : "Sign In"}
+                </button>
             </div>
+        </div>
+    );
+}
 
-            <div className="field-wrap">
-                <div className="field-label">6-DIGIT PIN</div>
-                <input type="password" value={pin} maxLength={6} inputMode="numeric"
-                    placeholder="● ● ● ● ● ●"
-                    style={{letterSpacing:8,textAlign:"center",fontSize:20}}
-                    onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
-                    onKeyPress={e => e.key==="Enter" && submit()} />
+// ─── Admin Config (Players · Teams · Settings) ───────────────────────────────
+function AdminConfig() {
+    const [tab, setTab]         = useState("players");
+    const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
+    const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
+    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS});
+    const [saving, setSaving]   = useState(false);
+    const [status, setStatus]   = useState(null);
+    const [drag, setDrag]       = useState(false);
+    const fileRef = useRef(null);
+
+    useEffect(() => {
+        db.ref(CFG_PATH).once("value").then(snap => {
+            const d = snap.val();
+            if (!d) return;
+            if (Array.isArray(d.players) && d.players.length) setPlayers(d.players);
+            if (Array.isArray(d.teams)   && d.teams.length)   setTeams(d.teams);
+            if (d.settings) setSettings(s=>({...s,...d.settings}));
+        });
+    }, []);
+
+    const handleFile = file => {
+        if (!file || !file.name.match(/\.(csv|txt)$/i)) { setStatus({ok:false,text:"Please upload a .csv file"}); return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+            const parsed = parseCSV(e.target.result);
+            if (!parsed.length) { setStatus({ok:false,text:"No players found — check CSV has a Name column"}); return; }
+            setPlayers(parsed);
+            setStatus({ok:true,text:`Imported ${parsed.length} players`});
+        };
+        reader.readAsText(file);
+    };
+
+    const addPlayer = () => setPlayers(ps=>[...ps,{id:Date.now(),Name:"",utr:3.0,price:5000}]);
+    const updPlayer = (id,f,v) => setPlayers(ps=>ps.map(p=>p.id===id?{...p,[f]:v}:p));
+    const delPlayer = id => setPlayers(ps=>ps.filter(p=>p.id!==id));
+
+    const addTeam = () => { const nid=Math.max(0,...teams.map(t=>t.id))+1; setTeams(ts=>[...ts,{id:nid,name:`Team ${nid}`,captain:""}]); };
+    const updTeam = (id,f,v) => setTeams(ts=>ts.map(t=>t.id===id?{...t,[f]:v}:t));
+    const delTeam = id => setTeams(ts=>ts.filter(t=>t.id!==id));
+
+    const saveAll = async () => {
+        setSaving(true); setStatus(null);
+        const vp = players.filter(p=>p.Name.trim());
+        const vt = teams.filter(t=>t.name.trim());
+        if (!vp.length) { setStatus({ok:false,text:"Add at least one player"}); setSaving(false); return; }
+        if (!vt.length) { setStatus({ok:false,text:"Add at least one team"}); setSaving(false); return; }
+        const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
+        try {
+            await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
+            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ₹${settings.budget.toLocaleString()} budget`});
+        } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
+        setSaving(false);
+    };
+
+    const playerNames = players.map(p=>p.Name).filter(Boolean);
+
+    return (
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+            <div style={{padding:"18px 18px 0"}}>
+                <div className="card-title" style={{marginBottom:12}}>⚙️ Auction Configuration</div>
+                <div className="cfg-tabs">
+                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
+                        <button key={k} className={`cfg-tab${tab===k?" active":""}`} onClick={()=>setTab(k)}>{l}</button>
+                    ))}
+                </div>
             </div>
+            <div style={{padding:"0 18px 18px"}}>
 
-            {error && <div className="login-error">{error}</div>}
+                {tab==="players" && (
+                    <div className="cfg-tab-panel">
+                        <div className={`import-zone${drag?" drag":""}`}
+                            onDragOver={e=>{e.preventDefault();setDrag(true)}}
+                            onDragLeave={()=>setDrag(false)}
+                            onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0])}}
+                            onClick={()=>fileRef.current?.click()}>
+                            <div className="import-zone-icon">📄</div>
+                            <div className="import-zone-text">Drop CSV or click to import players</div>
+                            <div className="import-zone-sub">Columns: Name, UTR, Price (Price auto-fills from UTR if omitted)</div>
+                        </div>
+                        <input ref={fileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])} />
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                            <span style={{fontSize:12,color:"var(--text3)"}}>{players.filter(p=>p.Name).length} players</span>
+                            <button className="btn btn-secondary" style={{width:"auto",padding:"5px 12px",fontSize:11}} onClick={addPlayer}>+ Add Player</button>
+                        </div>
+                        <div className="ptable-wrap">
+                            <table className="ptable">
+                                <thead><tr><th>#</th><th>Name</th><th>UTR</th><th>Price</th><th></th></tr></thead>
+                                <tbody>
+                                    {players.map((p,i)=>(
+                                        <tr key={p.id}>
+                                            <td style={{color:"var(--text4)",width:24,fontSize:10}}>{i+1}</td>
+                                            <td><input value={p.Name} onChange={e=>updPlayer(p.id,"Name",e.target.value)} placeholder="Player name" /></td>
+                                            <td style={{width:72}}>
+                                                <select value={p.utr} onChange={e=>{const u=parseFloat(e.target.value);updPlayer(p.id,"utr",u);updPlayer(p.id,"price",UTR_PRICES[u]||5000);}}>
+                                                    {UTR_TIERS.map(u=><option key={u} value={u}>{u.toFixed(1)}</option>)}
+                                                </select>
+                                            </td>
+                                            <td style={{width:80}}><input type="number" step={500} value={p.price} onChange={e=>updPlayer(p.id,"price",parseInt(e.target.value)||0)} /></td>
+                                            <td style={{width:28}}><button className="team-cfg-del" onClick={()=>delPlayer(p.id)}>✕</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
-            <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
-                {busy ? "Signing in…" : "Sign In"}
+                {tab==="teams" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <span style={{fontSize:12,color:"var(--text3)"}}>{teams.length} teams · {teams.length*settings.teamSize} total slots</span>
+                            <button className="btn btn-secondary" style={{width:"auto",padding:"5px 12px",fontSize:11}} onClick={addTeam}>+ Add Team</button>
+                        </div>
+                        <div style={{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",maxHeight:360,overflowY:"auto"}}>
+                            {teams.map((t,i)=>(
+                                <div key={t.id} className="team-cfg-row">
+                                    <div className="team-cfg-num">{i+1}</div>
+                                    <div className="team-cfg-inputs">
+                                        <input value={t.name} onChange={e=>updTeam(t.id,"name",e.target.value)} placeholder="Team name" />
+                                        <select value={t.captain} onChange={e=>updTeam(t.id,"captain",e.target.value)}
+                                            style={{flex:1,background:"var(--surface3)",border:"1px solid var(--border2)",borderRadius:8,color:t.captain?"var(--text)":"var(--text4)",padding:"7px 10px",fontSize:12,outline:"none"}}>
+                                            <option value="">— Captain —</option>
+                                            {playerNames.map(n=><option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                    </div>
+                                    <button className="team-cfg-del" onClick={()=>delTeam(t.id)}>✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {tab==="settings" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{border:"1px solid var(--border)",borderRadius:10,padding:"0 14px"}}>
+                            {[
+                                {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"₹",      min:5000,  step:5000},
+                                {key:"teamSize",  label:"Players per Team",   desc:"Total roster size including the captain",    suffix:" players",min:3,     max:30, step:1},
+                                {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
+                            ].map(({key,label,desc,suffix,min,max,step,scale})=>(
+                                <div key={key} className="setting-row">
+                                    <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
+                                    <div className="setting-control">
+                                        <input type="number" min={min} max={max} step={step}
+                                            value={scale?Math.round(settings[key]/scale):settings[key]}
+                                            onChange={e=>{const v=parseInt(e.target.value)||min;setSettings(s=>({...s,[key]:scale?v*scale:v}));}} />
+                                        <div style={{fontSize:10,color:"var(--text4)",textAlign:"center",marginTop:2}}>{suffix}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{marginTop:12,padding:"10px 14px",background:"var(--surface3)",borderRadius:10,fontSize:12,color:"var(--text3)"}}>
+                            <strong style={{color:"var(--text)"}}>Summary: </strong>
+                            {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots · ₹{settings.budget.toLocaleString()} budget · {Math.round(settings.timerMs/1000)}s timer
+                        </div>
+                    </div>
+                )}
+
+                {status && <div className={`cfg-status ${status.ok?"ok":"err"}`}>{status.text}</div>}
+                <button className="btn btn-primary" style={{marginTop:12}} onClick={saveAll} disabled={saving}>
+                    {saving?"Saving…":"💾 Save Configuration"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Manage PINs (admin only) ─────────────────────────────────────────────────
+function ManagePins() {
+    const [pins, setPins] = useState({});
+    const [saving, setSaving] = useState(null);
+    const [msg, setMsg] = useState(null);
+
+    useEffect(() => {
+        db.ref("users").once("value").then(snap => {
+            const data = snap.val() || {};
+            const initial = {};
+            ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || ""; });
+            setPins(initial);
+        });
+    }, []);
+
+    const save = async (account) => {
+        const pin = pins[account.code] || "";
+        if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { setMsg({code:account.code,text:"Must be 6 digits",ok:false}); return; }
+        setSaving(account.code);
+        await db.ref(`users/${account.code}`).set({
+            code: account.code,
+            pin,
+            role: account.role,
+            teamId: account.teamId || null,
+            name: account.label
+        });
+        setSaving(null);
+        setMsg({code:account.code,text:"Saved",ok:true});
+        setTimeout(() => setMsg(null), 2000);
+    };
+
+    const saveAll = async () => {
+        const invalid = ACCOUNTS.find(a => { const p = pins[a.code]||""; return p.length!==6||!/^\d{6}$/.test(p); });
+        if (invalid) { setMsg({code:"ALL",text:`Invalid PIN for ${invalid.label}`,ok:false}); return; }
+        setSaving("ALL");
+        const updates = {};
+        ACCOUNTS.forEach(a => {
+            updates[`users/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
+        });
+        await db.ref().update(updates);
+        setSaving(null);
+        setMsg({code:"ALL",text:"All PINs saved",ok:true});
+        setTimeout(() => setMsg(null), 2000);
+    };
+
+    return (
+        <div className="card" style={{marginTop:16}}>
+            <div className="card-title">Manage PINs</div>
+            <div className="card-sub">Set or update 6-digit PINs for each account. Changes take effect immediately.</div>
+            <div style={{maxHeight:320,overflowY:"auto",marginTop:10}}>
+                {ACCOUNTS.map(a => (
+                    <div key={a.code} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                        <div style={{flex:1,fontSize:12,color:"#ccc",minWidth:160}}>{a.label}</div>
+                        <input
+                            type="password"
+                            maxLength={6}
+                            inputMode="numeric"
+                            placeholder="● ● ● ● ● ●"
+                            value={pins[a.code]||""}
+                            style={{width:110,letterSpacing:4,textAlign:"center",padding:"6px 8px",background:"#1a1f2e",border:"1px solid #333",borderRadius:6,color:"#fff",fontSize:14}}
+                            onChange={e => setPins(p => ({...p,[a.code]:e.target.value.replace(/\D/g,"").slice(0,6)}))}
+                        />
+                        <button
+                            className="btn btn-neutral"
+                            style={{width:"auto",padding:"6px 12px",fontSize:12}}
+                            onClick={() => save(a)}
+                            disabled={saving===a.code||saving==="ALL"}
+                        >{saving===a.code?"…":"Save"}</button>
+                        {msg && msg.code===a.code && <span style={{fontSize:11,color:msg.ok?"#4caf50":"#f44"}}>{msg.text}</span>}
+                    </div>
+                ))}
+            </div>
+            <button className="btn btn-primary" style={{marginTop:12}} onClick={saveAll} disabled={!!saving}>
+                {saving==="ALL" ? "Saving all…" : "Save All PINs"}
             </button>
+            {msg && msg.code==="ALL" && <div style={{marginTop:6,fontSize:12,color:msg.ok?"#4caf50":"#f44"}}>{msg.text}</div>}
+        </div>
+    );
+}
+
+// ─── Pool Viewer (admin) ──────────────────────────────────────────────────────
+const UTR_COLORS = {
+    6.0: {bg:"rgba(232,184,75,.15)",  border:"rgba(232,184,75,.4)",  text:"#e8b84b"},
+    5.5: {bg:"rgba(155,135,245,.15)", border:"rgba(155,135,245,.4)", text:"#9b87f5"},
+    5.0: {bg:"rgba(74,144,217,.15)",  border:"rgba(74,144,217,.4)",  text:"#4a90d9"},
+    4.5: {bg:"rgba(0,212,168,.15)",   border:"rgba(0,212,168,.4)",   text:"#00d4a8"},
+    4.0: {bg:"rgba(30,201,122,.15)",  border:"rgba(30,201,122,.4)",  text:"#1ec97a"},
+    3.5: {bg:"rgba(224,92,110,.15)",  border:"rgba(224,92,110,.4)",  text:"#e05c6e"},
+    3.0: {bg:"rgba(90,114,153,.15)",  border:"rgba(90,114,153,.4)",  text:"#5a7299"},
+};
+const POOL_LABELS = {
+    6.0:"Elite · UTR 6.0", 5.5:"Advanced · UTR 5.5", 5.0:"Strong · UTR 5.0",
+    4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
+    3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
+};
+function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
+
+function PoolViewer() {
+    const [open, setOpen] = useState({});
+    const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
+
+    const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
+
+    return (
+        <div className="card" style={{padding:"18px"}}>
+            <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
+            <div className="card-sub" style={{marginBottom:14}}>
+                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+            </div>
+            {POOL_ORDER.map(key => {
+                const utr = getUTR(key);
+                const players = PLAYER_POOLS[key];
+                if (!players || players.length === 0) return null;
+                const col = UTR_COLORS[utr] || UTR_COLORS[3.0];
+                const isOpen = !!open[key];
+                return (
+                    <div key={key} className="pool-section">
+                        <div className={`pool-header${isOpen?" open":""}`}
+                            style={{background:`linear-gradient(135deg,${col.bg},var(--surface3))`}}
+                            onClick={()=>toggle(key)}>
+                            <div className="pool-header-left">
+                                <span className="pool-utr-badge"
+                                    style={{background:col.bg,border:`1px solid ${col.border}`,color:col.text}}>
+                                    UTR {utr.toFixed(1)}
+                                </span>
+                                <div>
+                                    <div className="pool-header-title">{POOL_LABELS[utr]}</div>
+                                    <div className="pool-header-meta">{players.length} players · base {fmtR(players[0]?.price||0)}</div>
+                                </div>
+                            </div>
+                            <span className={`pool-chevron${isOpen?" open":""}`}>▼</span>
+                        </div>
+                        {isOpen && (
+                            <div className="pool-body">
+                                {players.map((p,i) => {
+                                    const isCap = CAPTAIN_NAMES.has(p.Name);
+                                    return (
+                                        <div key={p.id} className="pool-player-row">
+                                            <span className="pool-player-num">{i+1}</span>
+                                            <span className="pool-player-name">{p.Name}</span>
+                                            {isCap && <span className="pool-player-cap">CAPTAIN</span>}
+                                            <span className="pool-player-price">{fmtR(p.price)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
 
 // ─── Session lobby ────────────────────────────────────────────────────────────
-function Lobby({ user, onJoin, onLogout }) {
+function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const [joinId, setJoinId] = useState("");
     const [creating, setCreating] = useState(false);
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const sessionHistory = pref("ta_sessions", []);
+
+    const saveSession = (sid) => {
+        const existing = pref("ta_sessions", []);
+        const updated = [
+            { id:sid, year:selectedYear||THIS_YEAR, ts:Date.now() },
+            ...existing.filter(s=>s.id!==sid)
+        ].slice(0,5);
+        savePref("ta_sessions", updated);
+        savePref("ta_last_session", sid);
+    };
 
     const createNew = async () => {
         setCreating(true); setError(null);
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-        await db.ref(`auctions/${sid}`).set(initialDoc(sid));
+        try {
+            const cfgSnap = await db.ref(CFG_PATH).once("value");
+            const cfg = cfgSnap.val();
+            const cfgPlayers = (cfg?.players?.length ? cfg.players : PLAYERS);
+            const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
+            const budget     = cfg?.settings?.budget  || TEAM_BUDGET;
+            const teamSize   = cfg?.settings?.teamSize || TEAM_SIZE;
+            const timerMs    = cfg?.settings?.timerMs  || TIMER_MS;
+            const capNames   = new Set(cfgTeams.map(t=>t.captain));
+            const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
+            const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+            await db.ref(`auctions/${sid}`).set({
+                sessionId:sid, teams:initTeams, playerPools:pools,
+                currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
+                timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
+                config:{budget,teamSize,timerMs}
+            });
+            saveSession(sid);
+            onJoin(sid);
+        } catch(e) { setError("Failed to create: "+e.message); setCreating(false); }
+    };
+
+    const joinExisting = async (id) => {
+        const sid = (id || joinId).trim().toUpperCase();
+        if (!sid) { setError("Enter a session ID"); return; }
+        setJoining(true); setError(null);
+        const snap = await db.ref(`auctions/${sid}`).once("value");
+        if (!snap.exists()) { setError(`Session ${sid} not found`); setJoining(false); return; }
+        saveSession(sid);
         onJoin(sid);
     };
 
-    const joinExisting = async () => {
-        const id = joinId.trim().toUpperCase();
-        if (!id) { setError("Enter a session ID"); return; }
-        setJoining(true); setError(null);
-        const snap = await db.ref(`auctions/${id}`).once("value");
-        if (!snap.exists()) { setError(`Session ${id} not found`); setJoining(false); return; }
-        onJoin(id);
+    const confirmLogout = () => setShowLogoutConfirm(true);
+
+    const formatAge = ts => {
+        const s = Math.floor((Date.now()-ts)/1000);
+        if (s<60) return "just now";
+        const m = Math.floor(s/60); if (m<60) return `${m}m ago`;
+        const h = Math.floor(m/60); if (h<24) return `${h}h ago`;
+        return `${Math.floor(h/24)}d ago`;
     };
 
-    const poolPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
-
     return (
-        <div className="setup-wrap">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-                <div>
-                    <div style={{fontSize:11,color:"#888"}}>Signed in as</div>
-                    <div style={{fontWeight:700,color:"#fff"}}>{user.name}</div>
+        <div>
+            <SeasonBar selectedYear={selectedYear||THIS_YEAR} onSelect={onYearSelect} />
+            <div className="setup-wrap">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                    <div>
+                        <div style={{fontSize:11,color:"#888"}}>Signed in as</div>
+                        <div style={{fontWeight:700,color:"#fff"}}>{user.name}</div>
+                        {pref("ta_last_login",null) && (
+                            <div style={{fontSize:10,color:"var(--text4)"}}>
+                                Since {new Date(pref("ta_last_login",{time:Date.now()}).time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+                            </div>
+                        )}
+                    </div>
+                    <button className="btn btn-neutral" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={confirmLogout}>Log out</button>
                 </div>
-                <button className="btn btn-neutral" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={onLogout}>Log out</button>
-            </div>
 
-            {error && <div className="error-banner">{error}</div>}
+                {error && <div className="error-banner">{error}</div>}
 
-            {user.role === "admin" ? (
+                {user.role === "admin" ? (
+                    <>
+                    <div className="card">
+                        <div className="card-title">Start new auction</div>
+                        <div className="card-sub">Creates a fresh session for <strong style={{color:"var(--gold)"}}>Season {selectedYear||THIS_YEAR}</strong>. Share the 6-letter ID with all captains.</div>
+                        <button className="btn btn-primary" onClick={createNew} disabled={creating}>
+                            {creating ? "Creating…" : `Create ${selectedYear||THIS_YEAR} Auction`}
+                        </button>
+                    </div>
+                    <AdminConfig />
+                    <ManagePins />
+                    </>
+                ) : (
+                    <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
+                        <div className="card-title">👋 Hi, {user.name.split("·")[1]?.trim()}</div>
+                        <div className="card-sub">Ask the Auctioneer for the Session ID, then join below.</div>
+                    </div>
+                )}
+
+                {sessionHistory.length > 0 && (
+                    <div className="card">
+                        <div className="session-hist-title">🕐 Recent Sessions</div>
+                        {sessionHistory.map(s => (
+                            <div key={s.id} className="session-hist-card">
+                                <div>
+                                    <div className="session-hist-id">{s.id}</div>
+                                    <div className="session-hist-meta">Season {s.year||THIS_YEAR} · {formatAge(s.ts)}</div>
+                                </div>
+                                <button className="btn btn-neutral session-hist-btn" onClick={()=>joinExisting(s.id)}>
+                                    Rejoin
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="or-row"><div className="line"/><span>OR JOIN EXISTING</span><div className="line"/></div>
+
                 <div className="card">
-                    <div className="card-title">Start new auction</div>
-                    <div className="card-sub">Creates a fresh session. Share the 6-letter ID with all captains.</div>
-                    <button className="btn btn-primary" onClick={createNew} disabled={creating}>
-                        {creating ? "Creating…" : "Create New Auction"}
+                    <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
+                        value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
+                        onKeyPress={e=>e.key==="Enter" && joinExisting()}
+                        style={{marginBottom:14}} />
+                    <button className="btn btn-secondary" onClick={()=>joinExisting()} disabled={joining||joinId.length<6}>
+                        {joining ? "Joining…" : "Join Session"}
                     </button>
                 </div>
-            ) : (
-                <div className="card" style={{borderColor:"#4f9eff",background:"#0f1420"}}>
-                    <div className="card-title">👋 Hi, {user.name.split("·")[1]?.trim()}</div>
-                    <div className="card-sub">Ask the Auctioneer for the Session ID, then join below.</div>
-                </div>
-            )}
 
-            <div className="or-row"><div className="line"/><span>OR JOIN EXISTING</span><div className="line"/></div>
-
-            <div className="card">
-                <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
-                    value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
-                    onKeyPress={e=>e.key==="Enter"&&joinExisting()} />
-                <button className="btn btn-neutral" style={{marginTop:10}} onClick={joinExisting} disabled={joining||!joinId.trim()}>
-                    {joining ? "Joining…" : "Join Auction"}
-                </button>
-            </div>
-
-            <div className="health-panel">
-                <div style={{fontWeight:700,color:"#aaa",marginBottom:6}}>Setup check</div>
-                <div className="health-row"><span>Teams</span><span className={TEAMS.length===16?"health-ok":"health-bad"}>{TEAMS.length} / 16</span></div>
-                <div className="health-row"><span>Pool players</span><span>{poolPlayers}</span></div>
-                <div className="health-row"><span>Total players</span><span>{PLAYERS.length}</span></div>
-                {POOL_ORDER.map(key => {
-                    const c = PLAYER_POOLS[key].length;
-                    return <div className="health-row" key={key}>
-                        <span>UTR {getUTR(key)}</span>
-                        <span style={{color:"#666"}}>{c===0?"auto-skipped":`${c} players · max ${POOL_CAPS[key]}/team`}</span>
-                    </div>;
-                })}
+                {showLogoutConfirm && (
+                    <div className="logout-overlay">
+                        <div className="logout-dialog">
+                            <h3>Sign out?</h3>
+                            <p>You'll need your PIN to sign back in. Any active auction will remain open for others.</p>
+                            <div className="btn-row">
+                                <button className="btn btn-danger" style={{flex:1}} onClick={onLogout}>Sign Out</button>
+                                <button className="btn btn-neutral" style={{flex:1}} onClick={()=>setShowLogoutConfirm(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -640,7 +1504,7 @@ function Auction({ sid, user, onBack }) {
         if (!eff?.player) return "No player";
         const team = state.teams.find(t=>t.id===teamId);
         if (!team) return "Team not found";
-        if (team.players.length >= TEAM_SIZE) return `Team full`;
+        if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
         const utr = getUTR(eff.poolKey);
         const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
         if (fromPool >= (POOL_CAPS[eff.poolKey]||0)) return `Max ${POOL_CAPS[eff.poolKey]} at UTR ${utr}`;
@@ -650,7 +1514,7 @@ function Auction({ sid, user, onBack }) {
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `$${fmt(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
-        const rem = TEAM_SIZE - team.players.length;
+        const rem = TEAM_SIZE_EFF - team.players.length;
         const minNeeded = rem>1?(rem-1)*5000:0;
         if (amount > team.budget-minNeeded) return `Need $${fmt(minNeeded)} for ${rem-1} more`;
         return null;
@@ -697,6 +1561,7 @@ function Auction({ sid, user, onBack }) {
     };
 
     if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
+    const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
 
     const eff = getEffective(state);
     const isAdmin = user.role === "admin";
@@ -737,7 +1602,7 @@ function Auction({ sid, user, onBack }) {
     };
 
     const sortedTeams = [...state.teams].map(t => {
-        const isDisabled = t.players.length>=TEAM_SIZE || t.budget<eff.player.price ||
+        const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price ||
             (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id};
     }).sort((a,b) => {
@@ -752,24 +1617,26 @@ function Auction({ sid, user, onBack }) {
         <div>
             <div className="top-bar">
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <button onClick={onBack} style={{background:"none",border:"none",color:"#888",fontSize:20,cursor:"pointer",padding:0}}>‹</button>
+                    <button onClick={onBack} className="session-back">‹</button>
                     <div>
-                        <div style={{fontSize:11,color:"#555",letterSpacing:1}}>SESSION</div>
-                        <div style={{fontWeight:800,fontSize:20,color:"#fff",letterSpacing:2}}>{sid}</div>
+                        <div className="session-label">Session</div>
+                        <div className="session-id">{sid}</div>
                     </div>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
-                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"6px 12px",fontSize:12}} onClick={()=>setResetOpen(true)}>Reset</button>}
+                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"7px 14px",fontSize:12,borderRadius:8}} onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
 
-            <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
-            <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
+            <div className="progress-wrap">
+                <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
+                <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
+            </div>
 
-            <div className={`sticky-bar`} style={warn?{borderColor:"#ff6b6b"}:{}}>
-                <div style={{minWidth:0}}>
-                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span style={{color:"#ff6b6b",fontSize:13}}> · Retry #{eff.player.retryCount}</span>}</div>
+            <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
+                <div className="sb-left">
+                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
                     <div className="sb-meta">UTR {eff.player.utr} · base ${fmt(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
                     {highest>0 && <div className="sb-high">High ${fmt(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
                 </div>
@@ -794,30 +1661,37 @@ function Auction({ sid, user, onBack }) {
                     const isMyTeam = !isAdmin && team.id===myTeamId;
 
                     if (team.isDisabled && !isMyTeam) {
-                        const reason = team.players.length>=TEAM_SIZE?"Full":team.budget<eff.player.price?"Low budget":`Cap at UTR ${getUTR(eff.poolKey)}`;
+                        const reason = team.players.length>=TEAM_SIZE_EFF?"Full":team.budget<eff.player.price?"Low budget":`UTR cap`;
                         return (
                             <div key={team.id} className="bid-card disabled-card">
-                                <span style={{fontSize:12,color:"#555"}}>{team.name} ({team.players.length}/{TEAM_SIZE})</span>
-                                <span style={{fontSize:11,color:"#444",fontStyle:"italic"}}>{reason}</span>
+                                <span className="disabled-team-name">{team.name} · {team.players.length}/{TEAM_SIZE_EFF}</span>
+                                <span className="disabled-reason">{reason}</span>
                             </div>
                         );
                     }
 
                     const anchor = highest>0?highest+1000:eff.player.price;
                     const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=team.budget);
-                    const canBid = !isAdmin || isAdmin; // admin can bid for any team in test mode — captains only their own
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
                             <div className="bid-card-head">
-                                <div>
-                                    <div className="team-name">{team.name}{isMyTeam?" · You":""}</div>
-                                    <div className="team-meta">{team.captain} · ${fmt(team.budget)} · {team.players.length}/{TEAM_SIZE}</div>
+                                <div className="bid-team-info">
+                                    <div className="team-name">
+                                        {team.name}
+                                        {isMyTeam && <span className="team-you-tag">YOU</span>}
+                                    </div>
+                                    <div className="team-captain">⭐ {team.captain}</div>
+                                    <div className="team-budget-row">
+                                        <span className="team-budget-pill team-budget-left">${fmt(team.budget)}</span>
+                                        <span className="team-slots">{team.players.length}/{TEAM_SIZE_EFF} players</span>
+                                    </div>
                                 </div>
-                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin my team">📌</button>
+                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
                             </div>
 
-                            {(isAdmin || isMyTeam) && (
+                            {(isAdmin || isMyTeam) && (<>
+                                <div className="bid-divider"/>
                                 <div className="bid-input-wrap">
                                     <input type="number" inputMode="numeric" className="bid-input"
                                         placeholder={`Min $${fmt(eff.player.price)}`}
@@ -838,18 +1712,20 @@ function Auction({ sid, user, onBack }) {
                                         Place Bid
                                     </button>
                                 </div>
-                            )}
+                            </>)}
 
-                            {teamBid>0 && <div className="bid-status">Bid: ${fmt(teamBid)}</div>}
-                            {isWin && <span className="bid-win-badge">WINNING</span>}
-                            {isTie && <span className="bid-tie-badge">TIED</span>}
+                            <div className="bid-footer">
+                                <div className="bid-status">{teamBid>0?`Current bid: $${fmt(teamBid)}`:""}</div>
+                                {isWin && <span className="bid-win-badge">WINNING</span>}
+                                {isTie && <span className="bid-tie-badge">TIED</span>}
+                            </div>
                         </div>
                     );
                 })}
             </div>
 
             <div className="pool-viewer">
-                <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:4}}>Current pool · UTR {getUTR(eff.poolKey)}</div>
+                <div className="pool-viewer-title">Current pool · UTR {getUTR(eff.poolKey)}</div>
                 <div className="pool-grid">
                     {eff.pool.map((p,i)=>(
                         <div key={p.id||i} className={`pool-chip ${i===eff.effPlayer?"active":""} ${p.isRetry?"retry":""}`} title={p.Name}>
@@ -875,18 +1751,58 @@ function Auction({ sid, user, onBack }) {
     );
 }
 
+function utrClass(utr) {
+    if (utr>=5.5) return "utr-55";
+    if (utr>=5.25) return "utr-52";
+    if (utr>=5.0) return "utr-50";
+    if (utr>=4.5) return "utr-45";
+    if (utr>=4.0) return "utr-40";
+    if (utr>=3.5) return "utr-35";
+    return "utr-30";
+}
+
 function RosterCard({team}) {
     const cap = team.players[0];
     const rest = team.players.slice(1);
+    const filled = team.players.length;
+    const fillPct = Math.round((filled / TEAM_SIZE_EFF) * 100);
     return (
         <div className="roster-card">
-            <div className="roster-name">{team.name} ({team.players.length}/{TEAM_SIZE})</div>
+            <div className="roster-name">
+                {team.name}
+                <span style={{fontSize:10,fontWeight:600,color:"var(--muted)",marginLeft:6}}>
+                    {filled}/{TEAM_SIZE_EFF}
+                </span>
+            </div>
             <div className="roster-budget">
                 <span className="roster-spent">-${fmt(team.totalSpent)}</span>
                 <span className="roster-left">${fmt(team.budget)} left</span>
             </div>
-            {cap && <div className="roster-player roster-captain">⭐ {cap.Name} ({cap.utr})</div>}
-            {rest.map(p=><div key={p.id} className="roster-player">{p.Name} · ${fmt(p.acquiredPrice)}</div>)}
+            <div style={{height:3,background:"var(--border)",borderRadius:99,marginBottom:8,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${fillPct}%`,borderRadius:99,
+                    background:`linear-gradient(90deg,var(--blue),var(--purple))`,transition:"width .4s"}}/>
+            </div>
+            {cap && (
+                <div className="roster-captain-row">
+                    <span className="roster-captain-star">⭐</span>
+                    <span className="roster-captain-name">{cap.Name}</span>
+                    <span className={`roster-player-utr ${utrClass(cap.utr)}`}>{cap.utr}</span>
+                </div>
+            )}
+            {rest.map((p,i)=>(
+                <div key={p.id} className="roster-player">
+                    <span className="roster-player-num">{i+2}</span>
+                    <span className="roster-player-name">{p.Name}</span>
+                    <span className={`roster-player-utr ${utrClass(p.utr)}`}>{p.utr}</span>
+                    <span className="roster-player-price">${fmt(p.acquiredPrice)}</span>
+                </div>
+            ))}
+            {Array.from({length: TEAM_SIZE_EFF - filled}).map((_,i)=>(
+                <div key={`empty-${i}`} className="roster-player" style={{opacity:.25}}>
+                    <span className="roster-player-num">{filled+i+1}</span>
+                    <span className="roster-player-name" style={{fontStyle:"italic",color:"var(--muted2)"}}>— open slot —</span>
+                </div>
+            ))}
         </div>
     );
 }
@@ -907,19 +1823,77 @@ function ResetModal({onCancel,onConfirm}) {
 }
 
 // ─── Root app ─────────────────────────────────────────────────────────────────
+const IDLE_MS = 180 * 60 * 1000; // 180 minutes
+const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
+
 function App() {
+    if (window.__firebaseError) return (
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>&#128293;</div>
+        <h2 style={{marginBottom:'0.5rem'}}>Database connection failed</h2>
+        <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{window.__firebaseError}</p>
+        <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Retry</button>
+      </div>
+    );
     const [user, setUser] = useState(() => pref("ta_user", null));
-    const [sessionId, setSessionId] = useState(null);
+    const [sessionId, setSessionId] = useState(() => null);
+    const [selectedYear, setSelectedYear] = useState(THIS_YEAR);
+    const [idleWarning, setIdleWarning] = useState(false);
+    const idleRef = useRef(null);
+    const warnRef = useRef(null);
+
+    const resetIdle = useCallback(() => {
+        clearTimeout(idleRef.current);
+        clearTimeout(warnRef.current);
+        setIdleWarning(false);
+        if (user) {
+            warnRef.current = setTimeout(() => setIdleWarning(true), IDLE_WARN_MS);
+            idleRef.current = setTimeout(() => handleLogout(), IDLE_MS);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        const events = ["mousemove","keydown","click","touchstart","scroll"];
+        events.forEach(e => window.addEventListener(e, resetIdle, {passive:true}));
+        resetIdle();
+        return () => {
+            events.forEach(e => window.removeEventListener(e, resetIdle));
+            clearTimeout(idleRef.current);
+            clearTimeout(warnRef.current);
+        };
+    }, [user, resetIdle]);
 
     const handleLogin = u => { setUser(u); savePref("ta_user",u); };
-    const handleLogout = () => { setUser(null); savePref("ta_user",null); setSessionId(null); };
+    const handleLogout = () => {
+        setUser(null); savePref("ta_user",null);
+        setSessionId(null); setIdleWarning(false);
+        clearTimeout(idleRef.current); clearTimeout(warnRef.current);
+    };
+    const handleJoin = sid => { setSessionId(sid); savePref("ta_last_session", sid); };
 
-    if (!user) return <Login onLogin={handleLogin}/>;
-    if (!sessionId) return <Lobby user={user} onJoin={setSessionId} onLogout={handleLogout}/>;
-    return <Auction sid={sessionId} user={user} onBack={()=>setSessionId(null)}/>;
+    return (
+        <div>
+            {idleWarning && user && (
+                <div className="idle-banner">
+                    <span>⚠️ You'll be signed out in 5 minutes due to inactivity</span>
+                    <button onClick={resetIdle}>Stay Signed In</button>
+                </div>
+            )}
+            {!user
+                ? <Login onLogin={handleLogin}/>
+                : !sessionId
+                    ? <Lobby user={user} onJoin={handleJoin} onLogout={handleLogout}
+                        selectedYear={selectedYear} onYearSelect={setSelectedYear}/>
+                    : <Auction sid={sessionId} user={user} onBack={()=>setSessionId(null)}/>
+            }
+        </div>
+    );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <ErrorBoundary><App/></ErrorBoundary>
+);
 </script>
 </body>
 </html>
