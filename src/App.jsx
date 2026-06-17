@@ -843,12 +843,7 @@ function Auction({ sid, user, onBack }) {
         if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
-        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
-        const currentTeamBid = state.currentBids[String(teamId)]||0;
-        const bidIncrement = highest>0 ? amount - highest : amount - eff.player.price + 1000;
-        if (amount !== currentTeamBid && !BID_INCREMENT_OPTIONS.includes(bidIncrement)) {
-            return "Use +$1k, +$2k, +$3k, or +$5k bid increments";
-        }
+        if ((amount - eff.player.price)%1000!==0) return "Bids must be in $1k increments";
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";

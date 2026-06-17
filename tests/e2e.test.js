@@ -15,7 +15,7 @@
  *  8. reset integrity   – reset rebuilds from stored cfgPlayers/cfgTeams
  *  9. POOL_CAPS_EFF     – one-player-per-UTR-level cap
  * 10. reserve logic     – progressive reserve for future UTR levels
- * 11. bid quick chips   – configured bid increments
+ * 11. bid increments    – $1k manual increments and quick chips
  * 12. TIMER_EFF         – timer respects state.config
  */
 
@@ -121,9 +121,8 @@ function buildBidChips(highest, playerPrice, maxBid) {
         .filter(chip => chip.amount <= maxBid);
 }
 
-function isAllowedBidIncrement(amount, currentTeamBid, highest, playerPrice) {
-    const bidIncrement = highest > 0 ? amount - highest : amount - playerPrice + 1000;
-    return amount === currentTeamBid || BID_INCREMENT_OPTIONS.includes(bidIncrement);
+function isOneThousandIncrement(amount, playerPrice) {
+    return amount >= playerPrice && (amount - playerPrice) % 1000 === 0;
 }
 
 function parseCSV(text) {
@@ -509,7 +508,7 @@ test("does not reserve for UTR levels already owned by the team", () => {
     expect(reserve.maxBid).toBe(21000);
 });
 
-console.log("\n11. bid quick chips use only configured increments");
+console.log("\n11. bid increments allow any $1k manual amount");
 
 test("quick chips are 1k, 2k, 3k, and 5k above current high bid", () => {
     const chips = buildBidChips(10000, 5000, 20000);
@@ -523,12 +522,11 @@ test("quick chips filter out increments above max bid", () => {
     expect(chips.map(c=>c.amount)).toEqual([11000, 12000]);
 });
 
-test("manual bids are limited to 1k, 2k, 3k, or 5k increments", () => {
-    expect(isAllowedBidIncrement(11000, 0, 10000, 5000)).toBeTruthy();
-    expect(isAllowedBidIncrement(12000, 0, 10000, 5000)).toBeTruthy();
-    expect(isAllowedBidIncrement(13000, 0, 10000, 5000)).toBeTruthy();
-    expect(isAllowedBidIncrement(15000, 0, 10000, 5000)).toBeTruthy();
-    expect(isAllowedBidIncrement(14000, 0, 10000, 5000)).toBeFalsy();
+test("manual bids allow any amount in 1000 increments from player base price", () => {
+    expect(isOneThousandIncrement(10000, 10000)).toBeTruthy();
+    expect(isOneThousandIncrement(11000, 10000)).toBeTruthy();
+    expect(isOneThousandIncrement(14000, 10000)).toBeTruthy();
+    expect(isOneThousandIncrement(14500, 10000)).toBeFalsy();
 });
 
 console.log("\n12. TIMER_EFF respects state.config");
