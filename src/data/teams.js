@@ -8,11 +8,11 @@ export const TEAMS = [
     {id:7, name:"Chill Titans",          captain:"Satish Reddy Orugunta"},
     {id:8, name:"Mega Lions",            captain:"Anil Kunda"},
     {id:9, name:"Court Conquerers",      captain:"Rajasekhar Chintha"},
-    {id:10,name:"Royal Chill Badgers",   captain:"Krishna Vennapusa"},
+    {id:10,name:"Royal Chill Badgers",   captain:"Janaki Ram Kantheti"},
     {id:11,name:"Volley Vipers",         captain:"Kailas Magi"},
     {id:12,name:"Dallas Chargers",       captain:"Vivekvardhan Reddy Mereddy"},
     {id:13,name:"Baseline Bashers",      captain:"Sashank T"},
     {id:14,name:"Deuce Devils",          captain:"Hari Mothukuri"},
     {id:15,name:"Chill Super Kings",     captain:"Anand Krishnamurthy"},
-    {id:16,name:"Courtmasters",          captain:"Dinesh Reddy Timmareddy"},
+    {id:16,name:"Court Masters",         captain:"Dinesh Reddy Timmareddy"},
 ];
