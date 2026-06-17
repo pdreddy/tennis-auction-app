@@ -23,6 +23,7 @@ const fmtRating = n => n == null ? "N/A" : Number(n).toFixed(2).replace(/\.?0+$/
 const actualUtr = p => `Actual ${fmtRating(p?.best)}`;
 const actualUtrDetail = p => `${actualUtr(p)} · S ${fmtRating(p?.s)} · D ${fmtRating(p?.d)}`;
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
+const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
 
@@ -843,6 +844,11 @@ function Auction({ sid, user, onBack }) {
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
         if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
+        const currentTeamBid = state.currentBids[String(teamId)]||0;
+        const bidIncrement = highest>0 ? amount - highest : amount - eff.player.price + 1000;
+        if (amount !== currentTeamBid && !BID_INCREMENT_OPTIONS.includes(bidIncrement)) {
+            return "Use +$1k, +$2k, +$3k, or +$5k bid increments";
+        }
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
@@ -1082,9 +1088,14 @@ function Auction({ sid, user, onBack }) {
                         );
                     }
 
-                    const anchor = highest>0?highest+1000:eff.player.price;
+                    const bidBase = highest>0?highest:eff.player.price;
                     const maxBid = team.reserve?.maxBid ?? team.budget;
-                    const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=maxBid);
+                    const chips = BID_INCREMENT_OPTIONS
+                        .map(increment => ({
+                            increment,
+                            amount: highest>0 ? bidBase + increment : bidBase + increment - 1000
+                        }))
+                        .filter(chip => chip.amount<=maxBid);
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
@@ -1115,8 +1126,8 @@ function Auction({ sid, user, onBack }) {
                                         onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
                                     />
                                     <div className="quick-chips">
-                                        {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            ${v>=1000?`${v/1000}k`:v}
+                                        {chips.map(({increment, amount})=><button key={increment} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
+                                            +{increment/1000}k
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}

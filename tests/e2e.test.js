@@ -15,7 +15,8 @@
  *  8. reset integrity   – reset rebuilds from stored cfgPlayers/cfgTeams
  *  9. POOL_CAPS_EFF     – one-player-per-UTR-level cap
  * 10. reserve logic     – progressive reserve for future UTR levels
- * 11. TIMER_EFF         – timer respects state.config
+ * 11. bid quick chips   – configured bid increments
+ * 12. TIMER_EFF         – timer respects state.config
  */
 
 // ── Inline the pure functions under test ──────────────────────────────────────
@@ -25,6 +26,7 @@ const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
 const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
+const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 
 function getUTR(key) {
     const m = key.match(/utr_(\d+)_(\d+)/);
@@ -107,6 +109,21 @@ function reserveAfterCurrentWin(team, eff, teamSize) {
     const slots = Math.min(openSlots, costs.length);
     const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
     return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
+}
+
+function buildBidChips(highest, playerPrice, maxBid) {
+    const bidBase = highest > 0 ? highest : playerPrice;
+    return BID_INCREMENT_OPTIONS
+        .map(increment => ({
+            increment,
+            amount: highest > 0 ? bidBase + increment : bidBase + increment - 1000
+        }))
+        .filter(chip => chip.amount <= maxBid);
+}
+
+function isAllowedBidIncrement(amount, currentTeamBid, highest, playerPrice) {
+    const bidIncrement = highest > 0 ? amount - highest : amount - playerPrice + 1000;
+    return amount === currentTeamBid || BID_INCREMENT_OPTIONS.includes(bidIncrement);
 }
 
 function parseCSV(text) {
@@ -492,7 +509,29 @@ test("does not reserve for UTR levels already owned by the team", () => {
     expect(reserve.maxBid).toBe(21000);
 });
 
-console.log("\n11. TIMER_EFF respects state.config");
+console.log("\n11. bid quick chips use only configured increments");
+
+test("quick chips are 1k, 2k, 3k, and 5k above current high bid", () => {
+    const chips = buildBidChips(10000, 5000, 20000);
+    expect(chips.map(c=>c.increment)).toEqual([1000, 2000, 3000, 5000]);
+    expect(chips.map(c=>c.amount)).toEqual([11000, 12000, 13000, 15000]);
+});
+
+test("quick chips filter out increments above max bid", () => {
+    const chips = buildBidChips(10000, 5000, 12500);
+    expect(chips.map(c=>c.increment)).toEqual([1000, 2000]);
+    expect(chips.map(c=>c.amount)).toEqual([11000, 12000]);
+});
+
+test("manual bids are limited to 1k, 2k, 3k, or 5k increments", () => {
+    expect(isAllowedBidIncrement(11000, 0, 10000, 5000)).toBeTruthy();
+    expect(isAllowedBidIncrement(12000, 0, 10000, 5000)).toBeTruthy();
+    expect(isAllowedBidIncrement(13000, 0, 10000, 5000)).toBeTruthy();
+    expect(isAllowedBidIncrement(15000, 0, 10000, 5000)).toBeTruthy();
+    expect(isAllowedBidIncrement(14000, 0, 10000, 5000)).toBeFalsy();
+});
+
+console.log("\n12. TIMER_EFF respects state.config");
 
 test("uses configured timer when config present", () => {
     const state = {config:{timerMs:30000}};
