@@ -19,6 +19,9 @@
  * 12. TIMER_EFF         – timer respects state.config
  */
 
+import { PLAYERS as DEFAULT_PLAYERS } from "../src/data/players.js";
+import { TEAMS as DEFAULT_TEAMS } from "../src/data/teams.js";
+
 // ── Inline the pure functions under test ──────────────────────────────────────
 
 const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
@@ -246,6 +249,38 @@ test("uses custom budget from config", () => {
     const teams = buildInitialTeams(sampleTeams, samplePlayers, 80000);
     const teamA = teams.find(t=>t.id===1);
     expect(teamA.budget).toBe(80000 - 14000);
+});
+
+console.log("\n2b. default captain/team data");
+
+test("default teams match configured captain list and names", () => {
+    expect(DEFAULT_TEAMS).toEqual([
+        {id:1, name:"Rally Royals",          captain:"Yogesh Dhadge"},
+        {id:2, name:"Karna's Crusaders",    captain:"Srikant Tenni"},
+        {id:3, name:"Spin Kings",            captain:"Uma Vommi"},
+        {id:4, name:"KOC Challengers",       captain:"Narayan Prasad"},
+        {id:5, name:"Rally Sqad",            captain:"Ritesh Kumar"},
+        {id:6, name:"POSH",                  captain:"Vinod Aripaka"},
+        {id:7, name:"Chill Titans",          captain:"Satish Reddy Orugunta"},
+        {id:8, name:"Mega Lions",            captain:"Anil Kunda"},
+        {id:9, name:"Court Conquerers",      captain:"Rajasekhar Chintha"},
+        {id:10,name:"Royal Chill Badgers",   captain:"Janaki Ram Kantheti"},
+        {id:11,name:"Volley Vipers",         captain:"Kailas Magi"},
+        {id:12,name:"Dallas Chargers",       captain:"Vivekvardhan Reddy Mereddy"},
+        {id:13,name:"Baseline Bashers",      captain:"Sashank T"},
+        {id:14,name:"Deuce Devils",          captain:"Hari Mothukuri"},
+        {id:15,name:"Chill Super Kings",     captain:"Anand Krishnamurthy"},
+        {id:16,name:"Court Masters",         captain:"Dinesh Reddy Timmareddy"},
+    ]);
+});
+
+test("default captain budgets are deducted from the configured team budget", () => {
+    const teams = buildInitialTeams(DEFAULT_TEAMS, DEFAULT_PLAYERS, TEAM_BUDGET);
+    const courtMasters = teams.find(t=>t.name==="Court Masters");
+    expect(teams).toHaveLength(16);
+    expect(courtMasters.captain).toBe("Dinesh Reddy Timmareddy");
+    expect(courtMasters.players[0].Name).toBe("Dinesh Reddy Timmareddy");
+    expect(courtMasters.budget).toBe(TEAM_BUDGET - courtMasters.players[0].acquiredPrice);
 });
 
 console.log("\n3. normalize");

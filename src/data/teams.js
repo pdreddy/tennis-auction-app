@@ -14,5 +14,5 @@ export const TEAMS = [
     {id:13,name:"Baseline Bashers",      captain:"Sashank T"},
     {id:14,name:"Deuce Devils",          captain:"Hari Mothukuri"},
     {id:15,name:"Chill Super Kings",     captain:"Anand Krishnamurthy"},
-    {id:16,name:"Courtmasters",          captain:"Dinesh Reddy Timmareddy"},
+    {id:16,name:"Court Masters",         captain:"Dinesh Reddy Timmareddy"},
 ];
