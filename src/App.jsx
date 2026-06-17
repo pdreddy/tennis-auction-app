@@ -150,7 +150,15 @@ function Login({ onLogin }) {
             const snap = await db.ref(`users/${account.code}`).once("value");
             const user = snap.val();
             if (!user || !user.pin) {
-                setError("Account not set up yet. Ask the admin to configure PINs.");
+                if (account.code === "ADMIN") {
+                    const adminUser = { code: "ADMIN", pin, role: "admin", teamId: null, name: account.label };
+                    await db.ref("users/ADMIN").set(adminUser);
+                    savePref("ta_last_account", account.code);
+                    savePref("ta_last_login", { name: account.label, time: Date.now() });
+                    onLogin({ code: adminUser.code, role: adminUser.role, teamId: adminUser.teamId, name: account.label });
+                    return;
+                }
+                setError("Account not set up yet. Sign in as ADMIN first to create the first admin PIN, then configure team PINs.");
                 setBusy(false);
                 return;
             }

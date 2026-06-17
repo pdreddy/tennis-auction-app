@@ -93,6 +93,13 @@ supabase db push
 
 After the migration succeeds, run the bootstrap command again to seed the `ADMIN` and `TEAM<n>` PIN accounts.
 
+
+### Troubleshooting: `Account not set up yet`
+
+If you have not run `npm run supabase:bootstrap` yet, choose the `ADMIN` account on the login screen and enter the 6-digit PIN you want to use. When no `ADMIN` row exists in `app_users`, the app will create the first admin account with that PIN and sign you in. After that, open **Manage PINs** as admin and save PINs for each team account.
+
+For production, prefer running `npm run supabase:bootstrap` with an explicit `ADMIN_PIN` and `TEAM_PIN` so first-account setup is controlled from your terminal.
+
 ### Troubleshooting: `public.app_users` not found
 
 If you see `Could not find the table 'public.app_users' in the schema cache`, the Supabase database schema has not been installed in the project your app is connected to, or Supabase needs a schema cache refresh. Run the SQL migration first:
