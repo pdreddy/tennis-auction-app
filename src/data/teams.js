@@ -1,0 +1,18 @@
+export const TEAMS = [
+    {id:1, name:"Rally Royals",          captain:"Yogesh Dhadge"},
+    {id:2, name:"Karna's Crusaders",    captain:"Srikant Tenni"},
+    {id:3, name:"Spin Kings",            captain:"Uma Vommi"},
+    {id:4, name:"KOC Challengers",       captain:"Narayan Prasad"},
+    {id:5, name:"Rally Sqad",            captain:"Ritesh Kumar"},
+    {id:6, name:"POSH",                  captain:"Vinod Aripaka"},
+    {id:7, name:"Chill Titans",          captain:"Satish Reddy Orugunta"},
+    {id:8, name:"Mega Lions",            captain:"Anil Kunda"},
+    {id:9, name:"Court Conquerers",      captain:"Rajasekhar Chintha"},
+    {id:10,name:"Royal Chill Badgers",   captain:"Janaki Ram Kantheti"},
+    {id:11,name:"Volley Vipers",         captain:"Kailas Magi"},
+    {id:12,name:"Dallas Chargers",       captain:"Vivekvardhan Reddy Mereddy"},
+    {id:13,name:"Baseline Bashers",      captain:"Sashank T"},
+    {id:14,name:"Deuce Devils",          captain:"Hari Mothukuri"},
+    {id:15,name:"Chill Super Kings",     captain:"Anand Krishnamurthy"},
+    {id:16,name:"Court Masters",         captain:"Dinesh Reddy Timmareddy"},
+];
