@@ -45,6 +45,17 @@ Run the plain Node.js logic tests:
 npm test
 ```
 
+
+## Maintaining auction data
+
+Firebase settings, teams, players, and generated pool defaults are split into small files for easier updates:
+
+- `src/config/firebase.js` — Firebase project configuration.
+- `src/data/teams.js` — team names and captains.
+- `src/data/players.js` — player list, UTR values, and base prices.
+- `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order.
+- `src/data/pools.js` — derived captain set, player pools, and default pool caps.
+
 ## Notes
 
 The app still uses Firebase Realtime Database in the browser. Internet access is required for Firebase and the Firebase CDN scripts to load.
