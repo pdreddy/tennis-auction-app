@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { firebaseConfig } from "./config/firebase.js";
+import { realtimeDataService } from "./services/realtimeDataService.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = realtimeDataService;
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
-// PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
+// PINs are stored in Supabase at app_users/<code>/pin — not hardcoded here.
 const ACCOUNTS = [
     {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
     ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))

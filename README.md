@@ -1,6 +1,6 @@
 # Tennis Auction App
 
-React single-page app for running a live tennis auction backed by Firebase Realtime Database.
+React/Vite PWA for running a live tennis auction. The backend has been migrated from Firebase Realtime Database to Supabase (PostgreSQL, Auth, Storage, Realtime, and RLS).
 
 ## Local development
 
@@ -10,54 +10,62 @@ Install dependencies:
 npm install
 ```
 
+Create `.env.local`:
+
+```bash
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
+```
+
 Start the React/Vite dev server:
 
 ```bash
 npm run dev
 ```
 
-Open the app at:
+Open the app at `http://localhost:5173`.
 
-```text
-http://localhost:5173
+## Supabase setup
+
+Run the SQL migration in your Supabase SQL editor or with the Supabase CLI:
+
+```bash
+supabase db push
 ```
 
-## Express production-style local server
+The migration creates normalized tables for profiles, players, teams, categories, tournaments, registrations, bids, rosters, matches, storage-oriented metadata, and compatibility tables used by the converted PWA.
 
-Build the app, then serve the generated `dist/` folder with Express:
+## Firebase data migration
+
+Export Firebase Realtime Database as JSON, then run:
+
+```bash
+SUPABASE_URL=https://<project-ref>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+node scripts/migrate-firebase-to-supabase.mjs firebase-export.json
+```
+
+## Production build
 
 ```bash
 npm run build
 npm run start
 ```
 
-Open:
-
-```text
-http://localhost:3000
-```
+Open `http://localhost:3000`.
 
 ## Tests
-
-Run the plain Node.js logic tests:
 
 ```bash
 npm test
 ```
 
+## Important files
 
-## Maintaining auction data
-
-Firebase settings, teams, players, and generated pool defaults are split into small files for easier updates:
-
-- `src/config/firebase.js` — Firebase project configuration.
-- `src/data/teams.js` — team names and captains.
-- `src/data/players.js` — player list, UTR values, and base prices.
-- `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0; auction bidding starts at UTR 3.0 and moves upward.
-- `src/data/pools.js` — derived captain set, player pools, and default pool caps.
-
-## Notes
-
-The app still uses Firebase Realtime Database in the browser. Internet access is required for Firebase and the Firebase CDN scripts to load.
-
-The app remains PWA-installable: `index.html` links `/manifest.json`, and the same manifest is kept in `public/manifest.json` so Vite copies it into `dist/` during production builds.
+- `src/config/supabase.js` — Supabase client configuration.
+- `src/services/realtimeDataService.js` — compatibility adapter that replaces Firebase Realtime Database calls with Supabase table operations and Realtime subscriptions.
+- `src/services/authService.js` — Supabase Auth email/password, Google OAuth, password reset, session, and sign-out helpers.
+- `src/services/playerService.js`, `teamService.js`, `matchService.js`, `storageService.js` — reusable domain services.
+- `supabase/migrations/001_initial_schema.sql` — PostgreSQL schema, indexes, triggers, and RLS policies.
+- `scripts/migrate-firebase-to-supabase.mjs` — Firebase JSON to Supabase migration script.
+- `docs/supabase-migration-plan.md` — full inventory, API conversion examples, deployment, rollback, and phase plan.
