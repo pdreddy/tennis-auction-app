@@ -13,8 +13,9 @@
  *  6. setNumTeams logic – settings tab team count sync
  *  7. config round-trip – settings saved → createNew → auction doc
  *  8. reset integrity   – reset rebuilds from stored cfgPlayers/cfgTeams
- *  9. POOL_CAPS_EFF     – dynamic cap based on configured team count
- * 10. TIMER_EFF         – timer respects state.config
+ *  9. POOL_CAPS_EFF     – one-player-per-UTR-level cap
+ * 10. reserve logic     – progressive reserve for future UTR levels
+ * 11. TIMER_EFF         – timer respects state.config
  */
 
 // ── Inline the pure functions under test ──────────────────────────────────────
@@ -23,6 +24,7 @@ const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5",
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
+const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 
 function getUTR(key) {
     const m = key.match(/utr_(\d+)_(\d+)/);
@@ -82,6 +84,31 @@ function getEffective(state) {
     return { complete: false, effPool, effPlayer, poolKey: POOL_ORDER[effPool], pool, player: pool[effPlayer]||null };
 }
 
+function buildPoolCaps(playerPools) {
+    const caps = {};
+    POOL_ORDER.forEach(key => {
+        const size = (playerPools[key] || []).length;
+        caps[key] = size === 0 ? 0 : 1;
+    });
+    return caps;
+}
+
+function reserveAfterCurrentWin(team, eff, teamSize) {
+    if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
+    const projectedPlayers = [...team.players, eff.player];
+    const openSlots = Math.max(0, teamSize - projectedPlayers.length);
+    if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
+    const ownedUtrs = new Set(projectedPlayers.map(p=>p.utr));
+    const costs = [];
+    POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
+        const utr = getUTR(poolKey);
+        if (!ownedUtrs.has(utr)) costs.push(UTR_PRICES[utr] || 5000);
+    });
+    const slots = Math.min(openSlots, costs.length);
+    const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
+    return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
+}
+
 function parseCSV(text) {
     const rows = text.trim().split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
     if (!rows.length) return [];
@@ -90,7 +117,6 @@ function parseCSV(text) {
     const ui = hdr.findIndex(h=>h.includes('utr')||h.includes('rating'));
     const pi = hdr.findIndex(h=>h.includes('price')||h.includes('cost'));
     if (ni<0) return [];
-    const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
     return rows.slice(1).map((r,i)=>{
         const utr = ui>=0 ? parseFloat(r[ui])||3.0 : 3.0;
         return { id: Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 };
@@ -416,22 +442,18 @@ test("reset preserves config in the doc", () => {
     expect(doc.timerEnd).toBeGreaterThan(Date.now() - 1000);
 });
 
-console.log("\n9. POOL_CAPS_EFF dynamic caps");
+console.log("\n9. POOL_CAPS_EFF one-player-per-UTR-level caps");
 
-test("cap is 1 when pool size <= team count", () => {
-    const numTeams = 5;
-    const teamSize = 7;
+test("cap is 1 when pool has players", () => {
     const poolSize = 3; // 3 players, 5 teams → each team can grab at most 1
-    const cap = poolSize === 0 ? 0 : poolSize <= numTeams ? 1 : teamSize - 1;
+    const cap = poolSize === 0 ? 0 : 1;
     expect(cap).toBe(1);
 });
 
-test("cap is teamSize-1 when pool size > team count", () => {
-    const numTeams = 4;
-    const teamSize = 7;
-    const poolSize = 20; // 20 players, 4 teams → can grab up to 6
-    const cap = poolSize === 0 ? 0 : poolSize <= numTeams ? 1 : teamSize - 1;
-    expect(cap).toBe(6);
+test("cap remains 1 when pool size is greater than team count", () => {
+    const poolSize = 20; // enough players for multiple wins, but each team still needs only one at this UTR
+    const cap = poolSize === 0 ? 0 : 1;
+    expect(cap).toBe(1);
 });
 
 test("cap is 0 for empty pool", () => {
@@ -440,18 +462,37 @@ test("cap is 0 for empty pool", () => {
     expect(cap).toBe(0);
 });
 
-test("caps recalculate when team count changes from 16 to 8", () => {
+test("caps stay one per UTR level when team count changes from 16 to 8", () => {
     const players = Array.from({length:10}, (_,i)=>({id:i,Name:`P${i}`,utr:4.5,price:10000}));
     const pools16 = buildPools(players, POOL_ORDER, new Set());
     const pools8  = buildPools(players, POOL_ORDER, new Set());
-    const size = (pools16["utr_4_5"]||[]).length; // 10
-    const cap16 = size <= 16 ? 1 : 7 - 1; // 10 <= 16 → cap = 1
-    const cap8  = size <= 8  ? 1 : 5 - 1; // 10 > 8  → cap = 4 (teamSize=5)
+    const cap16 = buildPoolCaps(pools16)["utr_4_5"];
+    const cap8  = buildPoolCaps(pools8)["utr_4_5"];
     expect(cap16).toBe(1);
-    expect(cap8).toBe(4);
+    expect(cap8).toBe(1);
 });
 
-console.log("\n10. TIMER_EFF respects state.config");
+console.log("\n10. reserve logic protects future UTR levels");
+
+test("reserves base prices for missing future UTR levels after a projected win", () => {
+    const team = {budget:80000, players:[{Name:"Captain",utr:6.0}]};
+    const eff = {effPool:0, player:{Name:"P5.5",utr:5.5,price:14000}};
+    const reserve = reserveAfterCurrentWin(team, eff, TEAM_SIZE);
+    expect(reserve.amount).toBe(12000 + 10000 + 8000 + 6000 + 5000);
+    expect(reserve.slots).toBe(5);
+    expect(reserve.maxBid).toBe(39000);
+});
+
+test("does not reserve for UTR levels already owned by the team", () => {
+    const team = {budget:50000, players:[{Name:"Captain",utr:6.0},{Name:"Existing 5.0",utr:5.0}]};
+    const eff = {effPool:1, player:{Name:"P5.5",utr:5.5,price:14000}};
+    const reserve = reserveAfterCurrentWin(team, eff, TEAM_SIZE);
+    expect(reserve.amount).toBe(10000 + 8000 + 6000 + 5000);
+    expect(reserve.slots).toBe(4);
+    expect(reserve.maxBid).toBe(21000);
+});
+
+console.log("\n11. TIMER_EFF respects state.config");
 
 test("uses configured timer when config present", () => {
     const state = {config:{timerMs:30000}};

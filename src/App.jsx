@@ -809,7 +809,7 @@ function Auction({ sid, user, onBack }) {
     const POOL_CAPS_EFF = {};
     POOL_ORDER.forEach(key => {
         const size = (state.playerPools[key] || []).length;
-        POOL_CAPS_EFF[key] = size === 0 ? 0 : size <= state.teams.length ? 1 : TEAM_SIZE_EFF - 1;
+        POOL_CAPS_EFF[key] = size === 0 ? 0 : 1;
     });
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
@@ -817,26 +817,17 @@ function Auction({ sid, user, onBack }) {
     const reserveAfterCurrentWin = team => {
         if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
         const projectedPlayers = [...team.players, eff.player];
-        const slots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
-        if (slots === 0) return {amount:0,slots,maxBid:team.budget};
+        const openSlots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
+        if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
 
+        const ownedUtrs = new Set(projectedPlayers.map(p=>p.utr));
         const costs = [];
-        POOL_ORDER.slice(eff.effPool).forEach(poolKey => {
+        POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
             const utr = getUTR(poolKey);
-            const cap = POOL_CAPS_EFF[poolKey] || 0;
-            const alreadyFromPool = projectedPlayers.slice(1).filter(p=>p.utr===utr).length;
-            const remainingCap = Math.max(0, cap - alreadyFromPool);
-            if (!remainingCap) return;
-            const pool = state.playerPools[poolKey] || [];
-            const start = poolKey === eff.poolKey ? eff.effPlayer + 1 : 0;
-            pool.slice(start, start + remainingCap).forEach(p => {
-                costs.push(p.price || UTR_PRICES[p.utr] || 5000);
-            });
+            if (!ownedUtrs.has(utr)) costs.push(UTR_PRICES[utr] || 5000);
         });
 
-        const minimumKnownPrice = Math.min(...Object.values(UTR_PRICES));
-        while (costs.length < slots) costs.push(minimumKnownPrice);
-        costs.sort((a,b)=>a-b);
+        const slots = Math.min(openSlots, costs.length);
         const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
         return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
     };
@@ -888,6 +879,8 @@ function Auction({ sid, user, onBack }) {
         const winners = bids.filter(b=>b.bid===highest);
         if (winners.length>1) { setActionError(`Tie between ${winners.map(w=>state.teams.find(t=>t.id===w.teamId)?.name).join(", ")} — place different bids`); return; }
         const winId = winners[0].teamId;
+        const winErr = validateBid(winId, highest);
+        if (winErr) { setActionError(winErr); return; }
         const teams = state.teams.map(t => {
             if (t.id!==winId) return t;
             return {...t, players:[...t.players,{...eff.player,acquiredPrice:highest}], budget:t.budget-highest, totalSpent:t.totalSpent+highest};
@@ -912,6 +905,13 @@ function Auction({ sid, user, onBack }) {
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
         fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
+        setBidInputs({}); setBidErrors({}); setActionError(null);
+    };
+
+    const selectNextPool = poolKey => {
+        const nextPool = POOL_ORDER.indexOf(poolKey);
+        if (nextPool < 0) return;
+        fbUpdate({currentPoolIndex:nextPool,currentPlayerIndex:0,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
@@ -1045,6 +1045,18 @@ function Auction({ sid, user, onBack }) {
 
             {isAdmin && (
                 <div className="admin-bar">
+                    <select
+                        value={eff.poolKey}
+                        onChange={e=>selectNextPool(e.target.value)}
+                        style={{background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:8,color:"var(--text)",padding:"9px 12px",fontSize:12,outline:"none"}}
+                        title="Select the pool to bid next"
+                    >
+                        {POOL_ORDER.map(key => {
+                            const count = (state.playerPools[key] || []).length;
+                            const utr = getUTR(key);
+                            return <option key={key} value={key} disabled={count===0}>Bid UTR {utr.toFixed(1)} next · {count} left</option>;
+                        })}
+                    </select>
                     <button className="btn btn-neutral" onClick={skip}>Skip</button>
                     <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
                         disabled={!hasBids||winners.length!==1} onClick={finalize}>

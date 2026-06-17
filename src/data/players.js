@@ -326,7 +326,7 @@ export const RAW_PLAYERS = [
         group: "UTR 5.0",
         best: 5.33,
         cat: 3,
-        s: 5.0,
+        s: 5,
         d: 5.33
     },
     {
@@ -422,7 +422,7 @@ export const RAW_PLAYERS = [
         group: "UTR 4.5",
         best: 5.12,
         cat: 4,
-        s: 4.0,
+        s: 4,
         d: 5.12
     },
     {
@@ -798,7 +798,7 @@ export const RAW_PLAYERS = [
         group: "UTR 3.0",
         best: 3.62,
         cat: 7,
-        s: 2.0,
+        s: 2,
         d: 3.62
     },
     {
