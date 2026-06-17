@@ -1,15 +1,19 @@
+import { cpSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+
+const outDir = '.build';
+rmSync(outDir, { recursive: true, force: true });
 
 const result = spawnSync('tsc', [
   '--jsx', 'react',
   '--target', 'ES2020',
-  '--module', 'none',
+  '--module', 'ES2020',
+  '--moduleResolution', 'bundler',
   '--allowJs',
-  '--outFile', 'app.js',
+  '--outDir', outDir,
   'src/app.jsx',
   '--noEmitOnError', 'false',
   '--skipLibCheck',
-  '--ignoreDeprecations', '6.0',
 ], { stdio: 'inherit' });
 
 if (result.error) {
@@ -17,4 +21,10 @@ if (result.error) {
   process.exit(1);
 }
 
-process.exit(result.status ?? 1);
+if (result.status !== 0) {
+  process.exit(result.status ?? 1);
+}
+
+cpSync(`${outDir}/app.js`, 'src/app.js');
+rmSync(outDir, { recursive: true, force: true });
+console.log('Built src/app.js from src/app.jsx');
