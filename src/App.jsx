@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { firebaseConfig } from "./config/firebase.js";
-import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
+import { configRef, usersRef, userRef, auctionRef as getAuctionRef, connectedRef, rootRef, DATA_PATHS } from "./config/firebase.js";
+import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
 // PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
@@ -147,7 +145,7 @@ function Login({ onLogin }) {
         if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
         setBusy(true);
         try {
-            const snap = await db.ref(`users/${account.code}`).once("value");
+            const snap = await userRef(account.code).once("value");
             const user = snap.val();
             if (!user || !user.pin) {
                 setError("Account not set up yet. Ask the admin to configure PINs.");
@@ -218,7 +216,7 @@ function AdminConfig() {
     const fileRef = useRef(null);
 
     useEffect(() => {
-        db.ref(CFG_PATH).once("value").then(snap => {
+        configRef().once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
             if (Array.isArray(d.players) && d.players.length) setPlayers(d.players.map(withPlayerMeta));
@@ -270,7 +268,7 @@ function AdminConfig() {
         if (!vt.length) { setStatus({ok:false,text:"Add at least one team"}); setSaving(false); return; }
         const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
         try {
-            await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
+            await configRef().set({players:norm,teams:vt,settings,updatedAt:Date.now()});
             setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget`});
         } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
         setSaving(false);
@@ -454,7 +452,7 @@ function ManagePins() {
     const [msg, setMsg] = useState(null);
 
     useEffect(() => {
-        db.ref("users").once("value").then(snap => {
+        usersRef().once("value").then(snap => {
             const data = snap.val() || {};
             const initial = {};
             ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || ""; });
@@ -466,7 +464,7 @@ function ManagePins() {
         const pin = pins[account.code] || "";
         if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { setMsg({code:account.code,text:"Must be 6 digits",ok:false}); return; }
         setSaving(account.code);
-        await db.ref(`users/${account.code}`).set({
+        await userRef(account.code).set({
             code: account.code,
             pin,
             role: account.role,
@@ -484,9 +482,9 @@ function ManagePins() {
         setSaving("ALL");
         const updates = {};
         ACCOUNTS.forEach(a => {
-            updates[`users/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
+            updates[`${DATA_PATHS.users}/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
         });
-        await db.ref().update(updates);
+        await rootRef().update(updates);
         setSaving(null);
         setMsg({code:"ALL",text:"All PINs saved",ok:true});
         setTimeout(() => setMsg(null), 2000);
@@ -549,7 +547,7 @@ function PoolViewer() {
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
     useEffect(() => {
-        db.ref(CFG_PATH).once("value").then(snap => {
+        configRef().once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
             const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players.map(withPlayerMeta) : PLAYERS;
@@ -646,7 +644,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const createNew = async () => {
         setCreating(true); setError(null);
         try {
-            const cfgSnap = await db.ref(CFG_PATH).once("value");
+            const cfgSnap = await configRef().once("value");
             const cfg = cfgSnap.val();
             const cfgPlayers = (cfg?.players?.length ? cfg.players.map(withPlayerMeta) : PLAYERS);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
@@ -659,7 +657,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
             const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             const sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-            await db.ref(`auctions/${sid}`).set({
+            await getAuctionRef(sid).set({
                 sessionId:sid, teams:initTeams, playerPools:pools,
                 currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
                 timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
@@ -675,7 +673,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
         const sid = (id || joinId).trim().toUpperCase();
         if (!sid) { setError("Enter a session ID"); return; }
         setJoining(true); setError(null);
-        const snap = await db.ref(`auctions/${sid}`).once("value");
+        const snap = await getAuctionRef(sid).once("value");
         if (!snap.exists()) { setError(`Session ${sid} not found`); setJoining(false); return; }
         saveSession(sid);
         onJoin(sid);
@@ -800,11 +798,11 @@ function Auction({ sid, user, onBack }) {
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
     const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
-    const auctionRef = useRef(db.ref(`auctions/${sid}`));
+    const auctionRef = useRef(getAuctionRef(sid));
 
     // Real-time listener
     useEffect(() => {
-        const connRef = db.ref(".info/connected");
+        const connRef = connectedRef();
         connRef.on("value", s => setConnected(s.val()===true));
         const handleAuctionValue = snap => {
             if (snap.exists()) {
