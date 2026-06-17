@@ -1092,18 +1092,25 @@ function Auction({ sid, user, onBack }) {
 
             {isAdmin && (
                 <div className="admin-bar">
-                    <select
-                        value={eff.poolKey}
-                        onChange={e=>selectNextPool(e.target.value)}
-                        style={{background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:8,color:"var(--text)",padding:"9px 12px",fontSize:12,outline:"none"}}
-                        title="Select the pool to bid next"
-                    >
+                    <div className="pool-jump" aria-label="Select the pool to bid next">
                         {POOL_ORDER.map(key => {
                             const count = (state.playerPools[key] || []).length;
                             const utr = getUTR(key);
-                            return <option key={key} value={key} disabled={count===0}>Bid UTR {utr.toFixed(1)} next · {count} left</option>;
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className={`pool-jump-btn${key===eff.poolKey?" active":""}`}
+                                    disabled={count===0}
+                                    onClick={()=>selectNextPool(key)}
+                                    title={`Bid UTR ${utr.toFixed(1)} next · ${count} left`}
+                                >
+                                    <span>UTR {utr.toFixed(1)}</span>
+                                    <small>{count} left</small>
+                                </button>
+                            );
                         })}
-                    </select>
+                    </div>
                     <button className="btn btn-neutral" onClick={skip}>Skip</button>
                     <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
                         disabled={!hasBids||winners.length!==1} onClick={finalize}>
