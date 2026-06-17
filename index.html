@@ -11,11 +11,22 @@
     <link rel="manifest" href="/manifest.json">
     <title>Tennis Auction</title>
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script>
+        window.taBootErrors = [];
+        window.reportBootError = function reportBootError(src) {
+            window.taBootErrors.push(src);
+            const el = document.getElementById("boot-status");
+            if (el) {
+                el.className = "boot-status boot-error";
+                el.textContent = "Could not load " + src + ". Check your internet connection and refresh.";
+            }
+        };
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="reportBootError('React')"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="reportBootError('ReactDOM')"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="reportBootError('Babel')"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" onerror="reportBootError('Firebase app')"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js" onerror="reportBootError('Firebase database')"></script>
 
     <style>
         /* ── Design tokens — Premium Dark ── */
@@ -572,12 +583,44 @@
         .logout-dialog h3 { margin:0 0 8px;font-size:17px;color:var(--text); }
         .logout-dialog p { margin:0 0 20px;font-size:13px;color:var(--text3);line-height:1.6; }
         .logout-dialog .btn-row { display:flex;gap:10px; }
+        /* ── Boot/loading fallback ── */
+        .boot-shell {
+            max-width: 420px; margin: 80px auto; padding: 28px 24px; text-align: center;
+            background: linear-gradient(170deg, var(--surface2), var(--surface));
+            border: 1px solid var(--border2); border-radius: 20px;
+            box-shadow: 0 30px 70px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.05);
+        }
+        .boot-title { font-size: 23px; font-weight: 900; letter-spacing: 1.5px; color: var(--gold-lt); margin-bottom: 8px; }
+        .boot-status { color: var(--text3); font-size: 13px; line-height: 1.6; }
+        .boot-error { color: #e8778a; font-weight: 700; }
+        .boot-spinner {
+            width: 34px; height: 34px; border-radius: 50%; margin: 18px auto 0;
+            border: 3px solid var(--border2); border-top-color: var(--gold);
+            animation: boot-spin .9s linear infinite;
+        }
+        @keyframes boot-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+    <div class="boot-shell">
+        <div class="boot-title">🎾 Tennis Auction</div>
+        <div id="boot-status" class="boot-status">Loading app…</div>
+        <div class="boot-spinner"></div>
+    </div>
+</div>
 
 <script type="text/babel">
+if (!window.React || !window.ReactDOM || !window.firebase || !window.firebase.database) {
+    const missing = [
+        !window.React && "React",
+        !window.ReactDOM && "ReactDOM",
+        !window.firebase && "Firebase",
+        window.firebase && !window.firebase.database && "Firebase database"
+    ].filter(Boolean).join(", ");
+    throw new Error(`Required libraries failed to load: ${missing || "unknown"}`);
+}
+
 const { useState, useEffect, useRef, useCallback } = React;
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
@@ -1490,6 +1533,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
 function Auction({ sid, user, onBack }) {
     const [state, setState] = useState(null);
     const [connected, setConnected] = useState(false);
+    const [loadError, setLoadError] = useState(null);
     const [timeLeft, setTimeLeft] = useState(60);
     const [bidInputs, setBidInputs] = useState({});
     const [bidErrors, setBidErrors] = useState({});
@@ -1504,10 +1548,23 @@ function Auction({ sid, user, onBack }) {
     useEffect(() => {
         const connRef = db.ref(".info/connected");
         connRef.on("value", s => setConnected(s.val()===true));
-        auctionRef.current.on("value", snap => {
-            if (snap.exists()) { setState(normalize(snap.val())); setConnected(true); }
-            else setConnected(false);
-        });
+        const handleAuctionValue = snap => {
+            if (snap.exists()) {
+                setState(normalize(snap.val()));
+                setLoadError(null);
+                setConnected(true);
+            } else {
+                setState(null);
+                setConnected(false);
+                setLoadError(`Session ${sid} was not found or has been removed.`);
+            }
+        };
+        const handleAuctionError = err => {
+            setState(null);
+            setConnected(false);
+            setLoadError(`Could not load session ${sid}: ${err.message}`);
+        };
+        auctionRef.current.on("value", handleAuctionValue, handleAuctionError);
         return () => { connRef.off(); auctionRef.current.off(); };
     }, [sid]);
 
@@ -1522,7 +1579,18 @@ function Auction({ sid, user, onBack }) {
     const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
     const togglePin = id => { const n=pinnedTeam===id?null:id; setPinnedTeam(n); savePref("ta_pin",n); };
 
-    if (!state) return <div style={{textAlign:"center",padding:40,color:"#888"}}>Loading auction {sid}…</div>;
+    if (!state) return (
+        <div className="setup-wrap">
+            <div className="card" style={{textAlign:"center"}}>
+                <div className="card-title">{loadError ? "Unable to load auction" : `Loading auction ${sid}…`}</div>
+                <div className={`card-sub${loadError ? " boot-error" : ""}`} style={{marginBottom:16}}>
+                    {loadError || "Connecting to the live auction data. This usually takes a moment."}
+                </div>
+                {!loadError && <div className="boot-spinner" />}
+                {loadError && <button className="btn btn-neutral" onClick={onBack}>Back to lobby</button>}
+            </div>
+        </div>
+    );
 
     const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
     const TIMER_EFF = state.config?.timerMs || TIMER_MS;
