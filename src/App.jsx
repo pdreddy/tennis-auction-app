@@ -26,7 +26,7 @@ const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5",
 const getUTR = k => parseFloat(k.replace("utr_","").replace("_","."));
 
 const PLAYERS = [
-    // ── UTR 6.0 · 16 players · ₹20,000 ──────────────────────────────────────
+    // ── UTR 6.0 · 16 players · $20,000 ──────────────────────────────────────
     {id:1,  Name:"Satish Reddy Orugunta",      utr:6.0, price:20000},
     {id:2,  Name:"Rajasekhar Chintha",          utr:6.0, price:20000},
     {id:3,  Name:"Anil Kunda",                  utr:6.0, price:20000},
@@ -43,7 +43,7 @@ const PLAYERS = [
     {id:14, Name:"Chandrakant Dharme",          utr:6.0, price:20000},
     {id:15, Name:"Rajasekhar Karru",            utr:6.0, price:20000},
     {id:16, Name:"Hari Mothukuri",              utr:6.0, price:20000},
-    // ── UTR 5.5 · 16 players · ₹14,000 ──────────────────────────────────────
+    // ── UTR 5.5 · 16 players · $14,000 ──────────────────────────────────────
     {id:17, Name:"Lloyd Prasana Kumar",         utr:5.5, price:14000},
     {id:18, Name:"Ritesh Kumar",                utr:5.5, price:14000},
     {id:19, Name:"Sandeep Gengineri",           utr:5.5, price:14000},
@@ -60,7 +60,7 @@ const PLAYERS = [
     {id:106,Name:"Satish K",                    utr:5.5, price:14000},
     {id:111,Name:"Vamsi Atluri",                utr:5.5, price:14000},
     {id:102,Name:"Nikhil Katakam",              utr:5.5, price:14000},
-    // ── UTR 5.0 · 16 players · ₹12,000 ──────────────────────────────────────
+    // ── UTR 5.0 · 16 players · $12,000 ──────────────────────────────────────
     {id:25, Name:"Bhaskar Boddireddy",          utr:5.0, price:12000},
     {id:26, Name:"Mohan Koripuri",              utr:5.0, price:12000},
     {id:27, Name:"Anshul Goyal",                utr:5.0, price:12000},
@@ -77,7 +77,7 @@ const PLAYERS = [
     {id:107,Name:"Praveen Vijay Kumar",         utr:5.0, price:12000},
     {id:110,Name:"Tarun Chicholi",              utr:5.0, price:12000},
     {id:113,Name:"Sai Varun Polisetty",         utr:5.0, price:12000},
-    // ── UTR 4.5 · 16 players · ₹10,000 ──────────────────────────────────────
+    // ── UTR 4.5 · 16 players · $10,000 ──────────────────────────────────────
     {id:38, Name:"Nivas Nazeer",                utr:4.5, price:10000},
     {id:39, Name:"Venice Robinson Amal Doss",   utr:4.5, price:10000},
     {id:40, Name:"Volkan Bal",                  utr:4.5, price:10000},
@@ -94,7 +94,7 @@ const PLAYERS = [
     {id:51, Name:"Dineshkumar Kaliyaperumal",   utr:4.5, price:10000},
     {id:52, Name:"Joel Kodoru",                 utr:4.5, price:10000},
     {id:54, Name:"Karthik Kumaresan",           utr:4.5, price:10000},
-    // ── UTR 4.0 · 16 players · ₹8,000 ───────────────────────────────────────
+    // ── UTR 4.0 · 16 players · $8,000 ───────────────────────────────────────
     {id:55, Name:"Sankara Lakshmanan",          utr:4.0, price:8000},
     {id:56, Name:"Chandu M",                    utr:4.0, price:8000},
     {id:57, Name:"Satya Maddipati",             utr:4.0, price:8000},
@@ -111,7 +111,7 @@ const PLAYERS = [
     {id:69, Name:"Addy R",                      utr:4.0, price:8000},
     {id:70, Name:"Raja R",                      utr:4.0, price:8000},
     {id:71, Name:"Karthik Ragunathan",          utr:4.0, price:8000},
-    // ── UTR 3.5 · 16 players · ₹6,000 ───────────────────────────────────────
+    // ── UTR 3.5 · 16 players · $6,000 ───────────────────────────────────────
     {id:72, Name:"Saket Raizada",               utr:3.5, price:6000},
     {id:73, Name:"Jagapathi Raju",              utr:3.5, price:6000},
     {id:74, Name:"Arpit Rawat",                 utr:3.5, price:6000},
@@ -128,7 +128,7 @@ const PLAYERS = [
     {id:85, Name:"Venu Sarvepalli",             utr:3.5, price:6000},
     {id:86, Name:"Vivek Bihani",                utr:3.5, price:6000},
     {id:87, Name:"Jay Sermadevi",               utr:3.5, price:6000},
-    // ── UTR 3.0 · 16 players · ₹5,000 ───────────────────────────────────────
+    // ── UTR 3.0 · 16 players · $5,000 ───────────────────────────────────────
     {id:88, Name:"Veeresh Kurni",               utr:3.0, price:5000},
     {id:89, Name:"Srinath Elitem",              utr:3.0, price:5000},
     {id:90, Name:"Prashant Janmatti",           utr:3.0, price:5000},
@@ -188,8 +188,8 @@ const ACCOUNTS = [
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = n => (n||0).toLocaleString("en-IN");
-const fmtR = n => "₹"+(n||0).toLocaleString("en-IN");
+const fmt = n => (n||0).toLocaleString("en-US");
+const fmtR = n => "$"+(n||0).toLocaleString("en-US");
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
@@ -536,7 +536,7 @@ function AdminConfig() {
                             {[
                                 {key:"teamSize",  label:"Players per Team",   desc:"Total roster size per team including the captain",    suffix:" players",min:3,     max:30, step:1},
                                 {key:"playersPerGroup", label:"Players per Group", desc:"How many players are divided into each auction group", suffix:" players", min:1, max:50, step:1},
-                                {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"₹",      min:5000,  step:5000},
+                                {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"$",      min:5000,  step:5000},
                                 {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
                             ].map(({key,label,desc,suffix,min,max,step,scale})=>(
                                 <div key={key} className="setting-row">
@@ -991,7 +991,7 @@ function Auction({ sid, user, onBack }) {
         if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
-        if ((amount - eff.player.price)%1000!==0) return "Base + ₹1k increments";
+        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
@@ -1238,7 +1238,7 @@ function Auction({ sid, user, onBack }) {
                                     />
                                     <div className="quick-chips">
                                         {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            ₹{v>=100000?`${(v/100000).toFixed(v%100000===0?0:1)}L`:`${v/1000}k`}
+                                            ${v>=1000?`${v/1000}k`:v}
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
