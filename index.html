@@ -500,7 +500,7 @@
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef } = React;
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -762,7 +762,10 @@ function Login({ onLogin }) {
             }
             if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
             onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
-        } catch(e) { setError("Error: " + e.message); setBusy(false); }
+        } catch(e) {
+            setError("Error: " + e.message);
+            setBusy(false);
+        }
     };
 
     return (
@@ -783,7 +786,7 @@ function Login({ onLogin }) {
                     placeholder="● ● ● ● ● ●"
                     style={{letterSpacing:8,textAlign:"center",fontSize:20}}
                     onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
-                    onKeyPress={e => e.key==="Enter" && submit()} />
+                    onKeyDown={e => e.key==="Enter" && submit()} />
             </div>
 
             {error && <div className="login-error">{error}</div>}
@@ -807,23 +810,28 @@ function ManagePins() {
             const initial = {};
             ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || ""; });
             setPins(initial);
-        });
+        }).catch(e => setMsg({code:"ALL",text:`Could not load PINs: ${e.message}`,ok:false}));
     }, []);
 
     const save = async (account) => {
         const pin = pins[account.code] || "";
         if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { setMsg({code:account.code,text:"Must be 6 digits",ok:false}); return; }
         setSaving(account.code);
-        await db.ref(`users/${account.code}`).set({
-            code: account.code,
-            pin,
-            role: account.role,
-            teamId: account.teamId || null,
-            name: account.label
-        });
-        setSaving(null);
-        setMsg({code:account.code,text:"Saved",ok:true});
-        setTimeout(() => setMsg(null), 2000);
+        try {
+            await db.ref(`users/${account.code}`).set({
+                code: account.code,
+                pin,
+                role: account.role,
+                teamId: account.teamId || null,
+                name: account.label
+            });
+            setMsg({code:account.code,text:"Saved",ok:true});
+            setTimeout(() => setMsg(null), 2000);
+        } catch(e) {
+            setMsg({code:account.code,text:`Save failed: ${e.message}`,ok:false});
+        } finally {
+            setSaving(null);
+        }
     };
 
     const saveAll = async () => {
@@ -834,10 +842,15 @@ function ManagePins() {
         ACCOUNTS.forEach(a => {
             updates[`users/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
         });
-        await db.ref().update(updates);
-        setSaving(null);
-        setMsg({code:"ALL",text:"All PINs saved",ok:true});
-        setTimeout(() => setMsg(null), 2000);
+        try {
+            await db.ref().update(updates);
+            setMsg({code:"ALL",text:"All PINs saved",ok:true});
+            setTimeout(() => setMsg(null), 2000);
+        } catch(e) {
+            setMsg({code:"ALL",text:`Save failed: ${e.message}`,ok:false});
+        } finally {
+            setSaving(null);
+        }
     };
 
     return (
@@ -958,19 +971,37 @@ function Lobby({ user, onJoin, onLogout }) {
 
     const createNew = async () => {
         setCreating(true); setError(null);
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-        await db.ref(`auctions/${sid}`).set(initialDoc(sid));
-        onJoin(sid);
+        try {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let sid = "";
+            let exists = true;
+            for (let tries = 0; tries < 5 && exists; tries++) {
+                sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+                exists = (await db.ref(`auctions/${sid}`).once("value")).exists();
+            }
+            if (exists) throw new Error("Could not find an unused session ID. Try again.");
+            await db.ref(`auctions/${sid}`).set(initialDoc(sid));
+            onJoin(sid);
+        } catch(e) {
+            setError(`Could not create auction: ${e.message}`);
+        } finally {
+            setCreating(false);
+        }
     };
 
     const joinExisting = async () => {
         const id = joinId.trim().toUpperCase();
         if (!id) { setError("Enter a session ID"); return; }
         setJoining(true); setError(null);
-        const snap = await db.ref(`auctions/${id}`).once("value");
-        if (!snap.exists()) { setError(`Session ${id} not found`); setJoining(false); return; }
-        onJoin(id);
+        try {
+            const snap = await db.ref(`auctions/${id}`).once("value");
+            if (!snap.exists()) { setError(`Session ${id} not found`); return; }
+            onJoin(id);
+        } catch(e) {
+            setError(`Could not join auction: ${e.message}`);
+        } finally {
+            setJoining(false);
+        }
     };
 
     const poolPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
@@ -1011,7 +1042,7 @@ function Lobby({ user, onJoin, onLogout }) {
             <div className="card">
                 <input className="code-input" type="text" placeholder="ABC123" maxLength={6}
                     value={joinId} onChange={e=>setJoinId(e.target.value.toUpperCase())}
-                    onKeyPress={e=>e.key==="Enter"&&joinExisting()} />
+                    onKeyDown={e=>e.key==="Enter"&&joinExisting()} />
                 <button className="btn btn-neutral" style={{marginTop:10}} onClick={joinExisting} disabled={joining||!joinId.trim()}>
                     {joining ? "Joining…" : "Join Auction"}
                 </button>
@@ -1133,8 +1164,11 @@ function Auction({ sid, user, onBack }) {
         if (!eff?.player) return;
         const pools = {...state.playerPools};
         const pool = [...pools[eff.poolKey]];
-        const moved = {...pool[eff.effPlayer],isRetry:true,retryCount:(pool[eff.effPlayer].retryCount||0)+1};
-        pool.splice(eff.effPlayer,1); pool.push(moved);
+        const [skipped] = pool.splice(eff.effPlayer,1);
+        const hasLaterPlayersInPool = eff.effPlayer < pool.length;
+        if (hasLaterPlayersInPool) {
+            pool.push({...skipped,isRetry:true,retryCount:(skipped.retryCount||0)+1});
+        }
         pools[eff.poolKey] = pool;
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
@@ -1284,7 +1318,7 @@ function Auction({ sid, user, onBack }) {
                                         value={bidInputs[team.id]||""}
                                         disabled={timeLeft===0}
                                         onChange={e=>{setBidInputs(p=>({...p,[team.id]:e.target.value}));setBidErrors(p=>({...p,[team.id]:null}));}}
-                                        onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
+                                        onKeyDown={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
                                     />
                                     <div className="quick-chips">
                                         {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
