@@ -72,6 +72,27 @@ supabase db push
 The migration creates normalized tables for profiles, players, teams, categories, tournaments, registrations, bids, rosters, matches, storage-oriented metadata, and compatibility tables used by the converted PWA.
 
 
+
+### Troubleshooting: `zsh: command not found: supabase`
+
+The Supabase CLI is not installed on your Mac. You have three options:
+
+1. **No CLI required:** open Supabase Dashboard → SQL Editor, paste the full contents of `supabase/migrations/001_initial_schema.sql`, and run it. This is the quickest way to create `app_users` and the other tables.
+2. **Run with npx:** if you have Node.js 20 or newer, run:
+
+```bash
+npx supabase db push
+```
+
+3. **Install the CLI with Homebrew:**
+
+```bash
+brew install supabase
+supabase db push
+```
+
+After the migration succeeds, run the bootstrap command again to seed the `ADMIN` and `TEAM<n>` PIN accounts.
+
 ### Troubleshooting: `public.app_users` not found
 
 If you see `Could not find the table 'public.app_users' in the schema cache`, the Supabase database schema has not been installed in the project your app is connected to, or Supabase needs a schema cache refresh. Run the SQL migration first:

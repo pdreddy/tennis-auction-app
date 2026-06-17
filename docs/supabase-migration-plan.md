@@ -127,6 +127,11 @@ npm run supabase:bootstrap
 
 After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires a Supabase URL and publishable key. You can provide them with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, or paste them into the in-app setup screen for this device. Server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
 
+
+### If `supabase` is not installed
+
+If your terminal says `zsh: command not found: supabase`, either use Supabase Dashboard → SQL Editor and run `supabase/migrations/001_initial_schema.sql`, or run the CLI with `npx supabase db push` on Node.js 20+. On macOS, you can also install the CLI with Homebrew using `brew install supabase`.
+
 ## Migration phases
 
 1. **Database setup**: create Supabase project, run `supabase/migrations/001_initial_schema.sql`, enable Realtime on `auction_sessions`, `bids`, and `team_roster`, and create storage buckets.
