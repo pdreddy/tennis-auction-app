@@ -606,11 +606,11 @@ const db = window.__db;
 // ─── Error Boundary ──────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
   constructor(p) { super(p); this.state = { err: null }; }
-  static getDerivedStateFromError(e) { return { err: e }; }
+  componentDidCatch(e) { this.setState({ err: e }); }
   render() {
     if (this.state.err) return (
       <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
-        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>⚠️</div>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>&#9888;</div>
         <h2 style={{marginBottom:'0.5rem'}}>Something went wrong</h2>
         <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{this.state.err.message}</p>
         <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Reload</button>
@@ -1829,7 +1829,7 @@ const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 function App() {
     if (window.__firebaseError) return (
       <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
-        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>🔥</div>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>&#128293;</div>
         <h2 style={{marginBottom:'0.5rem'}}>Database connection failed</h2>
         <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{window.__firebaseError}</p>
         <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Retry</button>
