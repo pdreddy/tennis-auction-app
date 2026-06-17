@@ -14,7 +14,7 @@ Create `.env.local`:
 
 ```bash
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
 
 Start the React/Vite dev server:
@@ -57,7 +57,7 @@ npm run supabase:bootstrap
 npm run dev
 ```
 
-Open `http://localhost:5173`. If you see `Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY`, the browser build does not have the `VITE_*` variables from `.env.local` or your hosting provider.
+Open `http://localhost:5173`. If you see `Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY`, the browser build does not have the `VITE_*` variables from `.env.local` or your hosting provider.
 
 To see the seeded data, open Supabase Dashboard → Table Editor and inspect `app_config`, `app_users`, `players`, `teams`, and `auction_sessions`.
 

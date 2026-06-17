@@ -125,7 +125,7 @@ TEAM_PIN=123456 \
 npm run supabase:bootstrap
 ```
 
-After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
+After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
 
 ## Migration phases
 
@@ -140,7 +140,7 @@ After seeding, use Supabase Dashboard → Table Editor to view `app_config` and 
 
 ```bash
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
@@ -151,7 +151,7 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 
 - Build command: `npm run build`
 - Publish directory: `dist`
-- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in site environment variables.
+- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in site environment variables.
 
 ### Vercel
 

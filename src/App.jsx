@@ -1294,11 +1294,11 @@ function MissingSupabaseConfig() {
             <div className="card" style={{textAlign:"left",maxWidth:720,margin:"60px auto"}}>
                 <div className="card-title">Supabase is not configured</div>
                 <div className="card-sub" style={{marginBottom:14}}>
-                    Add your Supabase project URL and anon key before signing in. For local development, copy
+                    Add your Supabase project URL and publishable key before signing in. For local development, copy
                     <code> .env.example </code> to <code>.env.local</code>; for Vercel/Netlify, add the same variables in the hosting dashboard.
                 </div>
                 <pre style={{whiteSpace:"pre-wrap",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:14,color:"var(--text2)",fontSize:12}}>VITE_SUPABASE_URL=https://&lt;project-ref&gt;.supabase.co
-VITE_SUPABASE_ANON_KEY=&lt;anon-key&gt;</pre>
+VITE_SUPABASE_PUBLISHABLE_KEY=&lt;publishable-key&gt;</pre>
                 <div className="card-sub" style={{marginTop:14}}>
                     After the variables are saved, restart the dev server or redeploy the site.
                 </div>
