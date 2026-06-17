@@ -70,4 +70,6 @@ All Firebase wiring now lives in `src/config/firebase.js`. To point the app at a
 - `auctions` — live auction sessions.
 - `connected` — Firebase connection status path; normally leave this as `.info/connected`.
 
+Admin sign-in is separated from team sign-in on the login screen. Captains choose only team accounts; admins switch to **Admin Login** and enter the admin access code plus the admin PIN saved under `users/ADMIN`.
+
 The app remains PWA-installable: `index.html` links `/manifest.json`, and the same manifest is kept in `public/manifest.json` so Vite copies it into `dist/` during production builds.

@@ -10,10 +10,9 @@ import DEFAULT_PINS from "./config/pins.json";
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
 // PINs are loaded from Firebase at users/<code>/pin. Admins can seed defaults from src/config/pins.json.
-const ACCOUNTS = [
-    {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
-    ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))
-];
+const ADMIN_ACCOUNT = {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null};
+const CAPTAIN_ACCOUNTS = TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}));
+const ACCOUNTS = [ADMIN_ACCOUNT, ...CAPTAIN_ACCOUNTS];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = n => (n||0).toLocaleString("en-US");
@@ -132,21 +131,34 @@ function SeasonBar({ selectedYear, onSelect }) {
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
 function Login({ onLogin }) {
+    const [loginMode, setLoginMode] = useState(() => pref("ta_last_account", "")==="ADMIN" ? "admin" : "captain");
     const [account, setAccount] = useState(() => {
         const saved = pref("ta_last_account", null);
-        return ACCOUNTS.find(a=>a.code===saved) || ACCOUNTS[0];
+        return CAPTAIN_ACCOUNTS.find(a=>a.code===saved) || CAPTAIN_ACCOUNTS[0];
     });
+    const [adminCode, setAdminCode] = useState("");
     const [pin, setPin] = useState("");
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
     const lastLogin = pref("ta_last_login", null);
+    const activeAccount = loginMode === "admin" ? ADMIN_ACCOUNT : account;
+
+    const switchMode = mode => {
+        setLoginMode(mode);
+        setPin("");
+        setError(null);
+    };
 
     const submit = async () => {
         setError(null);
+        if (loginMode === "admin" && adminCode.trim().toUpperCase() !== ADMIN_ACCOUNT.code) {
+            setError("Enter the admin access code");
+            return;
+        }
         if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
         setBusy(true);
         try {
-            const snap = await userRef(account.code).once("value");
+            const snap = await userRef(activeAccount.code).once("value");
             const user = snap.val();
             if (!user || !user.pin) {
                 setError("Account not set up yet. Ask the admin to configure PINs.");
@@ -154,9 +166,9 @@ function Login({ onLogin }) {
                 return;
             }
             if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
-            savePref("ta_last_account", account.code);
-            savePref("ta_last_login", { name: account.label, time: Date.now() });
-            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
+            savePref("ta_last_account", activeAccount.code);
+            savePref("ta_last_login", { name: activeAccount.label, time: Date.now() });
+            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:activeAccount.label });
         } catch(e) { setError("Error: " + e.message); setBusy(false); }
     };
 
@@ -179,26 +191,54 @@ function Login({ onLogin }) {
                     </div>
                 )}
 
-                <div className="field-wrap">
-                    <div className="field-label">ACCOUNT</div>
-                    <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
-                        {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
-                    </select>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+                    <button type="button"
+                        className={`btn ${loginMode==="captain"?"btn-primary":"btn-neutral"}`}
+                        style={{padding:"10px 12px",fontSize:12}}
+                        onClick={()=>switchMode("captain")}>Captain Login</button>
+                    <button type="button"
+                        className={`btn ${loginMode==="admin"?"btn-primary":"btn-neutral"}`}
+                        style={{padding:"10px 12px",fontSize:12}}
+                        onClick={()=>switchMode("admin")}>Admin Login</button>
                 </div>
+
+                {loginMode === "captain" ? (
+                    <div className="field-wrap">
+                        <div className="field-label">TEAM ACCOUNT</div>
+                        <select value={account.code} onChange={e => setAccount(CAPTAIN_ACCOUNTS.find(a=>a.code===e.target.value) || CAPTAIN_ACCOUNTS[0])}>
+                            {CAPTAIN_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div className="field-wrap">
+                        <div className="field-label">ADMIN ACCESS CODE</div>
+                        <input type="text" value={adminCode} autoComplete="username"
+                            placeholder="Ask the auctioneer for the admin code"
+                            style={{textAlign:"center",fontSize:14,textTransform:"uppercase"}}
+                            onChange={e => setAdminCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,16))}
+                            onKeyPress={e => e.key==="Enter" && submit()} />
+                    </div>
+                )}
 
                 <div className="field-wrap">
                     <div className="field-label">6-DIGIT PIN</div>
-                    <input type="password" value={pin} maxLength={6} inputMode="numeric"
+                    <input type="password" value={pin} maxLength={6} inputMode="numeric" autoComplete="current-password"
                         placeholder="● ● ● ● ● ●"
                         style={{letterSpacing:8,textAlign:"center",fontSize:20}}
                         onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
                         onKeyPress={e => e.key==="Enter" && submit()} />
                 </div>
 
+                {loginMode === "admin" && (
+                    <div style={{fontSize:11,color:"var(--text4)",textAlign:"center",marginTop:-8,marginBottom:12,lineHeight:1.4}}>
+                        Admin access is separated from team accounts and requires both the admin code and admin PIN.
+                    </div>
+                )}
+
                 {error && <div className="login-error">{error}</div>}
 
                 <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
-                    {busy ? "Signing in…" : "Sign In"}
+                    {busy ? "Signing in…" : loginMode === "admin" ? "Sign In as Admin" : "Sign In"}
                 </button>
             </div>
         </div>
