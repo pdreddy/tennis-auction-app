@@ -19,6 +19,9 @@ const ACCOUNTS = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = n => (n||0).toLocaleString("en-US");
 const fmtR = n => "$"+(n||0).toLocaleString("en-US");
+const fmtRating = n => n == null ? "N/A" : Number(n).toFixed(2).replace(/\.?0+$/,"");
+const actualUtr = p => `Actual ${fmtRating(p?.best)}`;
+const actualUtrDetail = p => `${actualUtr(p)} · S ${fmtRating(p?.s)} · D ${fmtRating(p?.d)}`;
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
@@ -536,7 +539,7 @@ function PoolViewer() {
                                 </span>
                                 <div>
                                     <div className="pool-header-title">{POOL_LABELS[utr]}</div>
-                                    <div className="pool-header-meta">{players.length} players · base {fmtR(players[0]?.price||0)}</div>
+                                    <div className="pool-header-meta">{players.length} players · base {fmtR(players[0]?.price||0)} · {actualUtr(players[0])}</div>
                                 </div>
                             </div>
                             <span className={`pool-chevron${isOpen?" open":""}`}>▼</span>
@@ -550,6 +553,7 @@ function PoolViewer() {
                                             <span className="pool-player-num">{i+1}</span>
                                             <span className="pool-player-name">{p.Name}</span>
                                             {isCap && <span className="pool-player-cap">CAPTAIN</span>}
+                                            <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>{actualUtr(p)}</span>
                                             <span className="pool-player-price">{fmtR(p.price)}</span>
                                         </div>
                                     );
@@ -974,7 +978,7 @@ function Auction({ sid, user, onBack }) {
                     style={{display:"flex",alignItems:"center",justifyContent:"space-between",
                         padding:"9px 14px",cursor:"pointer",background:"var(--surface2)",userSelect:"none"}}>
                     <div style={{fontSize:12,fontWeight:600,color:"var(--text2)"}}>
-                        📋 Pool Queue · UTR {eff.player.utr} · {eff.pool.length} remaining
+                        📋 Pool Queue · Tier UTR {eff.player.utr} · {actualUtr(eff.player)} · {eff.pool.length} remaining
                     </div>
                     <span style={{fontSize:10,color:"var(--text4)"}}>{showUpcoming?"▲":"▼"}</span>
                 </div>
@@ -991,7 +995,7 @@ function Auction({ sid, user, onBack }) {
                                     {i===eff.effPlayer && <span style={{marginLeft:6,fontSize:10,color:"var(--gold)",fontWeight:600}}>← NOW</span>}
                                     {p.isRetry && <span style={{marginLeft:4,fontSize:10,color:"var(--muted)"}}>retry</span>}
                                 </span>
-                                <span style={{fontSize:11,color:"var(--text3)"}}>UTR {p.utr}</span>
+                                <span style={{fontSize:11,color:"var(--text3)"}}>Tier {p.utr} · {actualUtr(p)}</span>
                                 <span style={{fontSize:11,color:"var(--text4)"}}>{fmtR(p.price)}</span>
                             </div>
                         ))}
@@ -1002,7 +1006,7 @@ function Auction({ sid, user, onBack }) {
             <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div className="sb-left">
                     <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
-                    <div className="sb-meta">UTR {eff.player.utr} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
+                    <div className="sb-meta">Tier UTR {eff.player.utr} · {actualUtrDetail(eff.player)} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
                     {highest>0 && <div className="sb-high">High {fmtR(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
                 </div>
                 <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
@@ -1141,14 +1145,14 @@ function RosterCard({team, teamSize}) {
                 <div className="roster-captain-row">
                     <span className="roster-captain-star">⭐</span>
                     <span className="roster-captain-name">{cap.Name}</span>
-                    <span className={`roster-player-utr ${utrClass(cap.utr)}`}>{cap.utr}</span>
+                    <span className={`roster-player-utr ${utrClass(cap.utr)}`} title={actualUtrDetail(cap)}>{cap.utr}/{fmtRating(cap.best)}</span>
                 </div>
             )}
             {rest.map((p,i)=>(
                 <div key={p.id} className="roster-player">
                     <span className="roster-player-num">{i+2}</span>
                     <span className="roster-player-name">{p.Name}</span>
-                    <span className={`roster-player-utr ${utrClass(p.utr)}`}>{p.utr}</span>
+                    <span className={`roster-player-utr ${utrClass(p.utr)}`} title={actualUtrDetail(p)}>{p.utr}/{fmtRating(p.best)}</span>
                     <span className="roster-player-price">{fmtR(p.acquiredPrice)}</span>
                 </div>
             ))}
