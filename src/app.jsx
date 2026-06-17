@@ -249,7 +249,7 @@ const POOL_LABELS = {
     4.5:"Int-Adv · UTR 4.5", 4.0:"Intermediate · UTR 4.0",
     3.5:"Developing · UTR 3.5", 3.0:"Beginner · UTR 3.0",
 };
-function fmtR(n){ return "₹"+n.toLocaleString("en-IN"); }
+function fmtR(n){ return "$"+(n||0).toLocaleString(); }
 
 function PoolViewer() {
     const [open, setOpen] = useState({});
