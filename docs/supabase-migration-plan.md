@@ -112,6 +112,21 @@ create function place_bid(session uuid, team uuid, player uuid, amount int) retu
 ```
 Explanation: Contended writes should move into a Postgres function that validates uniqueness, budget, and RLS atomically.
 
+
+## First setup and viewing data
+
+For a brand-new Supabase project, run the SQL migration first, then seed the compatibility login data with `scripts/bootstrap-supabase.mjs`. The current login screen still expects an `ADMIN` account and `TEAM<n>` captain accounts with 6-digit PINs while Supabase Auth rollout is completed.
+
+```bash
+SUPABASE_URL=https://<project-ref>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+ADMIN_PIN=123456 \
+TEAM_PIN=123456 \
+npm run supabase:bootstrap
+```
+
+After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
+
 ## Migration phases
 
 1. **Database setup**: create Supabase project, run `supabase/migrations/001_initial_schema.sql`, enable Realtime on `auction_sessions`, `bids`, and `team_roster`, and create storage buckets.

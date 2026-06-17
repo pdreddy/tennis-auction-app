@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
+import { hasSupabaseEnv } from "./config/supabase.js";
 import { realtimeDataService } from "./services/realtimeDataService.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
@@ -164,6 +165,8 @@ function Login({ onLogin }) {
         const d = new Date(ts);
         return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     };
+
+    if (!hasSupabaseEnv) return <MissingSupabaseConfig />;
 
     return (
         <div>
@@ -1285,6 +1288,25 @@ function ResetModal({onCancel,onConfirm}) {
 const IDLE_MS = 180 * 60 * 1000; // 180 minutes
 const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 
+function MissingSupabaseConfig() {
+    return (
+        <div className="setup-wrap">
+            <div className="card" style={{textAlign:"left",maxWidth:720,margin:"60px auto"}}>
+                <div className="card-title">Supabase is not configured</div>
+                <div className="card-sub" style={{marginBottom:14}}>
+                    Add your Supabase project URL and anon key before signing in. For local development, copy
+                    <code> .env.example </code> to <code>.env.local</code>; for Vercel/Netlify, add the same variables in the hosting dashboard.
+                </div>
+                <pre style={{whiteSpace:"pre-wrap",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:14,color:"var(--text2)",fontSize:12}}>VITE_SUPABASE_URL=https://&lt;project-ref&gt;.supabase.co
+VITE_SUPABASE_ANON_KEY=&lt;anon-key&gt;</pre>
+                <div className="card-sub" style={{marginTop:14}}>
+                    After the variables are saved, restart the dev server or redeploy the site.
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function App() {
     const [user, setUser] = useState(() => pref("ta_user", null));
     const [sessionId, setSessionId] = useState(() => null);
@@ -1322,6 +1344,8 @@ function App() {
         clearTimeout(idleRef.current); clearTimeout(warnRef.current);
     };
     const handleJoin = sid => { setSessionId(sid); savePref("ta_last_session", sid); };
+
+    if (!hasSupabaseEnv) return <MissingSupabaseConfig />;
 
     return (
         <div>

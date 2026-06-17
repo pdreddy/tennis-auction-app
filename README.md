@@ -25,6 +25,42 @@ npm run dev
 
 Open the app at `http://localhost:5173`.
 
+
+## First-time Supabase account and data setup
+
+1. Create a Supabase project.
+2. Copy `.env.example` to `.env.local` and fill in the values from your Supabase project settings:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Run the database migration:
+
+```bash
+supabase db push
+```
+
+4. Seed the initial compatibility login accounts and default auction configuration:
+
+```bash
+SUPABASE_URL=https://<project-ref>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+ADMIN_PIN=123456 \
+TEAM_PIN=123456 \
+npm run supabase:bootstrap
+```
+
+5. Start the app and sign in with account `ADMIN` using the `ADMIN_PIN` you provided:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:5173`. If you see `Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY`, the browser build does not have the `VITE_*` variables from `.env.local` or your hosting provider.
+
+To see the seeded data, open Supabase Dashboard → Table Editor and inspect `app_config`, `app_users`, `players`, `teams`, and `auction_sessions`.
+
 ## Supabase setup
 
 Run the SQL migration in your Supabase SQL editor or with the Supabase CLI:
