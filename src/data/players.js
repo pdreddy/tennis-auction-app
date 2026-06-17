@@ -1,114 +1,814 @@
-export const PLAYERS = [
-    {id:1, Name:"Dinkar Bhardwaj", utr:6.0, price:20000, cat:1, best:6.97, s:6.97, d:6.44 },
-    {id:2, Name:"Vinoth Duraisamy", utr:6.0, price:20000, cat:1, best:6.71, s:6.71, d:6.11 },
-    {id:3, Name:"Volkan Bal", utr:6.0, price:20000, cat:1, best:6.48, s:6.48, d:6.01 },
-    {id:4, Name:"Mohammad Azim", utr:6.0, price:20000, cat:1, best:6.31, s:6.31, d:5.82 },
-    {id:5, Name:"Prashant Janmatti", utr:5.5, price:14000, cat:2, best:6.28, s:null, d:6.28 },
-    {id:6, Name:"Prashanth Gourineni", utr:6.0, price:20000, cat:1, best:6.18, s:5.9, d:6.18 },
-    {id:7, Name:"Vamsi Atluri", utr:6.0, price:20000, cat:1, best:6.14, s:5.14, d:6.14 },
-    {id:8, Name:"Rajib Sarkar", utr:5.5, price:14000, cat:2, best:6.06, s:4.89, d:6.06 },
-    {id:9, Name:"Vinod Aripaka", utr:5.5, price:14000, cat:2, best:6.03, s:4.4, d:6.03 },
-    {id:10, Name:"Vivekvardhan Reddy Mereddy", utr:6.0, price:20000, cat:1, best:5.98, s:5.98, d:5.31 },
-    {id:11, Name:"Saket Raizada", utr:5.0, price:12000, cat:3, best:5.98, s:5.98, d:5.53 },
-    {id:12, Name:"Anand Krishnamurthy", utr:6.0, price:20000, cat:1, best:5.96, s:5.02, d:5.96 },
-    {id:13, Name:"Kalyan Kalidindi", utr:5.5, price:14000, cat:2, best:5.94, s:null, d:5.94 },
-    {id:14, Name:"Vipul Sud", utr:5.0, price:12000, cat:3, best:5.92, s:null, d:5.92 },
-    {id:15, Name:"Nagarjuna Saladi", utr:6.0, price:20000, cat:1, best:5.9, s:5.9, d:4.79 },
-    {id:16, Name:"Praveenkumar Vijayakumar", utr:5.5, price:14000, cat:2, best:5.9, s:null, d:5.9 },
-    {id:17, Name:"Jayesh Barai", utr:6.0, price:20000, cat:1, best:5.89, s:5.78, d:5.89 },
-    {id:18, Name:"Yogesh Dhadge", utr:6.0, price:20000, cat:1, best:5.89, s:5.21, d:5.89 },
-    {id:19, Name:"Dinesh Reddy Timmareddy", utr:5.5, price:14000, cat:2, best:5.88, s:5.13, d:5.88 },
-    {id:20, Name:"Boopesh Natarajan", utr:6.0, price:20000, cat:1, best:5.87, s:5.62, d:5.87 },
-    {id:21, Name:"Premkumar Balakrishnan", utr:5.5, price:14000, cat:2, best:5.86, s:4.76, d:5.86 },
-    {id:22, Name:"Rajasekhar Chintha", utr:5.5, price:14000, cat:2, best:5.82, s:4.45, d:5.82 },
-    {id:23, Name:"Rajasekhar Mangalampally", utr:6.0, price:20000, cat:1, best:5.81, s:5.81, d:5.35 },
-    {id:24, Name:"Tariq Hussain", utr:5.5, price:14000, cat:2, best:5.74, s:null, d:5.74 },
-    {id:25, Name:"Srinath Elitem", utr:5.0, price:12000, cat:3, best:5.72, s:null, d:5.72 },
-    {id:26, Name:"Hariprashanth Ganapathy", utr:5.0, price:12000, cat:3, best:5.7, s:4.8, d:5.7 },
-    {id:27, Name:"Rajesh Mishra", utr:6.0, price:20000, cat:1, best:5.69, s:5.69, d:5.48 },
-    {id:28, Name:"Manish Jangid", utr:6.0, price:20000, cat:1, best:5.68, s:5.25, d:5.68 },
-    {id:29, Name:"Hari Mothukuri", utr:5.5, price:14000, cat:2, best:5.62, s:4.43, d:5.62 },
-    {id:30, Name:"Kailas Magi", utr:5.5, price:14000, cat:2, best:5.58, s:4.47, d:5.58 },
-    {id:31, Name:"Janaki Ram Kantheti", utr:5.0, price:12000, cat:3, best:5.56, s:3.71, d:5.56 },
-    {id:32, Name:"Krishna Vennapusa", utr:5.0, price:12000, cat:3, best:5.54, s:4.76, d:5.54 },
-    {id:33, Name:"Satish Reddy Orugunta", utr:5.5, price:14000, cat:2, best:5.52, s:4.83, d:5.52 },
-    {id:34, Name:"Harsha Reddy", utr:6.0, price:20000, cat:1, best:5.52, s:5.29, d:5.52 },
-    {id:35, Name:"Koushik Venkatasubramanian", utr:4.5, price:10000, cat:4, best:5.46, s:null, d:5.46 },
-    {id:36, Name:"Anil Kunda", utr:5.5, price:14000, cat:2, best:5.4, s:null, d:5.4 },
-    {id:37, Name:"Veeresh Kurni", utr:4.5, price:10000, cat:4, best:5.39, s:null, d:5.39 },
-    {id:38, Name:"Vivek Tiku", utr:4.5, price:10000, cat:4, best:5.38, s:1.82, d:5.38 },
-    {id:39, Name:"Jaweed Ibrahim", utr:5.0, price:12000, cat:3, best:5.34, s:4.36, d:5.34 },
-    {id:40, Name:"Mahidhar Penigi", utr:5.0, price:12000, cat:3, best:5.34, s:5.34, d:4.48 },
-    {id:41, Name:"Kalyan Ghanta", utr:5.0, price:12000, cat:3, best:5.33, s:5, d:5.33 },
-    {id:42, Name:"Amol Patwardhan", utr:4.5, price:10000, cat:4, best:5.32, s:null, d:5.32 },
-    {id:43, Name:"Narayan Prasad", utr:5.0, price:12000, cat:3, best:5.28, s:4.7, d:5.28 },
-    {id:44, Name:"Ritesh Kumar", utr:5.5, price:14000, cat:2, best:5.26, s:4.1, d:5.26 },
-    {id:45, Name:"Rajasekhar Karru", utr:5.0, price:12000, cat:3, best:5.25, s:4.37, d:5.25 },
-    {id:46, Name:"Lloyd Prasana Kumar", utr:5.0, price:12000, cat:3, best:5.24, s:null, d:5.24 },
-    {id:47, Name:"Uma Vommi", utr:5.0, price:12000, cat:3, best:5.2, s:5.2, d:4.77 },
-    {id:48, Name:"Ninad Mahajan", utr:5.0, price:12000, cat:3, best:5.2, s:4.39, d:5.2 },
-    {id:49, Name:"Chandrakant Dharme", utr:5.0, price:12000, cat:3, best:5.19, s:5.19, d:5.03 },
-    {id:50, Name:"Chandu M", utr:4.0, price:8000, cat:5, best:5.14, s:4.1, d:5.14 },
-    {id:51, Name:"Sudhakara Nallapati", utr:5.5, price:14000, cat:2, best:5.13, s:4.45, d:5.13 },
-    {id:52, Name:"Biju Koshy", utr:4.5, price:10000, cat:4, best:5.12, s:4, d:5.12 },
-    {id:53, Name:"Rajasekhar Chejerla", utr:4.0, price:8000, cat:5, best:5.11, s:3.18, d:5.11 },
-    {id:54, Name:"Nikhil Katakam", utr:5.0, price:12000, cat:3, best:5.1, s:5.1, d:4.86 },
-    {id:55, Name:"Jitender Kumar", utr:4.5, price:10000, cat:4, best:5.1, s:4.08, d:5.1 },
-    {id:56, Name:"Mohamed Noufal", utr:4.5, price:10000, cat:4, best:5.1, s:4.14, d:5.1 },
-    {id:57, Name:"Samir Junnarkar", utr:3.5, price:6000, cat:6, best:5.08, s:2.93, d:5.08 },
-    {id:58, Name:"Raja R", utr:4.5, price:10000, cat:4, best:5.05, s:null, d:5.05 },
-    {id:59, Name:"Jay Sermadevi", utr:4.5, price:10000, cat:4, best:4.98, s:4.98, d:null },
-    {id:60, Name:"Bharath Sunku", utr:4.5, price:10000, cat:4, best:4.97, s:4.27, d:4.97 },
-    {id:61, Name:"Prashanth Jayantha Kumar", utr:4.5, price:10000, cat:4, best:4.93, s:4.93, d:3.7 },
-    {id:62, Name:"Amit Gundewar", utr:3.5, price:6000, cat:6, best:4.9, s:3.4, d:4.9 },
-    {id:63, Name:"Bhaskar Boddireddy", utr:3.5, price:6000, cat:6, best:4.87, s:3.84, d:4.87 },
-    {id:64, Name:"Pratik Pitroda", utr:4.0, price:8000, cat:5, best:4.85, s:3.6, d:4.85 },
-    {id:65, Name:"Prashanth Pendli", utr:4.0, price:8000, cat:5, best:4.81, s:4.79, d:4.81 },
-    {id:66, Name:"Vivek Bihani", utr:4.0, price:8000, cat:5, best:4.8, s:4.41, d:4.8 },
-    {id:67, Name:"Mohan Koripuri", utr:4.0, price:8000, cat:5, best:4.76, s:3.8, d:4.76 },
-    {id:68, Name:"Srikant Tenni", utr:4.0, price:8000, cat:5, best:4.76, s:null, d:4.76 },
-    {id:69, Name:"Anshul Goyal", utr:4.0, price:8000, cat:5, best:4.75, s:4.63, d:4.75 },
-    {id:70, Name:"Naveenkumar Mohanram", utr:4.0, price:8000, cat:5, best:4.7, s:3.88, d:4.7 },
-    {id:71, Name:"Srinidhi Kulkarni", utr:4.5, price:10000, cat:4, best:4.69, s:4.69, d:null },
-    {id:72, Name:"Vijay Gate", utr:4.5, price:10000, cat:4, best:4.68, s:4.68, d:4.48 },
-    {id:73, Name:"Vinod Punati", utr:4.0, price:8000, cat:5, best:4.67, s:4.27, d:4.67 },
-    {id:74, Name:"Tushar Tipatre", utr:4.0, price:8000, cat:5, best:4.65, s:null, d:4.65 },
-    {id:75, Name:"Satya Maddipati", utr:3.5, price:6000, cat:6, best:4.6, s:3.52, d:4.6 },
-    {id:76, Name:"Venky Dh", utr:4.5, price:10000, cat:4, best:4.58, s:4.49, d:4.58 },
-    {id:77, Name:"Sreekanth Bobbala", utr:4.0, price:8000, cat:5, best:4.56, s:3.66, d:4.56 },
-    {id:78, Name:"Malla Reddy Cheerke", utr:4.0, price:8000, cat:5, best:4.49, s:4.49, d:3.99 },
-    {id:79, Name:"Shailendra Patidar", utr:4.0, price:8000, cat:5, best:4.47, s:3.65, d:4.47 },
-    {id:80, Name:"Dineshkumar Kaliyaperumal", utr:3.5, price:6000, cat:6, best:4.47, s:null, d:4.47 },
-    {id:81, Name:"Venky Pantham", utr:3.0, price:5000, cat:7, best:4.45, s:2.99, d:4.45 },
-    {id:82, Name:"Sankara Lakshmanan", utr:4.0, price:8000, cat:5, best:4.44, s:4.18, d:4.44 },
-    {id:83, Name:"Sandeep Gengineri", utr:4.5, price:10000, cat:4, best:4.34, s:4.34, d:4.13 },
-    {id:84, Name:"Damodhara Palavali", utr:3.5, price:6000, cat:6, best:4.26, s:3.58, d:4.26 },
-    {id:85, Name:"Sashank T", utr:3.5, price:6000, cat:6, best:4.22, s:3.64, d:4.22 },
-    {id:86, Name:"Sidharth Behera", utr:4.0, price:8000, cat:5, best:4.19, s:4.19, d:null },
-    {id:87, Name:"Nivas Nazeer", utr:3.0, price:5000, cat:7, best:4.14, s:2.02, d:4.14 },
-    {id:88, Name:"Karthik Ragunathan", utr:3.5, price:6000, cat:6, best:4.14, s:3.33, d:4.14 },
-    {id:89, Name:"Charan Macharla", utr:3.5, price:6000, cat:6, best:4.03, s:null, d:4.03 },
-    {id:90, Name:"Naseer Mohd", utr:3.5, price:6000, cat:6, best:3.97, s:null, d:3.97 },
-    {id:91, Name:"Venkat Thimmisetty", utr:3.5, price:6000, cat:6, best:3.95, s:3.74, d:3.95 },
-    {id:92, Name:"Mayur Patel", utr:3.0, price:5000, cat:7, best:3.94, s:null, d:3.94 },
-    {id:93, Name:"Arpit Rawat", utr:3.5, price:6000, cat:6, best:3.94, s:3.94, d:null },
-    {id:94, Name:"Jitin Jaitly", utr:3.5, price:6000, cat:6, best:3.82, s:3.47, d:3.82 },
-    {id:95, Name:"Gopal Setty", utr:3.5, price:6000, cat:6, best:3.78, s:3.78, d:3.78 },
-    {id:96, Name:"Shiva Gundimeda", utr:3.5, price:6000, cat:6, best:3.74, s:3.2, d:3.74 },
-    {id:97, Name:"Joel Kodoru", utr:3.0, price:5000, cat:7, best:3.62, s:2, d:3.62 },
-    {id:98, Name:"Trinadh Cheepilla", utr:3.0, price:5000, cat:7, best:3.42, s:2.93, d:3.42 },
-    {id:99, Name:"Satish K", utr:3.5, price:6000, cat:6, best:3.38, s:null, d:3.38 },
-    {id:100, Name:"Avinash Terala", utr:3.0, price:5000, cat:7, best:3.35, s:3.21, d:3.35 },
-    {id:101, Name:"Sai Varun Polishetty", utr:3.0, price:5000, cat:7, best:2.94, s:2.94, d:null },
-    {id:102, Name:"Asif Mohammed", utr:3.0, price:5000, cat:7, best:2.8, s:2.8, d:null },
-    {id:103, Name:"Jagapathi Raju", utr:3.0, price:5000, cat:7, best:2.67, s:2.67, d:null },
-    {id:104, Name:"Venice Robinson Amal Doss", utr:3.0, price:5000, cat:7, best:2.38, s:2.25, d:2.38 },
-    {id:105, Name:"Guru Bavirisetty", utr:4.5, price:10000, cat:4, best:null, s:null, d:null },
-    {id:106, Name:"Raj Chava", utr:5.5, price:14000, cat:2, best:null, s:null, d:null },
-    {id:107, Name:"Karthik Kumaresan", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
-    {id:108, Name:"Abhishek Patel", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
-    {id:109, Name:"Raghu Ram", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
-    {id:110, Name:"Karthik Ram Senthilvel", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
-    {id:111, Name:"Chandan Singh", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
-    {id:112, Name:"Venu Sarvepalli", utr:3.0, price:5000, cat:7, best:null, s:null, d:null },
+import { CATEGORY_UTR, UTR_PRICES } from "./settings.js";
+
+export const RAW_PLAYERS = [
+    {
+        name: "Dinkar Bhardwaj",
+        best: 6.97,
+        cat: 1,
+        s: 6.97,
+        d: 6.44
+    },
+    {
+        name: "Vinoth Duraisamy",
+        best: 6.71,
+        cat: 1,
+        s: 6.71,
+        d: 6.11
+    },
+    {
+        name: "Volkan Bal",
+        best: 6.48,
+        cat: 1,
+        s: 6.48,
+        d: 6.01
+    },
+    {
+        name: "Mohammad Azim",
+        best: 6.31,
+        cat: 1,
+        s: 6.31,
+        d: 5.82
+    },
+    {
+        name: "Prashant Janmatti",
+        best: 6.28,
+        cat: 2,
+        s: null,
+        d: 6.28
+    },
+    {
+        name: "Prashanth Gourineni",
+        best: 6.18,
+        cat: 1,
+        s: 5.9,
+        d: 6.18
+    },
+    {
+        name: "Vamsi Atluri",
+        best: 6.14,
+        cat: 1,
+        s: 5.14,
+        d: 6.14
+    },
+    {
+        name: "Rajib Sarkar",
+        best: 6.06,
+        cat: 2,
+        s: 4.89,
+        d: 6.06
+    },
+    {
+        name: "Vinod Aripaka",
+        best: 6.03,
+        cat: 2,
+        s: 4.4,
+        d: 6.03
+    },
+    {
+        name: "Vivekvardhan Reddy Mereddy",
+        best: 5.98,
+        cat: 1,
+        s: 5.98,
+        d: 5.31
+    },
+    {
+        name: "Saket Raizada",
+        best: 5.98,
+        cat: 3,
+        s: 5.98,
+        d: 5.53
+    },
+    {
+        name: "Anand Krishnamurthy",
+        best: 5.96,
+        cat: 1,
+        s: 5.02,
+        d: 5.96
+    },
+    {
+        name: "Kalyan Kalidindi",
+        best: 5.94,
+        cat: 2,
+        s: null,
+        d: 5.94
+    },
+    {
+        name: "Vipul Sud",
+        best: 5.92,
+        cat: 3,
+        s: null,
+        d: 5.92
+    },
+    {
+        name: "Nagarjuna Saladi",
+        best: 5.9,
+        cat: 1,
+        s: 5.9,
+        d: 4.79
+    },
+    {
+        name: "Praveenkumar Vijayakumar",
+        best: 5.9,
+        cat: 2,
+        s: null,
+        d: 5.9
+    },
+    {
+        name: "Jayesh Barai",
+        best: 5.89,
+        cat: 1,
+        s: 5.78,
+        d: 5.89
+    },
+    {
+        name: "Yogesh Dhadge",
+        best: 5.89,
+        cat: 1,
+        s: 5.21,
+        d: 5.89
+    },
+    {
+        name: "Dinesh Reddy Timmareddy",
+        best: 5.88,
+        cat: 2,
+        s: 5.13,
+        d: 5.88
+    },
+    {
+        name: "Boopesh Natarajan",
+        best: 5.87,
+        cat: 1,
+        s: 5.62,
+        d: 5.87
+    },
+    {
+        name: "Premkumar Balakrishnan",
+        best: 5.86,
+        cat: 2,
+        s: 4.76,
+        d: 5.86
+    },
+    {
+        name: "Rajasekhar Chintha",
+        best: 5.82,
+        cat: 2,
+        s: 4.45,
+        d: 5.82
+    },
+    {
+        name: "Rajasekhar Mangalampally",
+        best: 5.81,
+        cat: 1,
+        s: 5.81,
+        d: 5.35
+    },
+    {
+        name: "Tariq Hussain",
+        best: 5.74,
+        cat: 2,
+        s: null,
+        d: 5.74
+    },
+    {
+        name: "Srinath Elitem",
+        best: 5.72,
+        cat: 3,
+        s: null,
+        d: 5.72
+    },
+    {
+        name: "Hariprashanth Ganapathy",
+        best: 5.7,
+        cat: 3,
+        s: 4.8,
+        d: 5.7
+    },
+    {
+        name: "Rajesh Mishra",
+        best: 5.69,
+        cat: 1,
+        s: 5.69,
+        d: 5.48
+    },
+    {
+        name: "Manish Jangid",
+        best: 5.68,
+        cat: 1,
+        s: 5.25,
+        d: 5.68
+    },
+    {
+        name: "Hari Mothukuri",
+        best: 5.62,
+        cat: 2,
+        s: 4.43,
+        d: 5.62
+    },
+    {
+        name: "Kailas Magi",
+        best: 5.58,
+        cat: 2,
+        s: 4.47,
+        d: 5.58
+    },
+    {
+        name: "Janaki Ram Kantheti",
+        best: 5.56,
+        cat: 3,
+        s: 3.71,
+        d: 5.56
+    },
+    {
+        name: "Krishna Vennapusa",
+        best: 5.54,
+        cat: 3,
+        s: 4.76,
+        d: 5.54
+    },
+    {
+        name: "Satish Reddy Orugunta",
+        best: 5.52,
+        cat: 2,
+        s: 4.83,
+        d: 5.52
+    },
+    {
+        name: "Harsha Reddy",
+        best: 5.52,
+        cat: 1,
+        s: 5.29,
+        d: 5.52
+    },
+    {
+        name: "Koushik Venkatasubramanian",
+        best: 5.46,
+        cat: 4,
+        s: null,
+        d: 5.46
+    },
+    {
+        name: "Anil Kunda",
+        best: 5.4,
+        cat: 2,
+        s: null,
+        d: 5.4
+    },
+    {
+        name: "Veeresh Kurni",
+        best: 5.39,
+        cat: 4,
+        s: null,
+        d: 5.39
+    },
+    {
+        name: "Vivek Tiku",
+        best: 5.38,
+        cat: 4,
+        s: 1.82,
+        d: 5.38
+    },
+    {
+        name: "Jaweed Ibrahim",
+        best: 5.34,
+        cat: 3,
+        s: 4.36,
+        d: 5.34
+    },
+    {
+        name: "Mahidhar Penigi",
+        best: 5.34,
+        cat: 3,
+        s: 5.34,
+        d: 4.48
+    },
+    {
+        name: "Kalyan Ghanta",
+        best: 5.33,
+        cat: 3,
+        s: 5,
+        d: 5.33
+    },
+    {
+        name: "Amol Patwardhan",
+        best: 5.32,
+        cat: 4,
+        s: null,
+        d: 5.32
+    },
+    {
+        name: "Narayan Prasad",
+        best: 5.28,
+        cat: 3,
+        s: 4.7,
+        d: 5.28
+    },
+    {
+        name: "Ritesh Kumar",
+        best: 5.26,
+        cat: 2,
+        s: 4.1,
+        d: 5.26
+    },
+    {
+        name: "Rajasekhar Karru",
+        best: 5.25,
+        cat: 3,
+        s: 4.37,
+        d: 5.25
+    },
+    {
+        name: "Lloyd Prasana Kumar",
+        best: 5.24,
+        cat: 3,
+        s: null,
+        d: 5.24
+    },
+    {
+        name: "Uma Vommi",
+        best: 5.2,
+        cat: 3,
+        s: 5.2,
+        d: 4.77
+    },
+    {
+        name: "Ninad Mahajan",
+        best: 5.2,
+        cat: 3,
+        s: 4.39,
+        d: 5.2
+    },
+    {
+        name: "Chandrakant Dharme",
+        best: 5.19,
+        cat: 3,
+        s: 5.19,
+        d: 5.03
+    },
+    {
+        name: "Chandu M",
+        best: 5.14,
+        cat: 5,
+        s: 4.1,
+        d: 5.14
+    },
+    {
+        name: "Sudhakara Nallapati",
+        best: 5.13,
+        cat: 2,
+        s: 4.45,
+        d: 5.13
+    },
+    {
+        name: "Biju Koshy",
+        best: 5.12,
+        cat: 4,
+        s: 4,
+        d: 5.12
+    },
+    {
+        name: "Rajasekhar Chejerla",
+        best: 5.11,
+        cat: 5,
+        s: 3.18,
+        d: 5.11
+    },
+    {
+        name: "Nikhil Katakam",
+        best: 5.1,
+        cat: 3,
+        s: 5.1,
+        d: 4.86
+    },
+    {
+        name: "Jitender Kumar",
+        best: 5.1,
+        cat: 4,
+        s: 4.08,
+        d: 5.1
+    },
+    {
+        name: "Mohamed Noufal",
+        best: 5.1,
+        cat: 4,
+        s: 4.14,
+        d: 5.1
+    },
+    {
+        name: "Samir Junnarkar",
+        best: 5.08,
+        cat: 6,
+        s: 2.93,
+        d: 5.08
+    },
+    {
+        name: "Raja R",
+        best: 5.05,
+        cat: 4,
+        s: null,
+        d: 5.05
+    },
+    {
+        name: "Jay Sermadevi",
+        best: 4.98,
+        cat: 4,
+        s: 4.98,
+        d: null
+    },
+    {
+        name: "Bharath Sunku",
+        best: 4.97,
+        cat: 4,
+        s: 4.27,
+        d: 4.97
+    },
+    {
+        name: "Prashanth Jayantha Kumar",
+        best: 4.93,
+        cat: 4,
+        s: 4.93,
+        d: 3.7
+    },
+    {
+        name: "Amit Gundewar",
+        best: 4.9,
+        cat: 6,
+        s: 3.4,
+        d: 4.9
+    },
+    {
+        name: "Bhaskar Boddireddy",
+        best: 4.87,
+        cat: 6,
+        s: 3.84,
+        d: 4.87
+    },
+    {
+        name: "Pratik Pitroda",
+        best: 4.85,
+        cat: 5,
+        s: 3.6,
+        d: 4.85
+    },
+    {
+        name: "Prashanth Pendli",
+        best: 4.81,
+        cat: 5,
+        s: 4.79,
+        d: 4.81
+    },
+    {
+        name: "Vivek Bihani",
+        best: 4.8,
+        cat: 5,
+        s: 4.41,
+        d: 4.8
+    },
+    {
+        name: "Mohan Koripuri",
+        best: 4.76,
+        cat: 5,
+        s: 3.8,
+        d: 4.76
+    },
+    {
+        name: "Srikant Tenni",
+        best: 4.76,
+        cat: 5,
+        s: null,
+        d: 4.76
+    },
+    {
+        name: "Anshul Goyal",
+        best: 4.75,
+        cat: 5,
+        s: 4.63,
+        d: 4.75
+    },
+    {
+        name: "Naveenkumar Mohanram",
+        best: 4.7,
+        cat: 5,
+        s: 3.88,
+        d: 4.7
+    },
+    {
+        name: "Srinidhi Kulkarni",
+        best: 4.69,
+        cat: 4,
+        s: 4.69,
+        d: null
+    },
+    {
+        name: "Vijay Gate",
+        best: 4.68,
+        cat: 4,
+        s: 4.68,
+        d: 4.48
+    },
+    {
+        name: "Vinod Punati",
+        best: 4.67,
+        cat: 5,
+        s: 4.27,
+        d: 4.67
+    },
+    {
+        name: "Tushar Tipatre",
+        best: 4.65,
+        cat: 5,
+        s: null,
+        d: 4.65
+    },
+    {
+        name: "Satya Maddipati",
+        best: 4.6,
+        cat: 6,
+        s: 3.52,
+        d: 4.6
+    },
+    {
+        name: "Venky Dh",
+        best: 4.58,
+        cat: 4,
+        s: 4.49,
+        d: 4.58
+    },
+    {
+        name: "Sreekanth Bobbala",
+        best: 4.56,
+        cat: 5,
+        s: 3.66,
+        d: 4.56
+    },
+    {
+        name: "Malla Reddy Cheerke",
+        best: 4.49,
+        cat: 5,
+        s: 4.49,
+        d: 3.99
+    },
+    {
+        name: "Shailendra Patidar",
+        best: 4.47,
+        cat: 5,
+        s: 3.65,
+        d: 4.47
+    },
+    {
+        name: "Dineshkumar Kaliyaperumal",
+        best: 4.47,
+        cat: 6,
+        s: null,
+        d: 4.47
+    },
+    {
+        name: "Venky Pantham",
+        best: 4.45,
+        cat: 7,
+        s: 2.99,
+        d: 4.45
+    },
+    {
+        name: "Sankara Lakshmanan",
+        best: 4.44,
+        cat: 5,
+        s: 4.18,
+        d: 4.44
+    },
+    {
+        name: "Sandeep Gengineri",
+        best: 4.34,
+        cat: 4,
+        s: 4.34,
+        d: 4.13
+    },
+    {
+        name: "Damodhara Palavali",
+        best: 4.26,
+        cat: 6,
+        s: 3.58,
+        d: 4.26
+    },
+    {
+        name: "Sashank T",
+        best: 4.22,
+        cat: 6,
+        s: 3.64,
+        d: 4.22
+    },
+    {
+        name: "Sidharth Behera",
+        best: 4.19,
+        cat: 5,
+        s: 4.19,
+        d: null
+    },
+    {
+        name: "Nivas Nazeer",
+        best: 4.14,
+        cat: 7,
+        s: 2.02,
+        d: 4.14
+    },
+    {
+        name: "Karthik Ragunathan",
+        best: 4.14,
+        cat: 6,
+        s: 3.33,
+        d: 4.14
+    },
+    {
+        name: "Charan Macharla",
+        best: 4.03,
+        cat: 6,
+        s: null,
+        d: 4.03
+    },
+    {
+        name: "Naseer Mohd",
+        best: 3.97,
+        cat: 6,
+        s: null,
+        d: 3.97
+    },
+    {
+        name: "Venkat Thimmisetty",
+        best: 3.95,
+        cat: 6,
+        s: 3.74,
+        d: 3.95
+    },
+    {
+        name: "Mayur Patel",
+        best: 3.94,
+        cat: 7,
+        s: null,
+        d: 3.94
+    },
+    {
+        name: "Arpit Rawat",
+        best: 3.94,
+        cat: 6,
+        s: 3.94,
+        d: null
+    },
+    {
+        name: "Jitin Jaitly",
+        best: 3.82,
+        cat: 6,
+        s: 3.47,
+        d: 3.82
+    },
+    {
+        name: "Gopal Setty",
+        best: 3.78,
+        cat: 6,
+        s: 3.78,
+        d: 3.78
+    },
+    {
+        name: "Shiva Gundimeda",
+        best: 3.74,
+        cat: 6,
+        s: 3.2,
+        d: 3.74
+    },
+    {
+        name: "Joel Kodoru",
+        best: 3.62,
+        cat: 7,
+        s: 2,
+        d: 3.62
+    },
+    {
+        name: "Trinadh Cheepilla",
+        best: 3.42,
+        cat: 7,
+        s: 2.93,
+        d: 3.42
+    },
+    {
+        name: "Satish K",
+        best: 3.38,
+        cat: 6,
+        s: null,
+        d: 3.38
+    },
+    {
+        name: "Avinash Terala",
+        best: 3.35,
+        cat: 7,
+        s: 3.21,
+        d: 3.35
+    },
+    {
+        name: "Sai Varun Polishetty",
+        best: 2.94,
+        cat: 7,
+        s: 2.94,
+        d: null
+    },
+    {
+        name: "Asif Mohammed",
+        best: 2.8,
+        cat: 7,
+        s: 2.8,
+        d: null
+    },
+    {
+        name: "Jagapathi Raju",
+        best: 2.67,
+        cat: 7,
+        s: 2.67,
+        d: null
+    },
+    {
+        name: "Venice Robinson Amal Doss",
+        best: 2.38,
+        cat: 7,
+        s: 2.25,
+        d: 2.38
+    },
+    {
+        name: "Guru Bavirisetty",
+        best: null,
+        cat: 4,
+        s: null,
+        d: null
+    },
+    {
+        name: "Raj Chava",
+        best: null,
+        cat: 2,
+        s: null,
+        d: null
+    },
+    {
+        name: "Karthik Kumaresan",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    },
+    {
+        name: "Abhishek Patel",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    },
+    {
+        name: "Raghu Ram",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    },
+    {
+        name: "Karthik Ram Senthilvel",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    },
+    {
+        name: "Chandan Singh",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    },
+    {
+        name: "Venu Sarvepalli",
+        best: null,
+        cat: 7,
+        s: null,
+        d: null
+    }
 ];
+
+const normalizeName = name => (name || "").trim().toLowerCase();
+const toPlayer = (player, index) => {
+    const utr = CATEGORY_UTR[player.cat] || 3.0;
+    return {
+        id: index + 1,
+        Name: player.name,
+        utr,
+        price: UTR_PRICES[utr] || 5000,
+        cat: player.cat,
+        best: player.best,
+        s: player.s,
+        d: player.d
+    };
+};
+
+export const PLAYERS = RAW_PLAYERS.map(toPlayer);
+export const PLAYER_BY_NAME = new Map(PLAYERS.map(player => [normalizeName(player.Name), player]));
+
+export function withPlayerMeta(player) {
+    if (!player) return player;
+    const name = player.Name || player.name || "";
+    const catalogPlayer = PLAYER_BY_NAME.get(normalizeName(name));
+    if (!catalogPlayer) return {...player, Name: name};
+    return {...catalogPlayer, ...player, Name: catalogPlayer.Name};
+}

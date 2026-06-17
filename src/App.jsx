@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { firebaseConfig } from "./config/firebase.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
-import { PLAYERS } from "./data/players.js";
+import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
 
@@ -31,12 +31,12 @@ function normalize(data) {
     const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
     const rawPools = data.playerPools || {};
     const playerPools = {};
-    POOL_ORDER.forEach(k => { playerPools[k] = toArr(rawPools[k]); });
+    POOL_ORDER.forEach(k => { playerPools[k] = toArr(rawPools[k]).map(withPlayerMeta); });
     let cb = data.currentBids || {};
     if (Array.isArray(cb)) cb = Object.fromEntries(cb.map((v,i)=>[String(i),v]).filter(([,v])=>v));
     const currentBids = {};
     Object.entries(cb).forEach(([k,v]) => { currentBids[String(k)] = v; });
-    const cfgPlayers = Array.isArray(data.cfgPlayers) ? data.cfgPlayers : null;
+    const cfgPlayers = Array.isArray(data.cfgPlayers) ? data.cfgPlayers.map(withPlayerMeta) : null;
     const cfgTeams   = Array.isArray(data.cfgTeams)   ? data.cfgTeams   : null;
     return { ...data, teams, playerPools, currentBids, cfgPlayers, cfgTeams,
         currentPoolIndex: data.currentPoolIndex||0,
@@ -57,12 +57,12 @@ function getEffective(state) {
 }
 
 function getInitialTeams() {
-    const byName = Object.fromEntries(PLAYERS.map(p=>[p.Name,p]));
+    const byName = Object.fromEntries(PLAYERS.map(withPlayerMeta).map(p=>[p.Name,p]));
     return TEAMS.map(team => {
         const cap = byName[team.captain];
         const price = cap?.price||0;
         return { ...team, budget: TEAM_BUDGET-price, totalSpent: price,
-            players: cap ? [{id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}] : [] };
+            players: cap ? [{...cap,id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}] : [] };
     });
 }
 
@@ -91,7 +91,7 @@ function parseCSV(text) {
     if (ni<0) return [];
     return rows.slice(1).map((r,i)=>{
         const utr = ui>=0 ? parseFloat(r[ui])||3.0 : 3.0;
-        return { id:Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 };
+        return withPlayerMeta({ id:Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 });
     }).filter(p=>p.Name);
 }
 
@@ -99,18 +99,18 @@ function buildPools(players, poolOrder, captainNames) {
     const pools = {};
     poolOrder.forEach(key => {
         const utr = getUTR(key);
-        pools[key] = players.filter(p=>p.utr===utr && !captainNames.has(p.Name)).map(x=>({...x}));
+        pools[key] = players.map(withPlayerMeta).filter(p=>p.utr===utr && !captainNames.has(p.Name)).map(x=>({...x}));
     });
     return pools;
 }
 
 function buildInitialTeams(cfgTeams, cfgPlayers, budget) {
-    const byName = Object.fromEntries(cfgPlayers.map(p=>[p.Name,p]));
+    const byName = Object.fromEntries(cfgPlayers.map(withPlayerMeta).map(p=>[p.Name,p]));
     return cfgTeams.map(team => {
         const cap = byName[team.captain];
         const price = cap?.price||0;
         return { ...team, budget:budget-price, totalSpent:price,
-            players: cap?[{id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}]:[] };
+            players: cap?[{...cap,id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}]:[] };
     });
 }
 
@@ -220,7 +220,7 @@ function AdminConfig() {
         db.ref(CFG_PATH).once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
-            if (Array.isArray(d.players) && d.players.length) setPlayers(d.players);
+            if (Array.isArray(d.players) && d.players.length) setPlayers(d.players.map(withPlayerMeta));
             if (Array.isArray(d.teams)   && d.teams.length)   setTeams(d.teams);
             if (d.settings) setSettings(s=>({...s,...d.settings}));
         });
@@ -505,7 +505,7 @@ function PoolViewer() {
         db.ref(CFG_PATH).once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
-            const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players : PLAYERS;
+            const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players.map(withPlayerMeta) : PLAYERS;
             const cfgTeams   = Array.isArray(d.teams)   && d.teams.length   ? d.teams   : TEAMS;
             const capNames   = new Set(cfgTeams.map(t=>t.captain));
             setCaptainNames(capNames);
@@ -553,7 +553,7 @@ function PoolViewer() {
                                             <span className="pool-player-num">{i+1}</span>
                                             <span className="pool-player-name">{p.Name}</span>
                                             {isCap && <span className="pool-player-cap">CAPTAIN</span>}
-                                            <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>{actualUtr(p)}</span>
+                                            <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>{actualUtrDetail(p)}</span>
                                             <span className="pool-player-price">{fmtR(p.price)}</span>
                                         </div>
                                     );
@@ -601,7 +601,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
         try {
             const cfgSnap = await db.ref(CFG_PATH).once("value");
             const cfg = cfgSnap.val();
-            const cfgPlayers = (cfg?.players?.length ? cfg.players : PLAYERS);
+            const cfgPlayers = (cfg?.players?.length ? cfg.players.map(withPlayerMeta) : PLAYERS);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
             const budget          = cfg?.settings?.budget          || TEAM_BUDGET;
             const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
@@ -888,7 +888,7 @@ function Auction({ sid, user, onBack }) {
     };
 
     const reset = () => {
-        const cfgPlayers = state.cfgPlayers || PLAYERS;
+        const cfgPlayers = state.cfgPlayers ? state.cfgPlayers.map(withPlayerMeta) : PLAYERS;
         const cfgTeams   = state.cfgTeams   || TEAMS;
         const budget     = state.config?.budget  || TEAM_BUDGET;
         const capNames   = new Set(cfgTeams.map(t=>t.captain));
@@ -978,7 +978,7 @@ function Auction({ sid, user, onBack }) {
                     style={{display:"flex",alignItems:"center",justifyContent:"space-between",
                         padding:"9px 14px",cursor:"pointer",background:"var(--surface2)",userSelect:"none"}}>
                     <div style={{fontSize:12,fontWeight:600,color:"var(--text2)"}}>
-                        📋 Pool Queue · Tier UTR {eff.player.utr} · {actualUtr(eff.player)} · {eff.pool.length} remaining
+                        📋 Pool Queue · Tier UTR {eff.player.utr} · {actualUtrDetail(eff.player)} · {eff.pool.length} remaining
                     </div>
                     <span style={{fontSize:10,color:"var(--text4)"}}>{showUpcoming?"▲":"▼"}</span>
                 </div>
@@ -995,7 +995,7 @@ function Auction({ sid, user, onBack }) {
                                     {i===eff.effPlayer && <span style={{marginLeft:6,fontSize:10,color:"var(--gold)",fontWeight:600}}>← NOW</span>}
                                     {p.isRetry && <span style={{marginLeft:4,fontSize:10,color:"var(--muted)"}}>retry</span>}
                                 </span>
-                                <span style={{fontSize:11,color:"var(--text3)"}}>Tier {p.utr} · {actualUtr(p)}</span>
+                                <span style={{fontSize:11,color:"var(--text3)"}}>Tier {p.utr} · {actualUtrDetail(p)}</span>
                                 <span style={{fontSize:11,color:"var(--text4)"}}>{fmtR(p.price)}</span>
                             </div>
                         ))}
