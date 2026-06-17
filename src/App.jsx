@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { firebaseConfig } from "./config/firebase.js";
+import { hasSupabaseEnv, saveRuntimeSupabaseConfig } from "./config/supabase.js";
+import { realtimeDataService } from "./services/realtimeDataService.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = realtimeDataService;
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
-// PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
+// PINs are stored in Supabase at app_users/<code>/pin — not hardcoded here.
 const ACCOUNTS = [
     {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
     ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))
@@ -150,7 +150,15 @@ function Login({ onLogin }) {
             const snap = await db.ref(`users/${account.code}`).once("value");
             const user = snap.val();
             if (!user || !user.pin) {
-                setError("Account not set up yet. Ask the admin to configure PINs.");
+                if (account.code === "ADMIN") {
+                    const adminUser = { code: "ADMIN", pin, role: "admin", teamId: null, name: account.label };
+                    await db.ref("users/ADMIN").set(adminUser);
+                    savePref("ta_last_account", account.code);
+                    savePref("ta_last_login", { name: account.label, time: Date.now() });
+                    onLogin({ code: adminUser.code, role: adminUser.role, teamId: adminUser.teamId, name: account.label });
+                    return;
+                }
+                setError("Account not set up yet. Sign in as ADMIN first to create the first admin PIN, then configure team PINs.");
                 setBusy(false);
                 return;
             }
@@ -165,6 +173,8 @@ function Login({ onLogin }) {
         const d = new Date(ts);
         return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     };
+
+    if (!hasSupabaseEnv) return <MissingSupabaseConfig />;
 
     return (
         <div>
@@ -1286,6 +1296,51 @@ function ResetModal({onCancel,onConfirm}) {
 const IDLE_MS = 180 * 60 * 1000; // 180 minutes
 const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 
+function MissingSupabaseConfig() {
+    const [url, setUrl] = useState("");
+    const [key, setKey] = useState("");
+    const [error, setError] = useState(null);
+
+    const saveConfig = () => {
+        const cleanUrl = url.trim().replace(/\/$/, "");
+        const cleanKey = key.trim();
+        if (!/^https:\/\/[^\s]+\.supabase\.co$/.test(cleanUrl)) {
+            setError("Enter your full Supabase project URL, for example https://your-project.supabase.co");
+            return;
+        }
+        if (!cleanKey.startsWith("sb_publishable_") && !cleanKey.startsWith("eyJ")) {
+            setError("Enter your Supabase publishable key. It usually starts with sb_publishable_.");
+            return;
+        }
+        saveRuntimeSupabaseConfig({ supabaseUrl: cleanUrl, supabasePublishableKey: cleanKey });
+        window.location.reload();
+    };
+
+    return (
+        <div className="setup-wrap">
+            <div className="card" style={{textAlign:"left",maxWidth:720,margin:"60px auto"}}>
+                <div className="card-title">Supabase is not configured</div>
+                <div className="card-sub" style={{marginBottom:14}}>
+                    Paste your Supabase project URL and publishable key below, or set them as <code>VITE_*</code> environment variables and redeploy.
+                </div>
+                <div className="field-wrap">
+                    <div className="field-label">SUPABASE URL</div>
+                    <input type="text" value={url} placeholder="https://your-project.supabase.co" onChange={e=>setUrl(e.target.value)} />
+                </div>
+                <div className="field-wrap">
+                    <div className="field-label">PUBLISHABLE KEY</div>
+                    <input type="password" value={key} placeholder="sb_publishable_..." onChange={e=>setKey(e.target.value)} />
+                </div>
+                {error && <div className="login-error" style={{marginBottom:12}}>{error}</div>}
+                <button className="btn btn-primary" onClick={saveConfig} disabled={!url.trim() || !key.trim()}>Save Supabase Settings</button>
+                <div className="card-sub" style={{marginTop:14}}>
+                    This stores only the publishable browser key in this device's local storage. For production, set the same values in Vercel/Netlify and redeploy.
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function App() {
     const [user, setUser] = useState(() => pref("ta_user", null));
     const [sessionId, setSessionId] = useState(() => null);
@@ -1323,6 +1378,8 @@ function App() {
         clearTimeout(idleRef.current); clearTimeout(warnRef.current);
     };
     const handleJoin = sid => { setSessionId(sid); savePref("ta_last_session", sid); };
+
+    if (!hasSupabaseEnv) return <MissingSupabaseConfig />;
 
     return (
         <div>
