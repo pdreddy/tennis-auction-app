@@ -1,0 +1,25 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "config": {
+      ".read": "root.child('users').child(auth.token.accountCode).exists()",
+      ".write": "root.child('users').child(auth.token.accountCode).child('role').val() === 'admin'",
+      ".validate": "newData.hasChildren(['players', 'teams', 'settings', 'updatedAt'])"
+    },
+    "users": {
+      "$code": {
+        ".read": "$code === auth.token.accountCode || root.child('users').child(auth.token.accountCode).child('role').val() === 'admin'",
+        ".write": "root.child('users').child(auth.token.accountCode).child('role').val() === 'admin'",
+        ".validate": "newData.hasChildren(['code', 'pin', 'role', 'name']) && newData.child('code').val() === $code && newData.child('pin').isString() && newData.child('pin').val().matches(/^\\d{6}$/) && (newData.child('role').val() === 'admin' || newData.child('role').val() === 'team')"
+      }
+    },
+    "auctions": {
+      "$sid": {
+        ".read": "root.child('users').child(auth.token.accountCode).exists()",
+        ".write": "root.child('users').child(auth.token.accountCode).exists()",
+        ".validate": "newData.hasChildren(['sessionId', 'teams', 'playerPools', 'config']) && newData.child('sessionId').val() === $sid"
+      }
+    }
+  }
+}
