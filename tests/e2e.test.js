@@ -24,7 +24,7 @@ import { TEAMS as DEFAULT_TEAMS } from "../src/data/teams.js";
 
 // ── Inline the pure functions under test ──────────────────────────────────────
 
-const POOL_ORDER = ["utr_6_0","utr_5_5","utr_5_0","utr_4_5","utr_4_0","utr_3_5","utr_3_0"];
+const POOL_ORDER = ["utr_3_0","utr_3_5","utr_4_0","utr_4_5","utr_5_0","utr_5_5","utr_6_0"];
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
@@ -103,11 +103,10 @@ function reserveAfterCurrentWin(team, eff, teamSize) {
     const projectedPlayers = [...team.players, eff.player];
     const openSlots = Math.max(0, teamSize - projectedPlayers.length);
     if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
-    const ownedUtrs = new Set(projectedPlayers.map(p=>p.utr));
     const costs = [];
     POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
         const utr = getUTR(poolKey);
-        if (!ownedUtrs.has(utr)) costs.push(UTR_PRICES[utr] || 5000);
+        costs.push(UTR_PRICES[utr] || 5000);
     });
     const slots = Math.min(openSlots, costs.length);
     const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
@@ -352,7 +351,7 @@ test("clamps playerIndex to pool length", () => {
     const pools = {};
     POOL_ORDER.forEach(k => { pools[k] = []; });
     pools["utr_5_0"] = [{id:1, Name:"Bob", utr:5.0, price:12000}];
-    const eff = getEffective(makeState(pools, 2, 99)); // idx 2 = utr_5_0 in POOL_ORDER
+    const eff = getEffective(makeState(pools, 4, 99)); // idx 4 = utr_5_0 in POOL_ORDER
     expect(eff.player.Name).toBe("Bob");
 });
 
@@ -525,22 +524,22 @@ test("caps stay one per UTR level when team count changes from 16 to 8", () => {
 
 console.log("\n10. reserve logic protects future UTR levels");
 
-test("reserves base prices for missing future UTR levels after a projected win", () => {
+test("reserves base prices for future UTR levels after a projected low-pool win", () => {
     const team = {budget:80000, players:[{Name:"Captain",utr:6.0}]};
-    const eff = {effPool:0, player:{Name:"P5.5",utr:5.5,price:14000}};
+    const eff = {effPool:0, player:{Name:"P3.0",utr:3.0,price:5000}};
     const reserve = reserveAfterCurrentWin(team, eff, TEAM_SIZE);
-    expect(reserve.amount).toBe(12000 + 10000 + 8000 + 6000 + 5000);
+    expect(reserve.amount).toBe(6000 + 8000 + 10000 + 12000 + 14000);
     expect(reserve.slots).toBe(5);
-    expect(reserve.maxBid).toBe(39000);
+    expect(reserve.maxBid).toBe(30000);
 });
 
-test("does not reserve for UTR levels already owned by the team", () => {
+test("future base-price reserve is based on auction path, not captain UTR", () => {
     const team = {budget:50000, players:[{Name:"Captain",utr:6.0},{Name:"Existing 5.0",utr:5.0}]};
-    const eff = {effPool:1, player:{Name:"P5.5",utr:5.5,price:14000}};
+    const eff = {effPool:1, player:{Name:"P3.5",utr:3.5,price:6000}};
     const reserve = reserveAfterCurrentWin(team, eff, TEAM_SIZE);
-    expect(reserve.amount).toBe(10000 + 8000 + 6000 + 5000);
+    expect(reserve.amount).toBe(8000 + 10000 + 12000 + 14000);
     expect(reserve.slots).toBe(4);
-    expect(reserve.maxBid).toBe(21000);
+    expect(reserve.maxBid).toBe(6000);
 });
 
 console.log("\n11. bid increments allow any $1k manual amount");

@@ -867,11 +867,10 @@ function Auction({ sid, user, onBack }) {
         const openSlots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
         if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
 
-        const ownedUtrs = new Set(projectedPlayers.map(p=>p.utr));
         const costs = [];
         POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
             const utr = getUTR(poolKey);
-            if (!ownedUtrs.has(utr)) costs.push(UTR_PRICES[utr] || 5000);
+            costs.push(UTR_PRICES[utr] || 5000);
         });
 
         const slots = Math.min(openSlots, costs.length);
