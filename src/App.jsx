@@ -23,6 +23,7 @@ const fmtRating = n => n == null ? "N/A" : Number(n).toFixed(2).replace(/\.?0+$/
 const actualUtr = p => `Actual ${fmtRating(p?.best)}`;
 const actualUtrDetail = p => `${actualUtr(p)} · S ${fmtRating(p?.s)} · D ${fmtRating(p?.d)}`;
 const toArr = v => Array.isArray(v) ? v.filter(x=>x!=null) : (v&&typeof v==="object" ? Object.keys(v).sort((a,b)=>parseInt(a)-parseInt(b)).map(k=>v[k]) : []);
+const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
 
@@ -276,13 +277,14 @@ function AdminConfig() {
     };
 
     const playerNames = players.map(p=>p.Name).filter(Boolean);
+    const playerCountForUtr = utr => players.filter(p=>p.Name?.trim() && p.utr===utr).length;
 
     return (
         <div className="card" style={{padding:0,overflow:"hidden"}}>
             <div style={{padding:"18px 18px 0"}}>
                 <div className="card-title" style={{marginBottom:12}}>⚙️ Auction Configuration</div>
                 <div className="cfg-tabs">
-                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
+                    {[["players",`👥 Players (${players.filter(p=>p.Name).length})`],["pools","🎾 Pools"],["teams",`🏆 Teams (${teams.length})`],["settings","⚙️ Settings"]].map(([k,l])=>(
                         <button key={k} className={`cfg-tab${tab===k?" active":""}`} onClick={()=>setTab(k)}>{l}</button>
                     ))}
                 </div>
@@ -324,6 +326,51 @@ function AdminConfig() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {tab==="pools" && (
+                    <div className="cfg-tab-panel">
+                        <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>
+                            Review and edit the players in each auction pool. Changing a player's UTR moves them to that pool when saved.
+                        </div>
+                        <div style={{display:"grid",gap:12,maxHeight:520,overflowY:"auto",paddingRight:4}}>
+                            {UTR_TIERS.map(utr => {
+                                const poolPlayers = players.filter(p=>p.utr===utr);
+                                return (
+                                    <div key={utr} style={{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",background:"var(--surface2)"}}>
+                                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",borderBottom:"1px solid var(--border)",background:"var(--surface3)"}}>
+                                            <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>UTR {utr.toFixed(1)} Pool</div>
+                                            <div style={{fontSize:11,color:"var(--text3)"}}>{playerCountForUtr(utr)} players · base {fmtR(UTR_PRICES[utr]||5000)}</div>
+                                        </div>
+                                        {poolPlayers.length ? (
+                                            <div className="ptable-wrap" style={{border:0,borderRadius:0,maxHeight:260}}>
+                                                <table className="ptable">
+                                                    <thead><tr><th>#</th><th>Name</th><th>UTR</th><th>Price</th><th></th></tr></thead>
+                                                    <tbody>
+                                                        {poolPlayers.map((p,i)=>(
+                                                            <tr key={p.id}>
+                                                                <td style={{color:"var(--text4)",width:24,fontSize:10}}>{i+1}</td>
+                                                                <td><input value={p.Name} onChange={e=>updPlayer(p.id,"Name",e.target.value)} placeholder="Player name" /></td>
+                                                                <td style={{width:72}}>
+                                                                    <select value={p.utr} onChange={e=>{const u=parseFloat(e.target.value);updPlayer(p.id,"utr",u);updPlayer(p.id,"price",UTR_PRICES[u]||5000);}}>
+                                                                        {UTR_TIERS.map(u=><option key={u} value={u}>{u.toFixed(1)}</option>)}
+                                                                    </select>
+                                                                </td>
+                                                                <td style={{width:80}}><input type="number" step={500} value={p.price} onChange={e=>updPlayer(p.id,"price",parseInt(e.target.value)||0)} /></td>
+                                                                <td style={{width:28}}><button className="team-cfg-del" onClick={()=>delPlayer(p.id)}>✕</button></td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div style={{padding:"12px",fontSize:12,color:"var(--text4)",fontStyle:"italic"}}>No players in this pool.</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -809,7 +856,7 @@ function Auction({ sid, user, onBack }) {
     const POOL_CAPS_EFF = {};
     POOL_ORDER.forEach(key => {
         const size = (state.playerPools[key] || []).length;
-        POOL_CAPS_EFF[key] = size === 0 ? 0 : size <= state.teams.length ? 1 : TEAM_SIZE_EFF - 1;
+        POOL_CAPS_EFF[key] = size === 0 ? 0 : 1;
     });
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
@@ -817,26 +864,16 @@ function Auction({ sid, user, onBack }) {
     const reserveAfterCurrentWin = team => {
         if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
         const projectedPlayers = [...team.players, eff.player];
-        const slots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
-        if (slots === 0) return {amount:0,slots,maxBid:team.budget};
+        const openSlots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
+        if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
 
         const costs = [];
-        POOL_ORDER.slice(eff.effPool).forEach(poolKey => {
+        POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
             const utr = getUTR(poolKey);
-            const cap = POOL_CAPS_EFF[poolKey] || 0;
-            const alreadyFromPool = projectedPlayers.slice(1).filter(p=>p.utr===utr).length;
-            const remainingCap = Math.max(0, cap - alreadyFromPool);
-            if (!remainingCap) return;
-            const pool = state.playerPools[poolKey] || [];
-            const start = poolKey === eff.poolKey ? eff.effPlayer + 1 : 0;
-            pool.slice(start, start + remainingCap).forEach(p => {
-                costs.push(p.price || UTR_PRICES[p.utr] || 5000);
-            });
+            costs.push(UTR_PRICES[utr] || 5000);
         });
 
-        const minimumKnownPrice = Math.min(...Object.values(UTR_PRICES));
-        while (costs.length < slots) costs.push(minimumKnownPrice);
-        costs.sort((a,b)=>a-b);
+        const slots = Math.min(openSlots, costs.length);
         const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
         return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
     };
@@ -851,7 +888,7 @@ function Auction({ sid, user, onBack }) {
         if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
-        if ((amount - eff.player.price)%1000!==0) return "Base + $1k increments";
+        if ((amount - eff.player.price)%1000!==0) return "Bids must be in $1k increments";
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
@@ -888,6 +925,8 @@ function Auction({ sid, user, onBack }) {
         const winners = bids.filter(b=>b.bid===highest);
         if (winners.length>1) { setActionError(`Tie between ${winners.map(w=>state.teams.find(t=>t.id===w.teamId)?.name).join(", ")} — place different bids`); return; }
         const winId = winners[0].teamId;
+        const winErr = validateBid(winId, highest);
+        if (winErr) { setActionError(winErr); return; }
         const teams = state.teams.map(t => {
             if (t.id!==winId) return t;
             return {...t, players:[...t.players,{...eff.player,acquiredPrice:highest}], budget:t.budget-highest, totalSpent:t.totalSpent+highest};
@@ -912,6 +951,13 @@ function Auction({ sid, user, onBack }) {
         let nextPool=eff.effPool, nextPlayer=eff.effPlayer;
         if (eff.effPlayer>=pool.length) { nextPool=eff.effPool+1; nextPlayer=0; }
         fbUpdate({playerPools:pools,currentPoolIndex:nextPool,currentPlayerIndex:nextPlayer,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
+        setBidInputs({}); setBidErrors({}); setActionError(null);
+    };
+
+    const selectNextPool = poolKey => {
+        const nextPool = POOL_ORDER.indexOf(poolKey);
+        if (nextPool < 0) return;
+        fbUpdate({currentPoolIndex:nextPool,currentPlayerIndex:0,currentBids:{},timerEnd:Date.now()+TIMER_EFF});
         setBidInputs({}); setBidErrors({}); setActionError(null);
     };
 
@@ -1045,6 +1091,25 @@ function Auction({ sid, user, onBack }) {
 
             {isAdmin && (
                 <div className="admin-bar">
+                    <div className="pool-jump" aria-label="Select the pool to bid next">
+                        {POOL_ORDER.map(key => {
+                            const count = (state.playerPools[key] || []).length;
+                            const utr = getUTR(key);
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className={`pool-jump-btn${key===eff.poolKey?" active":""}`}
+                                    disabled={count===0}
+                                    onClick={()=>selectNextPool(key)}
+                                    title={`Bid UTR ${utr.toFixed(1)} next · ${count} left`}
+                                >
+                                    <span>UTR {utr.toFixed(1)}</span>
+                                    <small>{count} left</small>
+                                </button>
+                            );
+                        })}
+                    </div>
                     <button className="btn btn-neutral" onClick={skip}>Skip</button>
                     <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
                         disabled={!hasBids||winners.length!==1} onClick={finalize}>
@@ -1070,9 +1135,14 @@ function Auction({ sid, user, onBack }) {
                         );
                     }
 
-                    const anchor = highest>0?highest+1000:eff.player.price;
+                    const bidBase = highest>0?highest:eff.player.price;
                     const maxBid = team.reserve?.maxBid ?? team.budget;
-                    const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=maxBid);
+                    const chips = BID_INCREMENT_OPTIONS
+                        .map(increment => ({
+                            increment,
+                            amount: highest>0 ? bidBase + increment : bidBase + increment - 1000
+                        }))
+                        .filter(chip => chip.amount<=maxBid);
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
@@ -1103,8 +1173,8 @@ function Auction({ sid, user, onBack }) {
                                         onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
                                     />
                                     <div className="quick-chips">
-                                        {chips.map(v=><button key={v} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(v)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            ${v>=1000?`${v/1000}k`:v}
+                                        {chips.map(({increment, amount})=><button key={increment} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
+                                            +{increment/1000}k
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
