@@ -3,6 +3,7 @@ import { CATEGORY_UTR, UTR_PRICES } from "./settings.js";
 export const RAW_PLAYERS = [
     {
         name: "Dinkar Bhardwaj",
+        group: "UTR 6.0",
         best: 6.97,
         cat: 1,
         s: 6.97,
@@ -10,6 +11,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Vinoth Duraisamy",
+        group: "UTR 6.0",
         best: 6.71,
         cat: 1,
         s: 6.71,
@@ -17,6 +19,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Volkan Bal",
+        group: "UTR 6.0",
         best: 6.48,
         cat: 1,
         s: 6.48,
@@ -24,20 +27,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Mohammad Azim",
+        group: "UTR 6.0",
         best: 6.31,
         cat: 1,
         s: 6.31,
         d: 5.82
     },
     {
-        name: "Prashant Janmatti",
-        best: 6.28,
-        cat: 2,
-        s: null,
-        d: 6.28
-    },
-    {
         name: "Prashanth Gourineni",
+        group: "UTR 6.0",
         best: 6.18,
         cat: 1,
         s: 5.9,
@@ -45,76 +43,39 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Vamsi Atluri",
+        group: "UTR 6.0",
         best: 6.14,
         cat: 1,
         s: 5.14,
         d: 6.14
     },
     {
-        name: "Rajib Sarkar",
-        best: 6.06,
-        cat: 2,
-        s: 4.89,
-        d: 6.06
-    },
-    {
-        name: "Vinod Aripaka",
-        best: 6.03,
-        cat: 2,
-        s: 4.4,
-        d: 6.03
-    },
-    {
         name: "Vivekvardhan Reddy Mereddy",
+        group: "UTR 6.0",
         best: 5.98,
         cat: 1,
         s: 5.98,
         d: 5.31
     },
     {
-        name: "Saket Raizada",
-        best: 5.98,
-        cat: 3,
-        s: 5.98,
-        d: 5.53
-    },
-    {
         name: "Anand Krishnamurthy",
+        group: "UTR 6.0",
         best: 5.96,
         cat: 1,
         s: 5.02,
         d: 5.96
     },
     {
-        name: "Kalyan Kalidindi",
-        best: 5.94,
-        cat: 2,
-        s: null,
-        d: 5.94
-    },
-    {
-        name: "Vipul Sud",
-        best: 5.92,
-        cat: 3,
-        s: null,
-        d: 5.92
-    },
-    {
         name: "Nagarjuna Saladi",
+        group: "UTR 6.0",
         best: 5.9,
         cat: 1,
         s: 5.9,
         d: 4.79
     },
     {
-        name: "Praveenkumar Vijayakumar",
-        best: 5.9,
-        cat: 2,
-        s: null,
-        d: 5.9
-    },
-    {
         name: "Jayesh Barai",
+        group: "UTR 6.0",
         best: 5.89,
         cat: 1,
         s: 5.78,
@@ -122,69 +83,31 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Yogesh Dhadge",
+        group: "UTR 6.0",
         best: 5.89,
         cat: 1,
         s: 5.21,
         d: 5.89
     },
     {
-        name: "Dinesh Reddy Timmareddy",
-        best: 5.88,
-        cat: 2,
-        s: 5.13,
-        d: 5.88
-    },
-    {
         name: "Boopesh Natarajan",
+        group: "UTR 6.0",
         best: 5.87,
         cat: 1,
         s: 5.62,
         d: 5.87
     },
     {
-        name: "Premkumar Balakrishnan",
-        best: 5.86,
-        cat: 2,
-        s: 4.76,
-        d: 5.86
-    },
-    {
-        name: "Rajasekhar Chintha",
-        best: 5.82,
-        cat: 2,
-        s: 4.45,
-        d: 5.82
-    },
-    {
         name: "Rajasekhar Mangalampally",
+        group: "UTR 6.0",
         best: 5.81,
         cat: 1,
         s: 5.81,
         d: 5.35
     },
     {
-        name: "Tariq Hussain",
-        best: 5.74,
-        cat: 2,
-        s: null,
-        d: 5.74
-    },
-    {
-        name: "Srinath Elitem",
-        best: 5.72,
-        cat: 3,
-        s: null,
-        d: 5.72
-    },
-    {
-        name: "Hariprashanth Ganapathy",
-        best: 5.7,
-        cat: 3,
-        s: 4.8,
-        d: 5.7
-    },
-    {
         name: "Rajesh Mishra",
+        group: "UTR 6.0",
         best: 5.69,
         cat: 1,
         s: 5.69,
@@ -192,13 +115,95 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Manish Jangid",
+        group: "UTR 6.0",
         best: 5.68,
         cat: 1,
         s: 5.25,
         d: 5.68
     },
     {
+        name: "Harsha Reddy",
+        group: "UTR 6.0",
+        best: 5.52,
+        cat: 1,
+        s: 5.29,
+        d: 5.52
+    },
+    {
+        name: "Prashant Janmatti",
+        group: "UTR 5.5",
+        best: 6.28,
+        cat: 2,
+        s: null,
+        d: 6.28
+    },
+    {
+        name: "Rajib Sarkar",
+        group: "UTR 5.5",
+        best: 6.06,
+        cat: 2,
+        s: 4.89,
+        d: 6.06
+    },
+    {
+        name: "Vinod Aripaka",
+        group: "UTR 5.5",
+        best: 6.03,
+        cat: 2,
+        s: 4.4,
+        d: 6.03
+    },
+    {
+        name: "Kalyan Kalidindi",
+        group: "UTR 5.5",
+        best: 5.94,
+        cat: 2,
+        s: null,
+        d: 5.94
+    },
+    {
+        name: "Praveenkumar Vijayakumar",
+        group: "UTR 5.5",
+        best: 5.9,
+        cat: 2,
+        s: null,
+        d: 5.9
+    },
+    {
+        name: "Dinesh Reddy Timmareddy",
+        group: "UTR 5.5",
+        best: 5.88,
+        cat: 2,
+        s: 5.13,
+        d: 5.88
+    },
+    {
+        name: "Premkumar Balakrishnan",
+        group: "UTR 5.5",
+        best: 5.86,
+        cat: 2,
+        s: 4.76,
+        d: 5.86
+    },
+    {
+        name: "Rajasekhar Chintha",
+        group: "UTR 5.5",
+        best: 5.82,
+        cat: 2,
+        s: 4.45,
+        d: 5.82
+    },
+    {
+        name: "Tariq Hussain",
+        group: "UTR 5.5",
+        best: 5.74,
+        cat: 2,
+        s: null,
+        d: 5.74
+    },
+    {
         name: "Hari Mothukuri",
+        group: "UTR 5.5",
         best: 5.62,
         cat: 2,
         s: 4.43,
@@ -206,13 +211,87 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Kailas Magi",
+        group: "UTR 5.5",
         best: 5.58,
         cat: 2,
         s: 4.47,
         d: 5.58
     },
     {
+        name: "Satish Reddy Orugunta",
+        group: "UTR 5.5",
+        best: 5.52,
+        cat: 2,
+        s: 4.83,
+        d: 5.52
+    },
+    {
+        name: "Anil Kunda",
+        group: "UTR 5.5",
+        best: 5.4,
+        cat: 2,
+        s: null,
+        d: 5.4
+    },
+    {
+        name: "Ritesh Kumar",
+        group: "UTR 5.5",
+        best: 5.26,
+        cat: 2,
+        s: 4.1,
+        d: 5.26
+    },
+    {
+        name: "Sudhakara Nallapati",
+        group: "UTR 5.5",
+        best: 5.13,
+        cat: 2,
+        s: 4.45,
+        d: 5.13
+    },
+    {
+        name: "Raj Chava",
+        group: "UTR 5.5",
+        best: null,
+        cat: 2,
+        s: null,
+        d: null
+    },
+    {
+        name: "Saket Raizada",
+        group: "UTR 5.0",
+        best: 5.98,
+        cat: 3,
+        s: 5.98,
+        d: 5.53
+    },
+    {
+        name: "Vipul Sud",
+        group: "UTR 5.0",
+        best: 5.92,
+        cat: 3,
+        s: null,
+        d: 5.92
+    },
+    {
+        name: "Srinath Elitem",
+        group: "UTR 5.0",
+        best: 5.72,
+        cat: 3,
+        s: null,
+        d: 5.72
+    },
+    {
+        name: "Hariprashanth Ganapathy",
+        group: "UTR 5.0",
+        best: 5.7,
+        cat: 3,
+        s: 4.8,
+        d: 5.7
+    },
+    {
         name: "Janaki Ram Kantheti",
+        group: "UTR 5.0",
         best: 5.56,
         cat: 3,
         s: 3.71,
@@ -220,55 +299,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Krishna Vennapusa",
+        group: "UTR 5.0",
         best: 5.54,
         cat: 3,
         s: 4.76,
         d: 5.54
     },
     {
-        name: "Satish Reddy Orugunta",
-        best: 5.52,
-        cat: 2,
-        s: 4.83,
-        d: 5.52
-    },
-    {
-        name: "Harsha Reddy",
-        best: 5.52,
-        cat: 1,
-        s: 5.29,
-        d: 5.52
-    },
-    {
-        name: "Koushik Venkatasubramanian",
-        best: 5.46,
-        cat: 4,
-        s: null,
-        d: 5.46
-    },
-    {
-        name: "Anil Kunda",
-        best: 5.4,
-        cat: 2,
-        s: null,
-        d: 5.4
-    },
-    {
-        name: "Veeresh Kurni",
-        best: 5.39,
-        cat: 4,
-        s: null,
-        d: 5.39
-    },
-    {
-        name: "Vivek Tiku",
-        best: 5.38,
-        cat: 4,
-        s: 1.82,
-        d: 5.38
-    },
-    {
         name: "Jaweed Ibrahim",
+        group: "UTR 5.0",
         best: 5.34,
         cat: 3,
         s: 4.36,
@@ -276,6 +315,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Mahidhar Penigi",
+        group: "UTR 5.0",
         best: 5.34,
         cat: 3,
         s: 5.34,
@@ -283,34 +323,23 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Kalyan Ghanta",
+        group: "UTR 5.0",
         best: 5.33,
         cat: 3,
-        s: 5,
+        s: 5.0,
         d: 5.33
     },
     {
-        name: "Amol Patwardhan",
-        best: 5.32,
-        cat: 4,
-        s: null,
-        d: 5.32
-    },
-    {
         name: "Narayan Prasad",
+        group: "UTR 5.0",
         best: 5.28,
         cat: 3,
         s: 4.7,
         d: 5.28
     },
     {
-        name: "Ritesh Kumar",
-        best: 5.26,
-        cat: 2,
-        s: 4.1,
-        d: 5.26
-    },
-    {
         name: "Rajasekhar Karru",
+        group: "UTR 5.0",
         best: 5.25,
         cat: 3,
         s: 4.37,
@@ -318,6 +347,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Lloyd Prasana Kumar",
+        group: "UTR 5.0",
         best: 5.24,
         cat: 3,
         s: null,
@@ -325,6 +355,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Uma Vommi",
+        group: "UTR 5.0",
         best: 5.2,
         cat: 3,
         s: 5.2,
@@ -332,6 +363,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Ninad Mahajan",
+        group: "UTR 5.0",
         best: 5.2,
         cat: 3,
         s: 4.39,
@@ -339,48 +371,63 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Chandrakant Dharme",
+        group: "UTR 5.0",
         best: 5.19,
         cat: 3,
         s: 5.19,
         d: 5.03
     },
     {
-        name: "Chandu M",
-        best: 5.14,
-        cat: 5,
-        s: 4.1,
-        d: 5.14
-    },
-    {
-        name: "Sudhakara Nallapati",
-        best: 5.13,
-        cat: 2,
-        s: 4.45,
-        d: 5.13
-    },
-    {
-        name: "Biju Koshy",
-        best: 5.12,
-        cat: 4,
-        s: 4,
-        d: 5.12
-    },
-    {
-        name: "Rajasekhar Chejerla",
-        best: 5.11,
-        cat: 5,
-        s: 3.18,
-        d: 5.11
-    },
-    {
         name: "Nikhil Katakam",
+        group: "UTR 5.0",
         best: 5.1,
         cat: 3,
         s: 5.1,
         d: 4.86
     },
     {
+        name: "Koushik Venkatasubramanian",
+        group: "UTR 4.5",
+        best: 5.46,
+        cat: 4,
+        s: null,
+        d: 5.46
+    },
+    {
+        name: "Veeresh Kurni",
+        group: "UTR 4.5",
+        best: 5.39,
+        cat: 4,
+        s: null,
+        d: 5.39
+    },
+    {
+        name: "Vivek Tiku",
+        group: "UTR 4.5",
+        best: 5.38,
+        cat: 4,
+        s: 1.82,
+        d: 5.38
+    },
+    {
+        name: "Amol Patwardhan",
+        group: "UTR 4.5",
+        best: 5.32,
+        cat: 4,
+        s: null,
+        d: 5.32
+    },
+    {
+        name: "Biju Koshy",
+        group: "UTR 4.5",
+        best: 5.12,
+        cat: 4,
+        s: 4.0,
+        d: 5.12
+    },
+    {
         name: "Jitender Kumar",
+        group: "UTR 4.5",
         best: 5.1,
         cat: 4,
         s: 4.08,
@@ -388,20 +435,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Mohamed Noufal",
+        group: "UTR 4.5",
         best: 5.1,
         cat: 4,
         s: 4.14,
         d: 5.1
     },
     {
-        name: "Samir Junnarkar",
-        best: 5.08,
-        cat: 6,
-        s: 2.93,
-        d: 5.08
-    },
-    {
         name: "Raja R",
+        group: "UTR 4.5",
         best: 5.05,
         cat: 4,
         s: null,
@@ -409,6 +451,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Jay Sermadevi",
+        group: "UTR 4.5",
         best: 4.98,
         cat: 4,
         s: 4.98,
@@ -416,6 +459,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Bharath Sunku",
+        group: "UTR 4.5",
         best: 4.97,
         cat: 4,
         s: 4.27,
@@ -423,76 +467,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Prashanth Jayantha Kumar",
+        group: "UTR 4.5",
         best: 4.93,
         cat: 4,
         s: 4.93,
         d: 3.7
     },
     {
-        name: "Amit Gundewar",
-        best: 4.9,
-        cat: 6,
-        s: 3.4,
-        d: 4.9
-    },
-    {
-        name: "Bhaskar Boddireddy",
-        best: 4.87,
-        cat: 6,
-        s: 3.84,
-        d: 4.87
-    },
-    {
-        name: "Pratik Pitroda",
-        best: 4.85,
-        cat: 5,
-        s: 3.6,
-        d: 4.85
-    },
-    {
-        name: "Prashanth Pendli",
-        best: 4.81,
-        cat: 5,
-        s: 4.79,
-        d: 4.81
-    },
-    {
-        name: "Vivek Bihani",
-        best: 4.8,
-        cat: 5,
-        s: 4.41,
-        d: 4.8
-    },
-    {
-        name: "Mohan Koripuri",
-        best: 4.76,
-        cat: 5,
-        s: 3.8,
-        d: 4.76
-    },
-    {
-        name: "Srikant Tenni",
-        best: 4.76,
-        cat: 5,
-        s: null,
-        d: 4.76
-    },
-    {
-        name: "Anshul Goyal",
-        best: 4.75,
-        cat: 5,
-        s: 4.63,
-        d: 4.75
-    },
-    {
-        name: "Naveenkumar Mohanram",
-        best: 4.7,
-        cat: 5,
-        s: 3.88,
-        d: 4.7
-    },
-    {
         name: "Srinidhi Kulkarni",
+        group: "UTR 4.5",
         best: 4.69,
         cat: 4,
         s: 4.69,
@@ -500,13 +483,111 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Vijay Gate",
+        group: "UTR 4.5",
         best: 4.68,
         cat: 4,
         s: 4.68,
         d: 4.48
     },
     {
+        name: "Venky Dh",
+        group: "UTR 4.5",
+        best: 4.58,
+        cat: 4,
+        s: 4.49,
+        d: 4.58
+    },
+    {
+        name: "Sandeep Gengineri",
+        group: "UTR 4.5",
+        best: 4.34,
+        cat: 4,
+        s: 4.34,
+        d: 4.13
+    },
+    {
+        name: "Guru Bavirisetty",
+        group: "UTR 4.5",
+        best: null,
+        cat: 4,
+        s: null,
+        d: null
+    },
+    {
+        name: "Chandu M",
+        group: "UTR 4.0",
+        best: 5.14,
+        cat: 5,
+        s: 4.1,
+        d: 5.14
+    },
+    {
+        name: "Rajasekhar Chejerla",
+        group: "UTR 4.0",
+        best: 5.11,
+        cat: 5,
+        s: 3.18,
+        d: 5.11
+    },
+    {
+        name: "Pratik Pitroda",
+        group: "UTR 4.0",
+        best: 4.85,
+        cat: 5,
+        s: 3.6,
+        d: 4.85
+    },
+    {
+        name: "Prashanth Pendli",
+        group: "UTR 4.0",
+        best: 4.81,
+        cat: 5,
+        s: 4.79,
+        d: 4.81
+    },
+    {
+        name: "Vivek Bihani",
+        group: "UTR 4.0",
+        best: 4.8,
+        cat: 5,
+        s: 4.41,
+        d: 4.8
+    },
+    {
+        name: "Mohan Koripuri",
+        group: "UTR 4.0",
+        best: 4.76,
+        cat: 5,
+        s: 3.8,
+        d: 4.76
+    },
+    {
+        name: "Srikant Tenni",
+        group: "UTR 4.0",
+        best: 4.76,
+        cat: 5,
+        s: null,
+        d: 4.76
+    },
+    {
+        name: "Anshul Goyal",
+        group: "UTR 4.0",
+        best: 4.75,
+        cat: 5,
+        s: 4.63,
+        d: 4.75
+    },
+    {
+        name: "Naveenkumar Mohanram",
+        group: "UTR 4.0",
+        best: 4.7,
+        cat: 5,
+        s: 3.88,
+        d: 4.7
+    },
+    {
         name: "Vinod Punati",
+        group: "UTR 4.0",
         best: 4.67,
         cat: 5,
         s: 4.27,
@@ -514,27 +595,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Tushar Tipatre",
+        group: "UTR 4.0",
         best: 4.65,
         cat: 5,
         s: null,
         d: 4.65
     },
     {
-        name: "Satya Maddipati",
-        best: 4.6,
-        cat: 6,
-        s: 3.52,
-        d: 4.6
-    },
-    {
-        name: "Venky Dh",
-        best: 4.58,
-        cat: 4,
-        s: 4.49,
-        d: 4.58
-    },
-    {
         name: "Sreekanth Bobbala",
+        group: "UTR 4.0",
         best: 4.56,
         cat: 5,
         s: 3.66,
@@ -542,6 +611,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Malla Reddy Cheerke",
+        group: "UTR 4.0",
         best: 4.49,
         cat: 5,
         s: 4.49,
@@ -549,41 +619,71 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Shailendra Patidar",
+        group: "UTR 4.0",
         best: 4.47,
         cat: 5,
         s: 3.65,
         d: 4.47
     },
     {
-        name: "Dineshkumar Kaliyaperumal",
-        best: 4.47,
-        cat: 6,
-        s: null,
-        d: 4.47
-    },
-    {
-        name: "Venky Pantham",
-        best: 4.45,
-        cat: 7,
-        s: 2.99,
-        d: 4.45
-    },
-    {
         name: "Sankara Lakshmanan",
+        group: "UTR 4.0",
         best: 4.44,
         cat: 5,
         s: 4.18,
         d: 4.44
     },
     {
-        name: "Sandeep Gengineri",
-        best: 4.34,
-        cat: 4,
-        s: 4.34,
-        d: 4.13
+        name: "Sidharth Behera",
+        group: "UTR 4.0",
+        best: 4.19,
+        cat: 5,
+        s: 4.19,
+        d: null
+    },
+    {
+        name: "Samir Junnarkar",
+        group: "UTR 3.5",
+        best: 5.08,
+        cat: 6,
+        s: 2.93,
+        d: 5.08
+    },
+    {
+        name: "Amit Gundewar",
+        group: "UTR 3.5",
+        best: 4.9,
+        cat: 6,
+        s: 3.4,
+        d: 4.9
+    },
+    {
+        name: "Bhaskar Boddireddy",
+        group: "UTR 3.5",
+        best: 4.87,
+        cat: 6,
+        s: 3.84,
+        d: 4.87
+    },
+    {
+        name: "Satya Maddipati",
+        group: "UTR 3.5",
+        best: 4.6,
+        cat: 6,
+        s: 3.52,
+        d: 4.6
+    },
+    {
+        name: "Dineshkumar Kaliyaperumal",
+        group: "UTR 3.5",
+        best: 4.47,
+        cat: 6,
+        s: null,
+        d: 4.47
     },
     {
         name: "Damodhara Palavali",
+        group: "UTR 3.5",
         best: 4.26,
         cat: 6,
         s: 3.58,
@@ -591,27 +691,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Sashank T",
+        group: "UTR 3.5",
         best: 4.22,
         cat: 6,
         s: 3.64,
         d: 4.22
     },
     {
-        name: "Sidharth Behera",
-        best: 4.19,
-        cat: 5,
-        s: 4.19,
-        d: null
-    },
-    {
-        name: "Nivas Nazeer",
-        best: 4.14,
-        cat: 7,
-        s: 2.02,
-        d: 4.14
-    },
-    {
         name: "Karthik Ragunathan",
+        group: "UTR 3.5",
         best: 4.14,
         cat: 6,
         s: 3.33,
@@ -619,6 +707,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Charan Macharla",
+        group: "UTR 3.5",
         best: 4.03,
         cat: 6,
         s: null,
@@ -626,6 +715,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Naseer Mohd",
+        group: "UTR 3.5",
         best: 3.97,
         cat: 6,
         s: null,
@@ -633,20 +723,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Venkat Thimmisetty",
+        group: "UTR 3.5",
         best: 3.95,
         cat: 6,
         s: 3.74,
         d: 3.95
     },
     {
-        name: "Mayur Patel",
-        best: 3.94,
-        cat: 7,
-        s: null,
-        d: 3.94
-    },
-    {
         name: "Arpit Rawat",
+        group: "UTR 3.5",
         best: 3.94,
         cat: 6,
         s: 3.94,
@@ -654,6 +739,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Jitin Jaitly",
+        group: "UTR 3.5",
         best: 3.82,
         cat: 6,
         s: 3.47,
@@ -661,6 +747,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Gopal Setty",
+        group: "UTR 3.5",
         best: 3.78,
         cat: 6,
         s: 3.78,
@@ -668,34 +755,63 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Shiva Gundimeda",
+        group: "UTR 3.5",
         best: 3.74,
         cat: 6,
         s: 3.2,
         d: 3.74
     },
     {
-        name: "Joel Kodoru",
-        best: 3.62,
-        cat: 7,
-        s: 2,
-        d: 3.62
-    },
-    {
-        name: "Trinadh Cheepilla",
-        best: 3.42,
-        cat: 7,
-        s: 2.93,
-        d: 3.42
-    },
-    {
         name: "Satish K",
+        group: "UTR 3.5",
         best: 3.38,
         cat: 6,
         s: null,
         d: 3.38
     },
     {
+        name: "Venky Pantham",
+        group: "UTR 3.0",
+        best: 4.45,
+        cat: 7,
+        s: 2.99,
+        d: 4.45
+    },
+    {
+        name: "Nivas Nazeer",
+        group: "UTR 3.0",
+        best: 4.14,
+        cat: 7,
+        s: 2.02,
+        d: 4.14
+    },
+    {
+        name: "Mayur Patel",
+        group: "UTR 3.0",
+        best: 3.94,
+        cat: 7,
+        s: null,
+        d: 3.94
+    },
+    {
+        name: "Joel Kodoru",
+        group: "UTR 3.0",
+        best: 3.62,
+        cat: 7,
+        s: 2.0,
+        d: 3.62
+    },
+    {
+        name: "Trinadh Cheepilla",
+        group: "UTR 3.0",
+        best: 3.42,
+        cat: 7,
+        s: 2.93,
+        d: 3.42
+    },
+    {
         name: "Avinash Terala",
+        group: "UTR 3.0",
         best: 3.35,
         cat: 7,
         s: 3.21,
@@ -703,6 +819,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Sai Varun Polishetty",
+        group: "UTR 3.0",
         best: 2.94,
         cat: 7,
         s: 2.94,
@@ -710,6 +827,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Asif Mohammed",
+        group: "UTR 3.0",
         best: 2.8,
         cat: 7,
         s: 2.8,
@@ -717,6 +835,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Jagapathi Raju",
+        group: "UTR 3.0",
         best: 2.67,
         cat: 7,
         s: 2.67,
@@ -724,27 +843,15 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Venice Robinson Amal Doss",
+        group: "UTR 3.0",
         best: 2.38,
         cat: 7,
         s: 2.25,
         d: 2.38
     },
     {
-        name: "Guru Bavirisetty",
-        best: null,
-        cat: 4,
-        s: null,
-        d: null
-    },
-    {
-        name: "Raj Chava",
-        best: null,
-        cat: 2,
-        s: null,
-        d: null
-    },
-    {
         name: "Karthik Kumaresan",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -752,6 +859,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Abhishek Patel",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -759,6 +867,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Raghu Ram",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -766,6 +875,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Karthik Ram Senthilvel",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -773,6 +883,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Chandan Singh",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -780,6 +891,7 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Venu Sarvepalli",
+        group: "UTR 3.0",
         best: null,
         cat: 7,
         s: null,
@@ -796,6 +908,7 @@ const toPlayer = (player, index) => {
         utr,
         price: UTR_PRICES[utr] || 5000,
         cat: player.cat,
+        group: player.group,
         best: player.best,
         s: player.s,
         d: player.d
@@ -810,5 +923,13 @@ export function withPlayerMeta(player) {
     const name = player.Name || player.name || "";
     const catalogPlayer = PLAYER_BY_NAME.get(normalizeName(name));
     if (!catalogPlayer) return {...player, Name: name};
-    return {...catalogPlayer, ...player, Name: catalogPlayer.Name};
+    return {
+        ...player,
+        ...catalogPlayer,
+        id: player.id ?? catalogPlayer.id,
+        Name: catalogPlayer.Name,
+        acquiredPrice: player.acquiredPrice,
+        isRetry: player.isRetry,
+        retryCount: player.retryCount
+    };
 }
