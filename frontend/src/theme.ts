@@ -33,13 +33,13 @@ export const font = {
 };
 
 export const POOL_ORDER = [
-  "utr_5_5",
-  "utr_5_25",
-  "utr_5_0",
-  "utr_4_5",
-  "utr_4_0",
-  "utr_3_5",
   "utr_3_0",
+  "utr_3_5",
+  "utr_4_0",
+  "utr_4_5",
+  "utr_5_0",
+  "utr_5_5",
+  "utr_6_0",
 ];
 
 export const getUTRFromKey = (key: string): number =>

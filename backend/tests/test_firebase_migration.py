@@ -15,11 +15,12 @@ BASE_URL = (
     or "https://player-bidding-8.preview.emergentagent.com"
 ).rstrip("/")
 
-# All 14 captain PINs (mirrors /app/memory/test_credentials.md)
+# All 16 captain PINs (mirrors backend/seed_data.py TEAM_PINS)
 TEAM_PINS = {
     1: "481027", 2: "635914", 3: "217658", 4: "859302", 5: "374186",
     6: "196540", 7: "742839", 8: "503271", 9: "618495", 10: "285063",
-    11: "947612", 12: "360728", 13: "814359", 14: "572046",
+    11: "947612", 12: "360728", 13: "814359", 14: "572046", 15: "639021",
+    16: "184756",
 }
 
 
@@ -31,7 +32,7 @@ def _login(s, code, pin):
 
 @pytest.fixture(scope="module")
 def team_headers(api_client):
-    """Return {1: hdrs, 2: hdrs, ...} for all 14 captains."""
+    """Return {1: hdrs, 2: hdrs, ...} for all 16 captains."""
     return {
         tid: {
             "Authorization": f"Bearer {_login(api_client, f'TEAM{tid}', pin)}",
@@ -43,7 +44,7 @@ def team_headers(api_client):
 
 # ===================== Firebase create + initial-state shape =====================
 class TestInitialState:
-    def test_create_session_has_14_teams_with_captains_and_pools(self, api_client, fresh_session, admin_headers):
+    def test_create_session_has_16_teams_with_captains_and_pools(self, api_client, fresh_session, admin_headers):
         sid = fresh_session["sessionId"]
         assert len(sid) == 6
 
@@ -51,8 +52,8 @@ class TestInitialState:
         assert r.status_code == 200
         state = r.json()["state"]
 
-        # 14 teams, each with exactly the captain pre-assigned
-        assert len(state["teams"]) == 14
+        # 16 teams, each with exactly the captain pre-assigned
+        assert len(state["teams"]) == 16
         for t in state["teams"]:
             assert len(t["players"]) == 1, f"team {t['id']} should start with only captain"
             cap = t["players"][0]
@@ -62,21 +63,19 @@ class TestInitialState:
             assert t["budget"] == 100000 - cap["acquiredPrice"]
             assert t["totalSpent"] == cap["acquiredPrice"]
 
-        # 5.5 and 5.25 pools are fully consumed by captains => empty
-        assert state["playerPools"]["utr_5_5"] == []
-        assert state["playerPools"]["utr_5_25"] == []
-        assert len(state["playerPools"]["utr_5_0"]) == 5
+        # Pools auctioned lowest-UTR first; UTR 3.0 leads with 16 players.
+        assert len(state["playerPools"]["utr_3_0"]) == 16
 
-        # First current player must come from UTR 5.0 (since 5.5/5.25 empty)
-        assert state["currentPoolIndex"] == 0  # raw index; effective skips empties
+        # First current player comes from UTR 3.0 (raw index 0, first non-empty pool)
+        assert state["currentPoolIndex"] == 0
 
-    def test_first_player_is_utr_5_base_12000(self, api_client, fresh_session, admin_headers, team_headers):
+    def test_first_player_is_utr_3_base_5000(self, api_client, fresh_session, admin_headers, team_headers):
         sid = fresh_session["sessionId"]
-        # 12000 succeeds → confirms base price 12000 (UTR 5.0)
+        # 5000 succeeds → confirms base price 5000 (UTR 3.0, first pool auctioned)
         r = api_client.post(
             f"{BASE_URL}/api/auctions/{sid}/bid",
             headers=team_headers[1],
-            json={"teamId": 1, "amount": 12000},
+            json={"teamId": 1, "amount": 5000},
         )
         assert r.status_code == 200, r.text
 
@@ -119,57 +118,55 @@ class TestPersistence:
 
 # ===================== Multi-finalize / pool-progression (Firebase array edge case) =====================
 class TestMultiFinalize:
-    def test_drain_pool_5_0_then_cross_into_pool_4_5(self, api_client, admin_headers, team_headers):
-        """Award all 5 UTR-5.0 players to 5 different teams, then verify pool transition
-        to UTR 4.5 — exercises Firebase array normalization across many writes."""
+    def test_drain_pool_3_0_then_cross_into_pool_3_5(self, api_client, admin_headers, team_headers):
+        """Award all 16 UTR-3.0 players to 16 different teams (cap=1/team), then verify
+        pool transition to UTR 3.5 — exercises Firebase array normalization across many writes."""
         r = api_client.post(f"{BASE_URL}/api/auctions", headers=admin_headers)
         sid = r.json()["sessionId"]
 
-        awarded_names = []
-        for tid in range(1, 6):  # 5 distinct teams (cap=1 per team for utr_5_0)
+        awarded = {}  # tid -> awarded player name
+        for tid in range(1, 17):  # 16 distinct teams drain the 16-player UTR-3.0 pool
             # capture player BEFORE bidding
             state = api_client.get(f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers).json()["state"]
-            pool = state["playerPools"]["utr_5_0"]
-            assert pool, f"pool 5.0 unexpectedly empty before iter {tid}"
+            pool = state["playerPools"]["utr_3_0"]
+            assert pool, f"pool 3.0 unexpectedly empty before iter {tid}"
             current_player = pool[0]
 
             rb = api_client.post(
                 f"{BASE_URL}/api/auctions/{sid}/bid",
                 headers=team_headers[tid],
-                json={"teamId": tid, "amount": 12000},
+                json={"teamId": tid, "amount": 5000},  # UTR 3.0 base
             )
             assert rb.status_code == 200, f"bid tid={tid} failed: {rb.text}"
 
             rf = api_client.post(f"{BASE_URL}/api/auctions/{sid}/finalize", headers=admin_headers)
             assert rf.status_code == 200, f"finalize iter={tid} failed: {rf.text}"
-            awarded_names.append(current_player["Name"])
+            awarded[tid] = current_player["Name"]
 
-        # Verify pool 5.0 fully drained and arrays normalized cleanly
+        # Verify pool 3.0 fully drained and arrays normalized cleanly
         state = api_client.get(f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers).json()["state"]
-        assert state["playerPools"]["utr_5_0"] == [], "pool 5.0 should be empty"
-        assert len(state["playerPools"]["utr_4_5"]) == 5, "pool 4.5 untouched (5 players)"
+        assert state["playerPools"]["utr_3_0"] == [], "pool 3.0 should be empty"
+        assert len(state["playerPools"]["utr_3_5"]) == 15, "pool 3.5 untouched (15 players)"
 
-        # Teams 1-5 each have 2 players, $12k spent on top of captain price
-        for tid in range(1, 6):
+        # Each team has 2 players, $5k spent on top of captain price
+        for tid in range(1, 17):
             t = next(x for x in state["teams"] if x["id"] == tid)
             assert len(t["players"]) == 2, f"team {tid} should have captain + 1 acquired"
-            assert t["players"][-1]["acquiredPrice"] == 12000
-            assert t["players"][-1]["Name"] == awarded_names[tid - 1]
+            assert t["players"][-1]["acquiredPrice"] == 5000
+            assert t["players"][-1]["Name"] == awarded[tid]
 
-        # currentPoolIndex must have advanced past empty 5.0 (=> 3, since 0,1 empty too)
-        # raw index may be 3 (server increments past last awarded position),
-        # but effective player must be from utr_4_5 — verify by placing a bid at $10k
+        # Effective player must now come from utr_3_5 — verify by bidding its base ($7.5k)
         rb = api_client.post(
             f"{BASE_URL}/api/auctions/{sid}/bid",
-            headers=team_headers[6],
-            json={"teamId": 6, "amount": 10000},  # UTR 4.5 base
+            headers=team_headers[1],
+            json={"teamId": 1, "amount": 7500},  # UTR 3.5 base
         )
-        assert rb.status_code == 200, f"first 4.5-pool bid failed: {rb.text}"
-        # below-base for 4.5 (e.g. 9000) should fail
+        assert rb.status_code == 200, f"first 3.5-pool bid failed: {rb.text}"
+        # below-base for 3.5 (e.g. 7000) should fail
         rb2 = api_client.post(
             f"{BASE_URL}/api/auctions/{sid}/bid",
-            headers=team_headers[7],
-            json={"teamId": 7, "amount": 9000},
+            headers=team_headers[2],
+            json={"teamId": 2, "amount": 7000},
         )
         assert rb2.status_code == 400
 
@@ -178,16 +175,16 @@ class TestMultiFinalize:
         sid = r.json()["sessionId"]
 
         before = api_client.get(f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers).json()["state"]
-        pool_before = list(before["playerPools"]["utr_5_0"])
+        pool_before = list(before["playerPools"]["utr_3_0"])
         first_player = pool_before[0]
-        assert len(pool_before) == 5
+        assert len(pool_before) == 16
 
         rs = api_client.post(f"{BASE_URL}/api/auctions/{sid}/skip", headers=admin_headers)
         assert rs.status_code == 200, rs.text
 
         after = api_client.get(f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers).json()["state"]
-        pool_after = after["playerPools"]["utr_5_0"]
-        assert len(pool_after) == 5, "skip must not lose the player"
+        pool_after = after["playerPools"]["utr_3_0"]
+        assert len(pool_after) == 16, "skip must not lose the player"
         assert pool_after[-1]["id"] == first_player["id"], "skipped player goes to end"
         assert pool_after[-1].get("isRetry") is True
         assert pool_after[-1].get("retryCount", 0) == 1
@@ -214,7 +211,7 @@ class TestReset:
         assert rr.status_code == 200
 
         state = api_client.get(f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers).json()["state"]
-        assert len(state["playerPools"]["utr_5_0"]) == 5
+        assert len(state["playerPools"]["utr_3_0"]) == 16
         for t in state["teams"]:
             assert len(t["players"]) == 1  # captains only
         assert state["currentBids"] == {}

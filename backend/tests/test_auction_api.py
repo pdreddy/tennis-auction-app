@@ -63,13 +63,15 @@ class TestConfig:
         r = api_client.get(f"{BASE_URL}/api/config")
         assert r.status_code == 200
         c = r.json()
-        assert c["teams"] == 14 and c["teamSize"] == 7
-        assert c["budget"] == 100000 and c["totalPlayers"] == 98
+        assert c["teams"] == 16 and c["teamSize"] == 7
+        assert c["budget"] == 100000 and c["totalPlayers"] == 112
         pools = {p["key"]: p for p in c["pools"]}
-        assert pools["utr_5_5"]["count"] == 0
-        assert pools["utr_5_25"]["count"] == 0
-        assert pools["utr_5_0"]["count"] == 5
-        assert pools["utr_3_0"]["cap"] == 6
+        assert pools["utr_6_0"]["count"] == 13
+        assert pools["utr_5_5"]["count"] == 8
+        assert pools["utr_5_0"]["count"] == 13
+        assert pools["utr_3_0"]["count"] == 16
+        # Pools are auctioned lowest-UTR first; every pool is <= 16 players so cap is 1/team.
+        assert pools["utr_3_0"]["cap"] == 1
 
 
 # ===================== Authorization =====================
@@ -139,10 +141,11 @@ class TestAuthorization:
 class TestBidding:
     def test_bid_below_base(self, api_client, team1_headers, fresh_session):
         sid = fresh_session["sessionId"]
+        # First auctioned pool is UTR 3.0 (base $5,000); $4,000 is below base.
         r = api_client.post(
             f"{BASE_URL}/api/auctions/{sid}/bid",
             headers=team1_headers,
-            json={"teamId": 1, "amount": 11000},
+            json={"teamId": 1, "amount": 4000},
         )
         assert r.status_code == 400 and "Min" in r.json()["detail"]
 
@@ -194,7 +197,8 @@ class TestFullFlow:
             f"{BASE_URL}/api/auctions/{sid}", headers=admin_headers
         ).json()["state"]
         t1_before = next(t for t in before["teams"] if t["id"] == 1)
-        pool_before = len(before["playerPools"]["utr_5_0"])
+        # Auction runs lowest-UTR first, so the opening pool is UTR 3.0.
+        pool_before = len(before["playerPools"]["utr_3_0"])
 
         # Captain TEAM1 bids
         rb = api_client.post(
@@ -221,6 +225,6 @@ class TestFullFlow:
         assert len(t1_after["players"]) == len(t1_before["players"]) + 1
         assert t1_after["budget"] == t1_before["budget"] - 12000
         assert t1_after["totalSpent"] == t1_before["totalSpent"] + 12000
-        assert len(after["playerPools"]["utr_5_0"]) == pool_before - 1
+        assert len(after["playerPools"]["utr_3_0"]) == pool_before - 1
         assert after["currentBids"] == {}
         assert t1_after["players"][-1]["acquiredPrice"] == 12000
