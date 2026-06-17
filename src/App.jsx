@@ -814,6 +814,33 @@ function Auction({ sid, user, onBack }) {
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
 
+    const reserveAfterCurrentWin = team => {
+        if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
+        const projectedPlayers = [...team.players, eff.player];
+        const slots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
+        if (slots === 0) return {amount:0,slots,maxBid:team.budget};
+
+        const costs = [];
+        POOL_ORDER.slice(eff.effPool).forEach(poolKey => {
+            const utr = getUTR(poolKey);
+            const cap = POOL_CAPS_EFF[poolKey] || 0;
+            const alreadyFromPool = projectedPlayers.slice(1).filter(p=>p.utr===utr).length;
+            const remainingCap = Math.max(0, cap - alreadyFromPool);
+            if (!remainingCap) return;
+            const pool = state.playerPools[poolKey] || [];
+            const start = poolKey === eff.poolKey ? eff.effPlayer + 1 : 0;
+            pool.slice(start, start + remainingCap).forEach(p => {
+                costs.push(p.price || UTR_PRICES[p.utr] || 5000);
+            });
+        });
+
+        const minimumKnownPrice = Math.min(...Object.values(UTR_PRICES));
+        while (costs.length < slots) costs.push(minimumKnownPrice);
+        costs.sort((a,b)=>a-b);
+        const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
+        return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
+    };
+
     const validateBid = (teamId, amount) => {
         if (!eff?.player) return "No player";
         const team = state.teams.find(t=>t.id===teamId);
@@ -828,9 +855,10 @@ function Auction({ sid, user, onBack }) {
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
-        const rem = TEAM_SIZE_EFF - team.players.length;
-        const minNeeded = rem>1?(rem-1)*5000:0;
-        if (amount > team.budget-minNeeded) return `Need ${fmtR(minNeeded)} for ${rem-1} more`;
+        const reserve = reserveAfterCurrentWin(team);
+        if (amount > reserve.maxBid) {
+            return `Keep ${fmtR(reserve.amount)} for ${reserve.slots} remaining base-price player${reserve.slots===1?"":"s"} · max bid ${fmtR(reserve.maxBid)}`;
+        }
         return null;
     };
 
@@ -941,9 +969,10 @@ function Auction({ sid, user, onBack }) {
     };
 
     const sortedTeams = [...state.teams].map(t => {
-        const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price ||
+        const reserve = reserveAfterCurrentWin(t);
+        const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price || reserve.maxBid<eff.player.price ||
             (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
-        return {...t,isDisabled,isPinned:pinnedTeam===t.id};
+        return {...t,isDisabled,isPinned:pinnedTeam===t.id,reserve};
     }).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
         if (!isAdmin && a.id===myTeamId) return -1;
@@ -1032,7 +1061,7 @@ function Auction({ sid, user, onBack }) {
                     const isMyTeam = !isAdmin && team.id===myTeamId;
 
                     if (team.isDisabled && !isMyTeam) {
-                        const reason = team.players.length>=TEAM_SIZE_EFF?"Full":team.budget<eff.player.price?"Low budget":`UTR cap`;
+                        const reason = team.players.length>=TEAM_SIZE_EFF?"Full":team.budget<eff.player.price?"Low budget":team.reserve?.maxBid<eff.player.price?`Reserve ${fmtR(team.reserve.amount)}`:`UTR cap`;
                         return (
                             <div key={team.id} className="bid-card disabled-card">
                                 <span className="disabled-team-name">{team.name} · {team.players.length}/{TEAM_SIZE_EFF}</span>
@@ -1042,7 +1071,8 @@ function Auction({ sid, user, onBack }) {
                     }
 
                     const anchor = highest>0?highest+1000:eff.player.price;
-                    const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=team.budget);
+                    const maxBid = team.reserve?.maxBid ?? team.budget;
+                    const chips = [anchor,anchor+1000,anchor+2000].filter(v=>v<=maxBid);
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
@@ -1057,6 +1087,7 @@ function Auction({ sid, user, onBack }) {
                                         <span className="team-budget-pill team-budget-left">{fmtR(team.budget)}</span>
                                         <span className="team-slots">{team.players.length}/{TEAM_SIZE_EFF} players</span>
                                     </div>
+                                    {team.reserve?.slots>0 && <div className="team-captain">Reserve {fmtR(team.reserve.amount)} for {team.reserve.slots} base slot{team.reserve.slots===1?"":"s"}</div>}
                                 </div>
                                 <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
                             </div>
