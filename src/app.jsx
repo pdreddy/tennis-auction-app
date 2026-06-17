@@ -252,7 +252,7 @@ const POOL_LABELS = {
 function fmtR(n){ return "$"+(n||0).toLocaleString(); }
 
 function PoolViewer() {
-    const [open, setOpen] = useState({});
+    const [open, setOpen] = useState({[POOL_ORDER[0]]:true});
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
     const totalPlayers = POOL_ORDER.reduce((s,k)=>s+PLAYER_POOLS[k].length,0);
@@ -261,7 +261,7 @@ function PoolViewer() {
         <div className="card" style={{padding:"18px"}}>
             <div className="card-title" style={{marginBottom:4}}>🎾 Auction Pools</div>
             <div className="card-sub" style={{marginBottom:14}}>
-                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs highest UTR first
+                {totalPlayers} players across {POOL_ORDER.filter(k=>PLAYER_POOLS[k].length>0).length} pools · auction runs lowest UTR first
             </div>
             {POOL_ORDER.map(key => {
                 const utr = getUTR(key);
