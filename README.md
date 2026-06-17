@@ -86,6 +86,6 @@ TARGET_SERVICE_ACCOUNT_JSON="$(cat ./target-service-account.json)" \
 npm run firebase:migrate:required
 ```
 
-If the source database no longer allows unauthenticated reads, also provide `SOURCE_SERVICE_ACCOUNT_JSON` for the current Firebase project.
+If the source database no longer allows unauthenticated reads, also provide `SOURCE_ACCESS_TOKEN` for a Google access token that can read the current Firebase project.
 
 Security rules for the target database are in `firebase/database.rules.json`. They deny default access and are designed for authenticated users with an `accountCode` auth token claim. Do not deploy these rules until the client sign-in flow issues Firebase Auth custom tokens, otherwise the browser app will be denied by the database. Any service account private key shared in chat, email, or source control should be treated as compromised and rotated in Google Cloud IAM before production use.
