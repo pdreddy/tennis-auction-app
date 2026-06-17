@@ -125,7 +125,7 @@ TEAM_PIN=123456 \
 npm run supabase:bootstrap
 ```
 
-After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
+After seeding, use Supabase Dashboard → Table Editor to view `app_config` and `app_users`. The browser app requires a Supabase URL and publishable key. You can provide them with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, or paste them into the in-app setup screen for this device. Server-only scripts require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Browser extension messages such as `redirectionChainSiteScript.js` are unrelated to the app unless they persist in an incognito window with extensions disabled.
 
 ## Migration phases
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { hasSupabaseEnv } from "./config/supabase.js";
+import { hasSupabaseEnv, saveRuntimeSupabaseConfig } from "./config/supabase.js";
 import { realtimeDataService } from "./services/realtimeDataService.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
@@ -1289,18 +1289,44 @@ const IDLE_MS = 180 * 60 * 1000; // 180 minutes
 const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 
 function MissingSupabaseConfig() {
+    const [url, setUrl] = useState("");
+    const [key, setKey] = useState("");
+    const [error, setError] = useState(null);
+
+    const saveConfig = () => {
+        const cleanUrl = url.trim().replace(/\/$/, "");
+        const cleanKey = key.trim();
+        if (!/^https:\/\/[^\s]+\.supabase\.co$/.test(cleanUrl)) {
+            setError("Enter your full Supabase project URL, for example https://your-project.supabase.co");
+            return;
+        }
+        if (!cleanKey.startsWith("sb_publishable_") && !cleanKey.startsWith("eyJ")) {
+            setError("Enter your Supabase publishable key. It usually starts with sb_publishable_.");
+            return;
+        }
+        saveRuntimeSupabaseConfig({ supabaseUrl: cleanUrl, supabasePublishableKey: cleanKey });
+        window.location.reload();
+    };
+
     return (
         <div className="setup-wrap">
             <div className="card" style={{textAlign:"left",maxWidth:720,margin:"60px auto"}}>
                 <div className="card-title">Supabase is not configured</div>
                 <div className="card-sub" style={{marginBottom:14}}>
-                    Add your Supabase project URL and publishable key before signing in. For local development, copy
-                    <code> .env.example </code> to <code>.env.local</code>; for Vercel/Netlify, add the same variables in the hosting dashboard.
+                    Paste your Supabase project URL and publishable key below, or set them as <code>VITE_*</code> environment variables and redeploy.
                 </div>
-                <pre style={{whiteSpace:"pre-wrap",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:14,color:"var(--text2)",fontSize:12}}>VITE_SUPABASE_URL=https://&lt;project-ref&gt;.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=&lt;publishable-key&gt;</pre>
+                <div className="field-wrap">
+                    <div className="field-label">SUPABASE URL</div>
+                    <input type="text" value={url} placeholder="https://your-project.supabase.co" onChange={e=>setUrl(e.target.value)} />
+                </div>
+                <div className="field-wrap">
+                    <div className="field-label">PUBLISHABLE KEY</div>
+                    <input type="password" value={key} placeholder="sb_publishable_..." onChange={e=>setKey(e.target.value)} />
+                </div>
+                {error && <div className="login-error" style={{marginBottom:12}}>{error}</div>}
+                <button className="btn btn-primary" onClick={saveConfig} disabled={!url.trim() || !key.trim()}>Save Supabase Settings</button>
                 <div className="card-sub" style={{marginTop:14}}>
-                    After the variables are saved, restart the dev server or redeploy the site.
+                    This stores only the publishable browser key in this device's local storage. For production, set the same values in Vercel/Netlify and redeploy.
                 </div>
             </div>
         </div>

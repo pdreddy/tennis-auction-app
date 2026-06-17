@@ -57,7 +57,7 @@ npm run supabase:bootstrap
 npm run dev
 ```
 
-Open `http://localhost:5173`. If you see `Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY`, the browser build does not have the `VITE_*` variables from `.env.local` or your hosting provider.
+Open `http://localhost:5173`. If you see the Supabase configuration screen, paste your project URL and publishable key there for this device, or set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local`/your hosting provider and restart or redeploy.
 
 To see the seeded data, open Supabase Dashboard → Table Editor and inspect `app_config`, `app_users`, `players`, `teams`, and `auction_sessions`.
 
