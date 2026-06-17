@@ -18,7 +18,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script>
         // Initialise Firebase synchronously before Babel processes the JSX bundle
-        (function() {
+        window.__firebaseError = null;
+        try {
             var cfg = {
                 apiKey:            "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
                 authDomain:        "koc2-20fb8.firebaseapp.com",
@@ -30,7 +31,10 @@
             };
             if (!firebase.apps.length) firebase.initializeApp(cfg);
             window.__db = firebase.database();
-        })();
+        } catch(e) {
+            window.__firebaseError = e.message || String(e);
+            console.error("Firebase init failed:", e);
+        }
     </script>
 
     <style>
@@ -598,6 +602,23 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // ─── Firebase (initialised in plain <script> above; db exposed as window.__db) ──
 const db = window.__db;
+
+// ─── Error Boundary ──────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: e }; }
+  render() {
+    if (this.state.err) return (
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>⚠️</div>
+        <h2 style={{marginBottom:'0.5rem'}}>Something went wrong</h2>
+        <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{this.state.err.message}</p>
+        <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Reload</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 const TEAM_BUDGET = 100000;
@@ -1806,6 +1827,14 @@ const IDLE_MS = 180 * 60 * 1000; // 180 minutes
 const IDLE_WARN_MS = 175 * 60 * 1000; // warn at 175 min
 
 function App() {
+    if (window.__firebaseError) return (
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0a0a0a',color:'#e8b84b',fontFamily:'sans-serif',padding:'2rem',textAlign:'center'}}>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>🔥</div>
+        <h2 style={{marginBottom:'0.5rem'}}>Database connection failed</h2>
+        <p style={{color:'#aaa',maxWidth:'480px',marginBottom:'1.5rem'}}>{window.__firebaseError}</p>
+        <button onClick={()=>window.location.reload()} style={{background:'#e8b84b',color:'#000',border:'none',padding:'0.6rem 1.5rem',borderRadius:'6px',cursor:'pointer',fontWeight:'bold'}}>Retry</button>
+      </div>
+    );
     const [user, setUser] = useState(() => pref("ta_user", null));
     const [sessionId, setSessionId] = useState(() => null);
     const [selectedYear, setSelectedYear] = useState(THIS_YEAR);
@@ -1862,7 +1891,9 @@ function App() {
     );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <ErrorBoundary><App/></ErrorBoundary>
+);
 </script>
 </body>
 </html>
