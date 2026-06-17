@@ -51,6 +51,7 @@ npm test
 Firebase settings, teams, players, and generated pool defaults are split into small files for easier updates:
 
 - `src/config/firebase.js` — all Firebase setup in one place: project credentials, Realtime Database initialization, editable `DATA_PATHS`, and helper functions for database references.
+- `src/config/pins.json` — default 6-digit PINs for admin and team accounts; the admin PIN screen can load these and save them into Firebase.
 - `src/data/teams.js` — team names and captains.
 - `src/data/players.js` — player list, UTR values, and base prices.
 - `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0; auction bidding starts at UTR 3.0 and moves upward.
@@ -65,7 +66,7 @@ The app still uses Firebase Realtime Database in the browser. Internet access is
 All Firebase wiring now lives in `src/config/firebase.js`. To point the app at a different Firebase project, edit the `firebaseConfig` object in that file. To change where data is stored in Realtime Database, edit the `DATA_PATHS` object in the same file:
 
 - `config` — saved auction configuration, players, teams, and settings.
-- `users` — PIN login records.
+- `users` — PIN login records. Defaults can be edited in `src/config/pins.json`, loaded in the admin PIN screen, then saved to this database path.
 - `auctions` — live auction sessions.
 - `connected` — Firebase connection status path; normally leave this as `.info/connected`.
 

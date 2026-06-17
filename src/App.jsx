@@ -5,10 +5,11 @@ import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, ge
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
+import DEFAULT_PINS from "./config/pins.json";
 
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
-// PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
+// PINs are loaded from Firebase at users/<code>/pin. Admins can seed defaults from src/config/pins.json.
 const ACCOUNTS = [
     {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
     ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))
@@ -455,7 +456,7 @@ function ManagePins() {
         usersRef().once("value").then(snap => {
             const data = snap.val() || {};
             const initial = {};
-            ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || ""; });
+            ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || DEFAULT_PINS[a.code] || ""; });
             setPins(initial);
         });
     }, []);
@@ -476,15 +477,27 @@ function ManagePins() {
         setTimeout(() => setMsg(null), 2000);
     };
 
+
+    const loadDefaults = () => {
+        const next = {};
+        ACCOUNTS.forEach(a => { next[a.code] = DEFAULT_PINS[a.code] || pins[a.code] || ""; });
+        setPins(next);
+        setMsg({code:"ALL",text:"Loaded JSON PIN defaults. Click Save All PINs to write them to Firebase.",ok:true});
+    };
+
+    const savePinsToDb = async (pinValues) => {
+        const updates = {};
+        ACCOUNTS.forEach(a => {
+            updates[`${DATA_PATHS.users}/${a.code}`] = {code:a.code,pin:pinValues[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
+        });
+        await rootRef().update(updates);
+    };
+
     const saveAll = async () => {
         const invalid = ACCOUNTS.find(a => { const p = pins[a.code]||""; return p.length!==6||!/^\d{6}$/.test(p); });
         if (invalid) { setMsg({code:"ALL",text:`Invalid PIN for ${invalid.label}`,ok:false}); return; }
         setSaving("ALL");
-        const updates = {};
-        ACCOUNTS.forEach(a => {
-            updates[`${DATA_PATHS.users}/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
-        });
-        await rootRef().update(updates);
+        await savePinsToDb(pins);
         setSaving(null);
         setMsg({code:"ALL",text:"All PINs saved",ok:true});
         setTimeout(() => setMsg(null), 2000);
@@ -493,7 +506,7 @@ function ManagePins() {
     return (
         <div className="card" style={{marginTop:16}}>
             <div className="card-title">Manage PINs</div>
-            <div className="card-sub">Set or update 6-digit PINs for each account. Changes take effect immediately.</div>
+            <div className="card-sub">Set or update 6-digit PINs for each account. Defaults come from <code>src/config/pins.json</code>; save writes them to Firebase.</div>
             <div style={{maxHeight:320,overflowY:"auto",marginTop:10}}>
                 {ACCOUNTS.map(a => (
                     <div key={a.code} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
@@ -517,9 +530,14 @@ function ManagePins() {
                     </div>
                 ))}
             </div>
-            <button className="btn btn-primary" style={{marginTop:12}} onClick={saveAll} disabled={!!saving}>
-                {saving==="ALL" ? "Saving all…" : "Save All PINs"}
-            </button>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button className="btn btn-neutral" style={{flex:1}} onClick={loadDefaults} disabled={!!saving}>
+                    Load JSON Defaults
+                </button>
+                <button className="btn btn-primary" style={{flex:1}} onClick={saveAll} disabled={!!saving}>
+                    {saving==="ALL" ? "Saving all…" : "Save All PINs"}
+                </button>
+            </div>
             {msg && msg.code==="ALL" && <div style={{marginTop:6,fontSize:12,color:msg.ok?"#4caf50":"#f44"}}>{msg.text}</div>}
         </div>
     );
