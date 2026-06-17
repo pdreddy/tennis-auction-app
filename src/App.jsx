@@ -969,27 +969,6 @@ function Auction({ sid, user, onBack }) {
                 <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
             </div>
 
-            <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
-                <div className="sb-left">
-                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
-                    <div className="sb-meta">UTR {eff.player.utr} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
-                    {highest>0 && <div className="sb-high">High {fmtR(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
-                </div>
-                <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
-            </div>
-
-            {actionError && <div className="error-banner" onClick={()=>setActionError(null)}>{actionError} ✕</div>}
-
-            {isAdmin && (
-                <div className="admin-bar">
-                    <button className="btn btn-neutral" onClick={skip}>Skip</button>
-                    <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
-                        disabled={!hasBids||winners.length!==1} onClick={finalize}>
-                        {!hasBids ? "No Bids" : winners.length>1 ? `Tie (${winners.length})` : `Award → ${state.teams.find(t=>t.id===winners[0].teamId)?.name}`}
-                    </button>
-                </div>
-            )}
-
             <div style={{margin:"0 12px 10px",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
                 <div onClick={()=>setShowUpcoming(v=>!v)}
                     style={{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -1019,6 +998,29 @@ function Auction({ sid, user, onBack }) {
                     </div>
                 )}
             </div>
+
+            <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
+                <div className="sb-left">
+                    <div className="sb-player">{eff.player.Name}{eff.player.isRetry&&<span className="sb-retry"> · Retry #{eff.player.retryCount}</span>}</div>
+                    <div className="sb-meta">UTR {eff.player.utr} · base {fmtR(eff.player.price)} · {eff.effPlayer+1}/{eff.pool.length} in pool</div>
+                    {highest>0 && <div className="sb-high">High {fmtR(highest)}{winners.length===1?" · "+state.teams.find(t=>t.id===winners[0].teamId)?.name:winners.length>1?" · TIE":""}</div>}
+                </div>
+                <div className={`sb-timer ${warn?"warn":""}`}>{timeLeft}s</div>
+            </div>
+
+            {actionError && <div className="error-banner" onClick={()=>setActionError(null)}>{actionError} ✕</div>}
+
+            {isAdmin && (
+                <div className="admin-bar">
+                    <button className="btn btn-neutral" onClick={skip}>Skip</button>
+                    <button className={`btn ${hasBids&&winners.length===1?"btn-success":"btn-neutral"}`}
+                        disabled={!hasBids||winners.length!==1} onClick={finalize}>
+                        {!hasBids ? "No Bids" : winners.length>1 ? `Tie (${winners.length})` : `Award → ${state.teams.find(t=>t.id===winners[0].teamId)?.name}`}
+                    </button>
+                </div>
+            )}
+
+
 
             <div className="bidding-grid">
                 {sortedTeams.map(team => {

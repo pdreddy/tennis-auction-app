@@ -53,7 +53,7 @@ Firebase settings, teams, players, and generated pool defaults are split into sm
 - `src/config/firebase.js` — Firebase project configuration.
 - `src/data/teams.js` — team names and captains.
 - `src/data/players.js` — player list, UTR values, and base prices.
-- `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0.
+- `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0; auction bidding starts at UTR 3.0 and moves upward.
 - `src/data/pools.js` — derived captain set, player pools, and default pool caps.
 
 ## Notes
