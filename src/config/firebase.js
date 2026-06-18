@@ -1,4 +1,7 @@
 const env = import.meta.env || {};
+const databaseProvider = env.VITE_DATABASE_PROVIDER || "firebase";
+const apiBase = env.VITE_DATABASE_API_BASE || "/api/db";
+const pollMs = Number(env.VITE_VERCEL_DB_POLL_MS || 1000);
 
 const firebaseConfig = {
     apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
@@ -17,9 +20,75 @@ export const DATA_PATHS = {
     connected: ".info/connected"
 };
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+function snapshot(value) {
+    return {val: () => value};
+}
 
-export const db = firebase.database();
+function apiUrl(path) {
+    const clean = String(path || "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+    return clean ? `${apiBase}/${clean}` : apiBase;
+}
+
+async function apiRequest(path, options = {}) {
+    const response = await fetch(apiUrl(path), {
+        ...options,
+        headers: {"content-type": "application/json", ...(options.headers || {})}
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || `Database request failed with ${response.status}`);
+    return body;
+}
+
+function vercelRef(path = "") {
+    const timers = new Set();
+    return {
+        async once(event) {
+            if (event !== "value") throw new Error(`Unsupported event: ${event}`);
+            if (path === DATA_PATHS.connected) return snapshot(true);
+            const {value} = await apiRequest(path);
+            return snapshot(value);
+        },
+        async set(value) {
+            await apiRequest(path, {method: "PUT", body: JSON.stringify({value})});
+        },
+        async update(value) {
+            await apiRequest(path, {method: "PATCH", body: JSON.stringify({value})});
+        },
+        on(event, callback, errorCallback) {
+            if (event !== "value") throw new Error(`Unsupported event: ${event}`);
+            if (path === DATA_PATHS.connected) {
+                callback(snapshot(true));
+                return;
+            }
+            let lastValue;
+            const poll = async () => {
+                try {
+                    const {value} = await apiRequest(path);
+                    const serialized = JSON.stringify(value);
+                    if (serialized !== lastValue) {
+                        lastValue = serialized;
+                        callback(snapshot(value));
+                    }
+                } catch (error) {
+                    if (errorCallback) errorCallback(error);
+                }
+            };
+            poll();
+            const timer = setInterval(poll, pollMs);
+            timers.add(timer);
+        },
+        off() {
+            timers.forEach(clearInterval);
+            timers.clear();
+        }
+    };
+}
+
+if (databaseProvider === "firebase") {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+}
+
+export const db = databaseProvider === "firebase" ? firebase.database() : {ref: vercelRef};
 
 export const configRef = () => db.ref(DATA_PATHS.config);
 export const usersRef = () => db.ref(DATA_PATHS.users);
