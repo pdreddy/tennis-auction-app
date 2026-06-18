@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { firebaseConfig } from "./config/firebase.js";
-import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, CFG_PATH, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
+import { configRef, usersRef, userRef, auctionRef as getAuctionRef, connectedRef, rootRef, DATA_PATHS } from "./config/firebase.js";
+import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
+import DEFAULT_PINS from "./config/pins.json";
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
 
 // ─── Auth accounts ────────────────────────────────────────────────────────────
-// PINs are stored in Firebase at users/<code>/pin — not hardcoded here.
-const ACCOUNTS = [
-    {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null},
-    ...TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}))
-];
+// PINs are loaded from Firebase at users/<code>/pin. Admins can seed defaults from src/config/pins.json.
+const ADMIN_ACCOUNT = {code:"ADMIN",label:"Admin · Auctioneer",role:"admin",teamId:null};
+const CAPTAIN_ACCOUNTS = TEAMS.map(t => ({code:`TEAM${t.id}`,label:`Team ${t.id} · ${t.captain}`,role:"captain",teamId:t.id}));
+const ACCOUNTS = [ADMIN_ACCOUNT, ...CAPTAIN_ACCOUNTS];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = n => (n||0).toLocaleString("en-US");
@@ -133,21 +131,34 @@ function SeasonBar({ selectedYear, onSelect }) {
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
 function Login({ onLogin }) {
+    const [loginMode, setLoginMode] = useState(() => pref("ta_last_account", "")==="ADMIN" ? "admin" : "captain");
     const [account, setAccount] = useState(() => {
         const saved = pref("ta_last_account", null);
-        return ACCOUNTS.find(a=>a.code===saved) || ACCOUNTS[0];
+        return CAPTAIN_ACCOUNTS.find(a=>a.code===saved) || CAPTAIN_ACCOUNTS[0];
     });
+    const [adminCode, setAdminCode] = useState("");
     const [pin, setPin] = useState("");
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
     const lastLogin = pref("ta_last_login", null);
+    const activeAccount = loginMode === "admin" ? ADMIN_ACCOUNT : account;
+
+    const switchMode = mode => {
+        setLoginMode(mode);
+        setPin("");
+        setError(null);
+    };
 
     const submit = async () => {
         setError(null);
+        if (loginMode === "admin" && adminCode.trim().toUpperCase() !== ADMIN_ACCOUNT.code) {
+            setError("Enter the admin access code");
+            return;
+        }
         if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
         setBusy(true);
         try {
-            const snap = await db.ref(`users/${account.code}`).once("value");
+            const snap = await userRef(activeAccount.code).once("value");
             const user = snap.val();
             if (!user || !user.pin) {
                 setError("Account not set up yet. Ask the admin to configure PINs.");
@@ -155,9 +166,9 @@ function Login({ onLogin }) {
                 return;
             }
             if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
-            savePref("ta_last_account", account.code);
-            savePref("ta_last_login", { name: account.label, time: Date.now() });
-            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:account.label });
+            savePref("ta_last_account", activeAccount.code);
+            savePref("ta_last_login", { name: activeAccount.label, time: Date.now() });
+            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:activeAccount.label });
         } catch(e) { setError("Error: " + e.message); setBusy(false); }
     };
 
@@ -180,26 +191,54 @@ function Login({ onLogin }) {
                     </div>
                 )}
 
-                <div className="field-wrap">
-                    <div className="field-label">ACCOUNT</div>
-                    <select value={account.code} onChange={e => setAccount(ACCOUNTS.find(a=>a.code===e.target.value))}>
-                        {ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
-                    </select>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+                    <button type="button"
+                        className={`btn ${loginMode==="captain"?"btn-primary":"btn-neutral"}`}
+                        style={{padding:"10px 12px",fontSize:12}}
+                        onClick={()=>switchMode("captain")}>Captain Login</button>
+                    <button type="button"
+                        className={`btn ${loginMode==="admin"?"btn-primary":"btn-neutral"}`}
+                        style={{padding:"10px 12px",fontSize:12}}
+                        onClick={()=>switchMode("admin")}>Admin Login</button>
                 </div>
+
+                {loginMode === "captain" ? (
+                    <div className="field-wrap">
+                        <div className="field-label">TEAM ACCOUNT</div>
+                        <select value={account.code} onChange={e => setAccount(CAPTAIN_ACCOUNTS.find(a=>a.code===e.target.value) || CAPTAIN_ACCOUNTS[0])}>
+                            {CAPTAIN_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div className="field-wrap">
+                        <div className="field-label">ADMIN ACCESS CODE</div>
+                        <input type="text" value={adminCode} autoComplete="username"
+                            placeholder="Ask the auctioneer for the admin code"
+                            style={{textAlign:"center",fontSize:14,textTransform:"uppercase"}}
+                            onChange={e => setAdminCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,16))}
+                            onKeyPress={e => e.key==="Enter" && submit()} />
+                    </div>
+                )}
 
                 <div className="field-wrap">
                     <div className="field-label">6-DIGIT PIN</div>
-                    <input type="password" value={pin} maxLength={6} inputMode="numeric"
+                    <input type="password" value={pin} maxLength={6} inputMode="numeric" autoComplete="current-password"
                         placeholder="● ● ● ● ● ●"
                         style={{letterSpacing:8,textAlign:"center",fontSize:20}}
                         onChange={e => setPin(e.target.value.replace(/\D/g,"").slice(0,6))}
                         onKeyPress={e => e.key==="Enter" && submit()} />
                 </div>
 
+                {loginMode === "admin" && (
+                    <div style={{fontSize:11,color:"var(--text4)",textAlign:"center",marginTop:-8,marginBottom:12,lineHeight:1.4}}>
+                        Admin access is separated from team accounts and requires both the admin code and admin PIN.
+                    </div>
+                )}
+
                 {error && <div className="login-error">{error}</div>}
 
                 <button className="btn btn-primary" onClick={submit} disabled={busy || pin.length < 6} style={{marginTop:8}}>
-                    {busy ? "Signing in…" : "Sign In"}
+                    {busy ? "Signing in…" : loginMode === "admin" ? "Sign In as Admin" : "Sign In"}
                 </button>
             </div>
         </div>
@@ -218,7 +257,7 @@ function AdminConfig() {
     const fileRef = useRef(null);
 
     useEffect(() => {
-        db.ref(CFG_PATH).once("value").then(snap => {
+        configRef().once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
             if (Array.isArray(d.players) && d.players.length) setPlayers(d.players.map(withPlayerMeta));
@@ -270,7 +309,7 @@ function AdminConfig() {
         if (!vt.length) { setStatus({ok:false,text:"Add at least one team"}); setSaving(false); return; }
         const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
         try {
-            await db.ref(CFG_PATH).set({players:norm,teams:vt,settings,updatedAt:Date.now()});
+            await configRef().set({players:norm,teams:vt,settings,updatedAt:Date.now()});
             setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget`});
         } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
         setSaving(false);
@@ -454,10 +493,10 @@ function ManagePins() {
     const [msg, setMsg] = useState(null);
 
     useEffect(() => {
-        db.ref("users").once("value").then(snap => {
+        usersRef().once("value").then(snap => {
             const data = snap.val() || {};
             const initial = {};
-            ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || ""; });
+            ACCOUNTS.forEach(a => { initial[a.code] = (data[a.code] && data[a.code].pin) || DEFAULT_PINS[a.code] || ""; });
             setPins(initial);
         });
     }, []);
@@ -466,7 +505,7 @@ function ManagePins() {
         const pin = pins[account.code] || "";
         if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { setMsg({code:account.code,text:"Must be 6 digits",ok:false}); return; }
         setSaving(account.code);
-        await db.ref(`users/${account.code}`).set({
+        await userRef(account.code).set({
             code: account.code,
             pin,
             role: account.role,
@@ -478,15 +517,27 @@ function ManagePins() {
         setTimeout(() => setMsg(null), 2000);
     };
 
+
+    const loadDefaults = () => {
+        const next = {};
+        ACCOUNTS.forEach(a => { next[a.code] = DEFAULT_PINS[a.code] || pins[a.code] || ""; });
+        setPins(next);
+        setMsg({code:"ALL",text:"Loaded JSON PIN defaults. Click Save All PINs to write them to Firebase.",ok:true});
+    };
+
+    const savePinsToDb = async (pinValues) => {
+        const updates = {};
+        ACCOUNTS.forEach(a => {
+            updates[`${DATA_PATHS.users}/${a.code}`] = {code:a.code,pin:pinValues[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
+        });
+        await rootRef().update(updates);
+    };
+
     const saveAll = async () => {
         const invalid = ACCOUNTS.find(a => { const p = pins[a.code]||""; return p.length!==6||!/^\d{6}$/.test(p); });
         if (invalid) { setMsg({code:"ALL",text:`Invalid PIN for ${invalid.label}`,ok:false}); return; }
         setSaving("ALL");
-        const updates = {};
-        ACCOUNTS.forEach(a => {
-            updates[`users/${a.code}`] = {code:a.code,pin:pins[a.code],role:a.role,teamId:a.teamId||null,name:a.label};
-        });
-        await db.ref().update(updates);
+        await savePinsToDb(pins);
         setSaving(null);
         setMsg({code:"ALL",text:"All PINs saved",ok:true});
         setTimeout(() => setMsg(null), 2000);
@@ -495,7 +546,7 @@ function ManagePins() {
     return (
         <div className="card" style={{marginTop:16}}>
             <div className="card-title">Manage PINs</div>
-            <div className="card-sub">Set or update 6-digit PINs for each account. Changes take effect immediately.</div>
+            <div className="card-sub">Set or update 6-digit PINs for each account. Defaults come from <code>src/config/pins.json</code>; save writes them to Firebase.</div>
             <div style={{maxHeight:320,overflowY:"auto",marginTop:10}}>
                 {ACCOUNTS.map(a => (
                     <div key={a.code} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
@@ -519,9 +570,14 @@ function ManagePins() {
                     </div>
                 ))}
             </div>
-            <button className="btn btn-primary" style={{marginTop:12}} onClick={saveAll} disabled={!!saving}>
-                {saving==="ALL" ? "Saving all…" : "Save All PINs"}
-            </button>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button className="btn btn-neutral" style={{flex:1}} onClick={loadDefaults} disabled={!!saving}>
+                    Load JSON Defaults
+                </button>
+                <button className="btn btn-primary" style={{flex:1}} onClick={saveAll} disabled={!!saving}>
+                    {saving==="ALL" ? "Saving all…" : "Save All PINs"}
+                </button>
+            </div>
             {msg && msg.code==="ALL" && <div style={{marginTop:6,fontSize:12,color:msg.ok?"#4caf50":"#f44"}}>{msg.text}</div>}
         </div>
     );
@@ -549,7 +605,7 @@ function PoolViewer() {
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
     useEffect(() => {
-        db.ref(CFG_PATH).once("value").then(snap => {
+        configRef().once("value").then(snap => {
             const d = snap.val();
             if (!d) return;
             const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players.map(withPlayerMeta) : PLAYERS;
@@ -646,7 +702,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
     const createNew = async () => {
         setCreating(true); setError(null);
         try {
-            const cfgSnap = await db.ref(CFG_PATH).once("value");
+            const cfgSnap = await configRef().once("value");
             const cfg = cfgSnap.val();
             const cfgPlayers = (cfg?.players?.length ? cfg.players.map(withPlayerMeta) : PLAYERS);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
@@ -659,7 +715,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
             const initTeams  = buildInitialTeams(cfgTeams, cfgPlayers, budget);
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             const sid = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-            await db.ref(`auctions/${sid}`).set({
+            await getAuctionRef(sid).set({
                 sessionId:sid, teams:initTeams, playerPools:pools,
                 currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
                 timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
@@ -675,7 +731,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
         const sid = (id || joinId).trim().toUpperCase();
         if (!sid) { setError("Enter a session ID"); return; }
         setJoining(true); setError(null);
-        const snap = await db.ref(`auctions/${sid}`).once("value");
+        const snap = await getAuctionRef(sid).once("value");
         if (!snap.exists()) { setError(`Session ${sid} not found`); setJoining(false); return; }
         saveSession(sid);
         onJoin(sid);
@@ -800,11 +856,11 @@ function Auction({ sid, user, onBack }) {
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
     const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
-    const auctionRef = useRef(db.ref(`auctions/${sid}`));
+    const auctionRef = useRef(getAuctionRef(sid));
 
     // Real-time listener
     useEffect(() => {
-        const connRef = db.ref(".info/connected");
+        const connRef = connectedRef();
         connRef.on("value", s => setConnected(s.val()===true));
         const handleAuctionValue = snap => {
             if (snap.exists()) {
