@@ -22,12 +22,17 @@ Open the app at:
 http://localhost:5173
 ```
 
-## Express production-style local server
+## Production build
 
-Build the app, then serve the generated `dist/` folder with Express:
+Build the app locally before deploying:
 
 ```bash
 npm run build
+```
+
+Preview the generated `dist/` folder locally with Vite:
+
+```bash
 npm run start
 ```
 
@@ -36,6 +41,27 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+## Deploying to Vercel
+
+This repository is configured for Vercel with `vercel.json`. Vercel runs `npm run build`, publishes the generated `dist/` directory, and rewrites app routes back to `index.html` so the React single-page app works on direct refreshes.
+
+To deploy from the Vercel dashboard:
+
+1. Import this Git repository into Vercel.
+2. Keep the detected framework as **Vite**.
+3. Confirm the build command is `npm run build` and the output directory is `dist`.
+4. Deploy.
+
+To deploy from the Vercel CLI:
+
+```bash
+npm install -g vercel
+vercel
+vercel --prod
+```
+
+The app still connects to Firebase directly from the browser, so make sure the configured Firebase project allows your Vercel domain in any Firebase/Auth or database rules you use.
 
 ## Tests
 
