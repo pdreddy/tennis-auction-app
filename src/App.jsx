@@ -25,6 +25,62 @@ const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 const pref = (k,d) => { try { const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); } catch(e){return d;} };
 const savePref = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} };
 
+function buildAuctionExport(state, sid, user) {
+    const isAdmin = user?.role === "admin";
+    const teams = (state?.teams || []).filter(team => isAdmin || team.id === user?.teamId);
+    const currentBids = state?.currentBids || {};
+    return {
+        sessionId: sid,
+        exportedAt: new Date().toISOString(),
+        exportedBy: user?.name || user?.code || "Unknown",
+        scope: isAdmin ? "all-teams" : "signed-in-team",
+        currentPlayer: (() => {
+            const eff = state ? getEffective(state) : null;
+            return eff && !eff.complete && eff.player ? {
+                name: eff.player.Name,
+                tierUtr: eff.player.utr,
+                actualUtr: eff.player.best ?? null,
+                basePrice: eff.player.price || 0,
+                pool: eff.poolKey || null
+            } : null;
+        })(),
+        currentBids: Object.entries(currentBids).map(([teamId, amount]) => {
+            const team = (state?.teams || []).find(t => String(t.id) === String(teamId));
+            return { teamId: parseInt(teamId), teamName: team?.name || `Team ${teamId}`, amount: amount || 0 };
+        }).filter(bid => isAdmin || bid.teamId === user?.teamId),
+        teams: teams.map(team => ({
+            teamId: team.id,
+            teamName: team.name,
+            captain: team.captain,
+            budgetRemaining: team.budget || 0,
+            totalSpent: team.totalSpent || 0,
+            players: (team.players || []).map((player, index) => ({
+                slot: index + 1,
+                name: player.Name,
+                tierUtr: player.utr,
+                actualUtr: player.best ?? null,
+                basePrice: player.price || 0,
+                bidPrice: player.acquiredPrice || player.price || 0,
+                isCaptain: index === 0
+            }))
+        }))
+    };
+}
+
+function downloadAuctionExport(state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const filename = `tennis-auction-${sid}-${data.scope}-${new Date().toISOString().slice(0,10)}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 function normalize(data) {
     if (!data) return null;
     const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
@@ -1045,9 +1101,10 @@ function Auction({ sid, user, onBack }) {
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
                 </div>
                 <div className="complete-banner">🏆 Auction Complete · Session {sid}</div>
-                {isAdmin && <div style={{textAlign:"center",marginBottom:12}}>
-                    <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>
-                </div>}
+                <div className="auction-actions">
+                    <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionExport(state, sid, user)}>Export JSON</button>
+                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>}
+                </div>
                 <div className="rosters-grid">
                     {state.teams.map(t => <RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
@@ -1075,13 +1132,13 @@ function Auction({ sid, user, onBack }) {
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price || reserve.maxBid<eff.player.price ||
             (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id,reserve};
-    }).sort((a,b) => {
+    }).filter(t => isAdmin || t.id===myTeamId).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
-        if (!isAdmin && a.id===myTeamId) return -1;
-        if (!isAdmin && b.id===myTeamId) return 1;
         if (a.isDisabled!==b.isDisabled) return a.isDisabled?1:-1;
         return 0;
     });
+
+    const myTeam = !isAdmin ? state.teams.find(t=>t.id===myTeamId) : null;
 
     return (
         <div>
@@ -1095,7 +1152,8 @@ function Auction({ sid, user, onBack }) {
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
-                    {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"7px 14px",fontSize:12,borderRadius:8}} onClick={()=>setResetOpen(true)}>Reset</button>}
+                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>Export</button>
+                    {isAdmin && <button className="btn btn-danger top-action-btn" onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
 
@@ -1133,6 +1191,14 @@ function Auction({ sid, user, onBack }) {
                     </div>
                 )}
             </div>
+
+            {!isAdmin && myTeam && (
+                <div className="captain-focus-banner">
+                    <span>👤 Your bidding screen</span>
+                    <strong>{myTeam.name}</strong>
+                    <small>Other teams are hidden for faster mobile bidding.</small>
+                </div>
+            )}
 
             <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div className="sb-left">
@@ -1215,7 +1281,7 @@ function Auction({ sid, user, onBack }) {
                                     </div>
                                     {team.reserve?.slots>0 && <div className="team-captain">Reserve {fmtR(team.reserve.amount)} for {team.reserve.slots} base slot{team.reserve.slots===1?"":"s"}</div>}
                                 </div>
-                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
+                                {isAdmin && <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>}
                             </div>
 
                             {(isAdmin || isMyTeam) && (<>
