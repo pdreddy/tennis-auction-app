@@ -1,4 +1,25 @@
+# Dependencies
 node_modules/
+
+# Production build output
 dist/
-.DS_Store
+build/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Vercel local state
+.vercel/
+
+# Logs
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/

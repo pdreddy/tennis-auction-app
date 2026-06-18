@@ -1,6 +1,6 @@
 # Tennis Auction App
 
-React single-page app for running a live tennis auction backed by Firebase Realtime Database.
+React single-page app for running a live tennis auction backed by Firebase Realtime Database. This repo is ready to push as a fresh Vercel-hosted project.
 
 ## Local development
 
@@ -9,6 +9,14 @@ Install dependencies:
 ```bash
 npm install
 ```
+
+Create local Firebase environment settings:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the `VITE_FIREBASE_*` values in `.env.local` if you want to use a Firebase project other than the checked-in defaults.
 
 Start the React/Vite dev server:
 
@@ -42,6 +50,25 @@ Open:
 http://localhost:3000
 ```
 
+## Creating a completely new repository
+
+Use these steps when you want this app to become a brand-new GitHub/Vercel project instead of keeping the current Git history:
+
+```bash
+# From the parent folder of this project
+cp -R tennis-auction-app tennis-auction-app-new
+cd tennis-auction-app-new
+rm -rf .git node_modules dist .vercel
+git init
+git add .
+git commit -m "Initial Vercel tennis auction app"
+git branch -M main
+git remote add origin <your-new-github-repo-url>
+git push -u origin main
+```
+
+After pushing, import the new GitHub repository into Vercel and add the Firebase environment variables from `.env.example` in the Vercel project settings.
+
 ## Deploying to Vercel
 
 This repository is configured for Vercel with `vercel.json`. Vercel runs `npm run build`, publishes the generated `dist/` directory, and rewrites app routes back to `index.html` so the React single-page app works on direct refreshes.
@@ -51,7 +78,8 @@ To deploy from the Vercel dashboard:
 1. Import this Git repository into Vercel.
 2. Keep the detected framework as **Vite**.
 3. Confirm the build command is `npm run build` and the output directory is `dist`.
-4. Deploy.
+4. Add the Firebase `VITE_FIREBASE_*` environment variables from `.env.example` if you are using a new Firebase project.
+5. Deploy.
 
 To deploy from the Vercel CLI:
 
@@ -76,7 +104,7 @@ npm test
 
 Firebase settings, teams, players, and generated pool defaults are split into small files for easier updates:
 
-- `src/config/firebase.js` — all Firebase setup in one place: project credentials, Realtime Database initialization, editable `DATA_PATHS`, and helper functions for database references.
+- `src/config/firebase.js` — all Firebase setup in one place: Vite environment variable support, Realtime Database initialization, editable `DATA_PATHS`, and helper functions for database references.
 - `src/config/pins.json` — default 6-digit PINs for admin and team accounts; the admin PIN screen can load these and save them into Firebase.
 - `src/data/teams.js` — team names and captains.
 - `src/data/players.js` — player list, UTR values, and base prices.
@@ -89,7 +117,7 @@ The app still uses Firebase Realtime Database in the browser. Internet access is
 
 ### Firebase setup and data paths
 
-All Firebase wiring now lives in `src/config/firebase.js`. To point the app at a different Firebase project, edit the `firebaseConfig` object in that file. To change where data is stored in Realtime Database, edit the `DATA_PATHS` object in the same file:
+All Firebase wiring now lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in Vercel project environment variables for production. To change where data is stored in Realtime Database, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
 
 - `config` — saved auction configuration, players, teams, and settings.
 - `users` — PIN login records. Defaults can be edited in `src/config/pins.json`, loaded in the admin PIN screen, then saved to this database path.
