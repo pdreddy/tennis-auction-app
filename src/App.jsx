@@ -1075,13 +1075,13 @@ function Auction({ sid, user, onBack }) {
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price || reserve.maxBid<eff.player.price ||
             (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id,reserve};
-    }).sort((a,b) => {
+    }).filter(t => isAdmin || t.id===myTeamId).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
-        if (!isAdmin && a.id===myTeamId) return -1;
-        if (!isAdmin && b.id===myTeamId) return 1;
         if (a.isDisabled!==b.isDisabled) return a.isDisabled?1:-1;
         return 0;
     });
+
+    const myTeam = !isAdmin ? state.teams.find(t=>t.id===myTeamId) : null;
 
     return (
         <div>
@@ -1133,6 +1133,14 @@ function Auction({ sid, user, onBack }) {
                     </div>
                 )}
             </div>
+
+            {!isAdmin && myTeam && (
+                <div className="captain-focus-banner">
+                    <span>👤 Your bidding screen</span>
+                    <strong>{myTeam.name}</strong>
+                    <small>Other teams are hidden for faster mobile bidding.</small>
+                </div>
+            )}
 
             <div className={`sticky-bar`} style={warn?{borderColor:"rgba(255,77,106,.7)"}:{}}>
                 <div className="sb-left">
@@ -1215,7 +1223,7 @@ function Auction({ sid, user, onBack }) {
                                     </div>
                                     {team.reserve?.slots>0 && <div className="team-captain">Reserve {fmtR(team.reserve.amount)} for {team.reserve.slots} base slot{team.reserve.slots===1?"":"s"}</div>}
                                 </div>
-                                <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>
+                                {isAdmin && <button className={`pin-btn ${team.isPinned?"pinned":""}`} onClick={()=>togglePin(team.id)} title="Pin team">📌</button>}
                             </div>
 
                             {(isAdmin || isMyTeam) && (<>
