@@ -11,7 +11,7 @@ const firebaseConfig = {
 export const DATA_PATHS = {
     config: "config",
     users: "users",
-    auctions: "auctions",
+    auctions: "auctionsdata",
     connected: ".info/connected"
 };
 
