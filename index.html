@@ -218,6 +218,8 @@
             background: var(--surface2); border: 1px solid var(--border2); border-radius: 30px;
             padding: 7px 14px; font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: .3px;
         }
+        .top-action-btn { width: auto; padding: 7px 14px; font-size: 12px; border-radius: 8px; }
+        .auction-actions { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
         .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .dot-green { background: var(--teal); animation: live-pulse 2.2s ease-in-out infinite; }
         .dot-red   { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
@@ -652,6 +654,7 @@
             body { padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
             .top-bar { position: sticky; top: 0; z-index: 950; padding: 6px 0; background: rgba(6,8,16,.92); backdrop-filter: blur(12px); }
             .sync-dot { padding: 6px 10px; font-size: 10px; }
+            .top-action-btn { padding: 7px 10px; font-size: 10px; }
             .progress-wrap { margin-bottom: 10px; }
             .captain-focus-banner { align-items: flex-start; flex-direction: column; gap: 3px; }
             .captain-focus-banner strong { margin-left: 0; font-size: 15px; }
