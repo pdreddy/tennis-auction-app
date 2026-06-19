@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { configRef, usersRef, userRef, auctionRef as getAuctionRef, connectedRef, rootRef, DATA_PATHS } from "./config/firebase.js";
-import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
+import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, ANTI_SNIPE_THRESHOLD_MS, ANTI_SNIPE_EXTENSION_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
 import { PLAYERS, withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
@@ -127,10 +127,17 @@ function freshPools() {
     return p;
 }
 
+function getAntiSnipeTimerEnd(timerEnd, now, thresholdMs, extensionMs) {
+    if (!timerEnd || !thresholdMs || !extensionMs) return timerEnd;
+    const remainingMs = timerEnd - now;
+    return remainingMs > 0 && remainingMs < thresholdMs ? now + extensionMs : timerEnd;
+}
+
 function initialDoc(sid) {
     return { sessionId:sid, teams:getInitialTeams(), playerPools:freshPools(),
         currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
-        timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now() };
+        timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now(),
+        config:{budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS, antiSnipeThresholdMs:ANTI_SNIPE_THRESHOLD_MS, antiSnipeExtensionMs:ANTI_SNIPE_EXTENSION_MS} };
 }
 
 const THIS_YEAR = new Date().getFullYear();
@@ -306,7 +313,7 @@ function AdminConfig() {
     const [tab, setTab]         = useState("players");
     const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
     const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
-    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS,playersPerGroup:5});
+    const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS,antiSnipeThresholdMs:ANTI_SNIPE_THRESHOLD_MS,antiSnipeExtensionMs:ANTI_SNIPE_EXTENSION_MS,playersPerGroup:5});
     const [saving, setSaving]   = useState(false);
     const [status, setStatus]   = useState(null);
     const [drag, setDrag]       = useState(false);
@@ -512,6 +519,8 @@ function AdminConfig() {
                                 {key:"playersPerGroup", label:"Players per Group", desc:"How many players are divided into each auction group", suffix:" players", min:1, max:50, step:1},
                                 {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"$",      min:5000,  step:5000},
                                 {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
+                                {key:"antiSnipeThresholdMs", label:"Anti-Snipe Window (sec)", desc:"If a bid arrives with fewer than this many seconds remaining, extend the timer", suffix:"s", min:0, max:60, step:1, scale:1000},
+                                {key:"antiSnipeExtensionMs", label:"Anti-Snipe Extension (sec)", desc:"How many seconds should remain after a last-second bid triggers an extension", suffix:"s", min:0, max:60, step:1, scale:1000},
                             ].map(({key,label,desc,suffix,min,max,step,scale})=>(
                                 <div key={key} className="setting-row">
                                     <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>
@@ -528,7 +537,7 @@ function AdminConfig() {
                             <strong style={{color:"var(--text)"}}>Summary: </strong>
                             {teams.length} teams × {settings.teamSize} players = {teams.length*settings.teamSize} total slots
                             {settings.playersPerGroup ? ` · ${settings.playersPerGroup} players/group` : ""}
-                            {" "}· {fmtR(settings.budget)} budget · {Math.round(settings.timerMs/1000)}s timer
+                            {" "}· {fmtR(settings.budget)} budget · {Math.round(settings.timerMs/1000)}s timer · anti-snipe {Math.round((settings.antiSnipeThresholdMs||0)/1000)}s→{Math.round((settings.antiSnipeExtensionMs||0)/1000)}s
                         </div>
                     </div>
                 )}
@@ -765,6 +774,8 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
             const budget          = cfg?.settings?.budget          || TEAM_BUDGET;
             const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
             const timerMs         = cfg?.settings?.timerMs         || TIMER_MS;
+            const antiSnipeThresholdMs = cfg?.settings?.antiSnipeThresholdMs ?? ANTI_SNIPE_THRESHOLD_MS;
+            const antiSnipeExtensionMs = cfg?.settings?.antiSnipeExtensionMs ?? ANTI_SNIPE_EXTENSION_MS;
             const playersPerGroup = cfg?.settings?.playersPerGroup || 5;
             const capNames   = new Set(cfgTeams.map(t=>t.captain));
             const pools      = buildPools(cfgPlayers, POOL_ORDER, capNames);
@@ -775,7 +786,7 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
                 sessionId:sid, teams:initTeams, playerPools:pools,
                 currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
                 timerEnd:Date.now()+timerMs, lastUpdate:Date.now(),
-                config:{budget,teamSize,timerMs,playersPerGroup},
+                config:{budget,teamSize,timerMs,antiSnipeThresholdMs,antiSnipeExtensionMs,playersPerGroup},
                 cfgPlayers, cfgTeams
             });
             saveSession(sid);
@@ -964,6 +975,8 @@ function Auction({ sid, user, onBack }) {
 
     const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
     const TIMER_EFF = state.config?.timerMs || TIMER_MS;
+    const ANTI_SNIPE_THRESHOLD_EFF = state.config?.antiSnipeThresholdMs ?? ANTI_SNIPE_THRESHOLD_MS;
+    const ANTI_SNIPE_EXTENSION_EFF = state.config?.antiSnipeExtensionMs ?? ANTI_SNIPE_EXTENSION_MS;
     const eff = getEffective(state);
     const POOL_CAPS_EFF = {};
     POOL_ORDER.forEach(key => {
@@ -1025,7 +1038,12 @@ function Auction({ sid, user, onBack }) {
             return {...bids,[teamId]:n};
         }, (err,committed) => {
             if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
-            else { setBidInputs(p=>({...p,[teamId]:""})); auctionRef.current.update({lastUpdate:Date.now()}); }
+            else {
+                const now = Date.now();
+                const timerEnd = getAntiSnipeTimerEnd(state.timerEnd, now, ANTI_SNIPE_THRESHOLD_EFF, ANTI_SNIPE_EXTENSION_EFF);
+                setBidInputs(p=>({...p,[teamId]:""}));
+                auctionRef.current.update({lastUpdate:now, timerEnd});
+            }
         });
     };
 
@@ -1085,7 +1103,7 @@ function Auction({ sid, user, onBack }) {
             teams: initTeams, playerPools: pools,
             currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
             timerEnd: Date.now()+TIMER_EFF, lastUpdate: Date.now(),
-            config: state.config || {budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS},
+            config: state.config || {budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS, antiSnipeThresholdMs:ANTI_SNIPE_THRESHOLD_MS, antiSnipeExtensionMs:ANTI_SNIPE_EXTENSION_MS},
             cfgPlayers, cfgTeams
         };
         auctionRef.current.set(doc);
