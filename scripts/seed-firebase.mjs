@@ -9,6 +9,7 @@ const databaseUrl = process.env.FIREBASE_DATABASE_URL || process.env.VITE_FIREBA
 const configPath = process.env.FIREBASE_CONFIG_PATH || "config";
 const usersPath = process.env.FIREBASE_USERS_PATH || "users";
 const auctionsPath = process.env.FIREBASE_AUCTIONS_PATH || "auctionsdata";
+const seededAt = Date.now();
 
 if (!serviceAccountJson) {
     throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_JSON. Paste the service account JSON into an environment variable; do not commit it.");
@@ -99,13 +100,13 @@ const seedConfig = {
         antiSnipeExtensionMs: ANTI_SNIPE_EXTENSION_MS,
         playersPerGroup: 5
     },
-    updatedAt: Date.now()
+    updatedAt: seededAt
 };
 
 const token = await getAccessToken();
 await put(configPath, seedConfig, token);
 await put(usersPath, buildUsers(), token);
-await put(auctionsPath, {}, token);
+await put(auctionsPath, {_initialized: true, seededAt}, token);
 
 console.log(`Seeded Firebase Realtime Database paths: ${configPath}, ${usersPath}, ${auctionsPath}`);
 console.log(`Players: ${PLAYERS.length}; teams: ${TEAMS.length}; users: ${Object.keys(buildUsers()).length}`);

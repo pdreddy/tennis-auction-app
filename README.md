@@ -147,17 +147,17 @@ If you choose a SQL database later, create equivalent tables named `config`, `us
 
 ### Seeding Firebase Realtime Database
 
-If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an empty auction collection. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty.
+If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an initialized auction collection marker so all required paths are visible in Firebase. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty.
 
 Do not commit a Firebase service account JSON file. Pass it through an environment variable and rotate the key if it has been exposed. Example:
 
 ```bash
-export FIREBASE_DATABASE_URL="https://<project-id>-default-rtdb.firebaseio.com"
+export FIREBASE_DATABASE_URL="https://pdrdata-bcdc9-default-rtdb.firebaseio.com"
 export FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
 npm run seed:firebase
 ```
 
-Optional path overrides are available with `FIREBASE_CONFIG_PATH`, `FIREBASE_USERS_PATH`, and `FIREBASE_AUCTIONS_PATH`.
+Optional path overrides are available with `FIREBASE_CONFIG_PATH`, `FIREBASE_USERS_PATH`, and `FIREBASE_AUCTIONS_PATH`. Firebase may hide empty objects in the console, so the script writes `auctionsdata._initialized` to make that required path visible before the first auction session is created.
 
 ### Firebase setup and data paths
 
