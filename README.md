@@ -60,7 +60,7 @@ The app defaults to Firebase for full realtime updates. For a Netlify-friendly h
 
 ### Firebase provider
 
-Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in Vercel environment variables for production.
+Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in your hosting provider environment variables for production.
 
 ### Netlify / Upstash Redis provider
 
@@ -146,7 +146,7 @@ If you choose a SQL database later, create equivalent tables named `config`, `us
 
 ### Firebase setup and data paths
 
-Database wiring lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in Vercel project environment variables for production. To switch to the alternate Netlify database, set `VITE_DATABASE_PROVIDER=netlify` and configure the Upstash Redis variables from `.env.example`. To change where data is stored, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
+Database wiring lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in your hosting provider environment variables for production. To switch to the alternate Netlify database, set `VITE_DATABASE_PROVIDER=netlify` and configure the Upstash Redis variables from `.env.example`. To change where data is stored, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
 
 - `config` — saved auction configuration, players, teams, and settings.
 - `users` — PIN login records. Defaults can be edited in `src/config/pins.json`, loaded in the admin PIN screen, then saved to this database path.
