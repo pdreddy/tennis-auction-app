@@ -50,6 +50,10 @@ Open:
 http://localhost:3000
 ```
 
+## Anti-snipe bidding
+
+The auction includes an anti-snipe extension to prevent a team from winning only because it bid in the final second. By default, if a valid bid is placed with 5 seconds or less remaining, the timer is extended so 10 seconds remain. Admins can adjust or disable this in the setup settings by changing **Anti-Snipe Window** or **Anti-Snipe Extension**.
+
 ## Database options
 
 The app defaults to Firebase for full realtime updates. For a Vercel-native upgrade path, set `VITE_DATABASE_PROVIDER=vercel` and connect an Upstash Redis database from the Vercel Marketplace. The Vercel provider stores the app state in Redis through `/api/db/*` serverless functions and polls for updates from the browser.
@@ -129,7 +133,7 @@ Firebase settings, teams, players, and generated pool defaults are split into sm
 - `src/config/pins.json` — default 6-digit PINs for admin and team accounts; the admin PIN screen can load these and save them into Firebase.
 - `src/data/teams.js` — team names and captains.
 - `src/data/players.js` — player list, UTR values, and base prices.
-- `src/data/settings.js` — budgets, timer, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0; auction bidding starts at UTR 3.0 and moves upward.
+- `src/data/settings.js` — budgets, timer, anti-snipe defaults, UTR price tiers, and pool order. Player categories map high-to-low as Cat 1 → UTR 6.0 through Cat 7 → UTR 3.0; auction bidding starts at UTR 3.0 and moves upward.
 - `src/data/pools.js` — derived captain set, player pools, and default pool caps.
 
 ## Notes

@@ -48,11 +48,29 @@ function vercelRef(path = "") {
             const {value} = await apiRequest(path);
             return snapshot(value);
         },
+        child(childPath) {
+            return vercelRef([path, childPath].filter(Boolean).join("/"));
+        },
         async set(value) {
             await apiRequest(path, {method: "PUT", body: JSON.stringify({value})});
         },
         async update(value) {
             await apiRequest(path, {method: "PATCH", body: JSON.stringify({value})});
+        },
+        async transaction(updateFn, complete) {
+            try {
+                const {value} = await apiRequest(path);
+                const next = updateFn(value);
+                if (next === undefined) {
+                    if (complete) complete(null, false, snapshot(value));
+                    return;
+                }
+                await apiRequest(path, {method: "PUT", body: JSON.stringify({value: next})});
+                if (complete) complete(null, true, snapshot(next));
+            } catch (error) {
+                if (complete) complete(error, false);
+                else throw error;
+            }
         },
         on(event, callback, errorCallback) {
             if (event !== "value") throw new Error(`Unsupported event: ${event}`);

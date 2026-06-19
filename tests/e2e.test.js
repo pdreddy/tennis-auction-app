@@ -17,6 +17,7 @@
  * 10. reserve logic     – progressive reserve for future UTR levels
  * 11. bid increments    – $1k manual increments and quick chips
  * 12. TIMER_EFF         – timer respects state.config
+ * 13. anti-snipe timer  – last-second bids extend the clock
  */
 
 import { PLAYERS as DEFAULT_PLAYERS } from "../src/data/players.js";
@@ -28,6 +29,8 @@ const POOL_ORDER = ["utr_3_0","utr_3_5","utr_4_0","utr_4_5","utr_5_0","utr_5_5",
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
+const ANTI_SNIPE_THRESHOLD_MS = 5000;
+const ANTI_SNIPE_EXTENSION_MS = 10000;
 const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 
@@ -125,6 +128,12 @@ function buildBidChips(highest, playerPrice, maxBid) {
 
 function isOneThousandIncrement(amount, playerPrice) {
     return amount >= playerPrice && (amount - playerPrice) % 1000 === 0;
+}
+
+function getAntiSnipeTimerEnd(timerEnd, now, thresholdMs, extensionMs) {
+    if (!timerEnd || !thresholdMs || !extensionMs) return timerEnd;
+    const remainingMs = timerEnd - now;
+    return remainingMs > 0 && remainingMs <= thresholdMs ? now + extensionMs : timerEnd;
 }
 
 function parseCSV(text) {
@@ -441,11 +450,15 @@ test("config includes all settings fields", () => {
     const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
     const timerMs         = cfg?.settings?.timerMs         || TIMER_MS;
     const playersPerGroup = cfg?.settings?.playersPerGroup || 5;
-    const config = {budget, teamSize, timerMs, playersPerGroup};
+    const antiSnipeThresholdMs = cfg?.settings?.antiSnipeThresholdMs ?? ANTI_SNIPE_THRESHOLD_MS;
+    const antiSnipeExtensionMs = cfg?.settings?.antiSnipeExtensionMs ?? ANTI_SNIPE_EXTENSION_MS;
+    const config = {budget, teamSize, timerMs, antiSnipeThresholdMs, antiSnipeExtensionMs, playersPerGroup};
     expect(config.budget).toBe(80000);
     expect(config.teamSize).toBe(5);
     expect(config.timerMs).toBe(30000);
     expect(config.playersPerGroup).toBe(8);
+    expect(config.antiSnipeThresholdMs).toBe(ANTI_SNIPE_THRESHOLD_MS);
+    expect(config.antiSnipeExtensionMs).toBe(ANTI_SNIPE_EXTENSION_MS);
 });
 
 test("config falls back to defaults when settings missing", () => {
@@ -581,6 +594,33 @@ test("TEAM_SIZE_EFF uses configured teamSize", () => {
     const state = {config:{teamSize:5}};
     const TEAM_SIZE_EFF = state.config?.teamSize || TEAM_SIZE;
     expect(TEAM_SIZE_EFF).toBe(5);
+});
+
+console.log("\n13. anti-snipe timer extension");
+
+test("extends timer when bid arrives inside anti-snipe window", () => {
+    const now = 1_000_000;
+    const timerEnd = now + 1000;
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(now + 10000);
+});
+
+test("does not extend timer when bid arrives before anti-snipe window", () => {
+    const now = 1_000_000;
+    const timerEnd = now + 12000;
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(timerEnd);
+});
+
+test("does not revive an already expired timer", () => {
+    const now = 1_000_000;
+    const timerEnd = now - 1;
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(timerEnd);
+});
+
+test("anti-snipe can be disabled with zero threshold or extension", () => {
+    const now = 1_000_000;
+    const timerEnd = now + 1000;
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 0, 10000)).toBe(timerEnd);
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 0)).toBe(timerEnd);
 });
 
 // ── Summary ───────────────────────────────────────────────────────────────────

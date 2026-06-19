@@ -1,6 +1,8 @@
 export const TEAM_BUDGET = 100000;
 export const TEAM_SIZE = 7;
 export const TIMER_MS = 60000;
+export const ANTI_SNIPE_THRESHOLD_MS = 5000;
+export const ANTI_SNIPE_EXTENSION_MS = 10000;
 export const UTR_TIERS = [6.0,5.5,5.0,4.5,4.0,3.5,3.0];
 export const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 export const CATEGORY_UTR = {1:6.0,2:5.5,3:5.0,4:4.5,5:4.0,6:3.5,7:3.0};
