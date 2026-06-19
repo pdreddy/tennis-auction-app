@@ -68,7 +68,7 @@ Use this provider when you want the app data to live behind Netlify Functions in
 
 1. Create or connect an Upstash Redis database and copy its REST URL and REST token.
 2. Add `VITE_DATABASE_PROVIDER=netlify`.
-3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables. If you are using Firebase Realtime Database with public rules instead of Upstash, set `FIREBASE_DATABASE_URL` on Netlify and leave the Upstash variables blank.
+3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables. If you are using Firebase Realtime Database instead of Upstash, set `FIREBASE_DATABASE_URL` on Netlify and leave the Upstash variables blank. For locked-down Firebase rules, also set `FIREBASE_SERVICE_ACCOUNT_JSON` as a server-only Netlify environment variable.
 4. Optionally change `NETLIFY_DB_KEY` if multiple deployments should not share the same Redis document.
 5. Redeploy the project.
 
@@ -149,7 +149,7 @@ If you choose a SQL database later, create equivalent tables named `config`, `us
 
 If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an initialized auction collection marker so all required paths are visible in Firebase. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty. In Admin Config, upload either CSV or JSON player data, then click **Save All**; the save writes `config.players` and also initializes missing `users` records and `auctionsdata._initialized` automatically.
 
-If your Realtime Database rules are temporarily public (`.read`/`.write` set to `true`), you can seed with only `FIREBASE_DATABASE_URL`. For locked-down rules, pass a service account through an environment variable. Do not commit a Firebase service account JSON file, and rotate the key if it has been exposed. Example:
+If your Realtime Database rules are temporarily public (`.read`/`.write` set to `true`), you can seed with only `FIREBASE_DATABASE_URL`. For locked-down rules, pass a service account through `FIREBASE_SERVICE_ACCOUNT_JSON` in an environment variable. Do not commit a Firebase service account JSON file, and rotate the key if it has been exposed. Example:
 
 ```bash
 export FIREBASE_DATABASE_URL="https://pdrdata-bcdc9-default-rtdb.firebaseio.com"

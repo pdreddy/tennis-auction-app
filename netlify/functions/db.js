@@ -1,7 +1,12 @@
+import { createSign } from "node:crypto";
+
 const DATA_KEY = process.env.NETLIFY_DB_KEY || process.env.VERCEL_DB_KEY || "tennis-auction-app:data";
 const REST_URL = process.env.NETLIFY_BLOBS_REDIS_URL || process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const REST_TOKEN = process.env.NETLIFY_BLOBS_REDIS_TOKEN || process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || process.env.VITE_FIREBASE_DATABASE_URL;
+const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+let firebaseAccessToken = null;
+let firebaseTokenExpiresAt = 0;
 
 function response(statusCode, body, headers = {}) {
     return {
@@ -81,6 +86,52 @@ async function command(...args) {
     return body.result;
 }
 
+function base64url(value) {
+    return Buffer.from(typeof value === "string" ? value : JSON.stringify(value))
+        .toString("base64")
+        .replace(/=/g, "")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_");
+}
+
+function signFirebaseJwt(serviceAccount) {
+    const now = Math.floor(Date.now() / 1000);
+    const header = {alg: "RS256", typ: "JWT"};
+    const claim = {
+        iss: serviceAccount.client_email,
+        scope: "https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email",
+        aud: serviceAccount.token_uri || "https://oauth2.googleapis.com/token",
+        iat: now,
+        exp: now + 3600
+    };
+    const unsigned = `${base64url(header)}.${base64url(claim)}`;
+    const signature = createSign("RSA-SHA256").update(unsigned).sign(serviceAccount.private_key, "base64url");
+    return `${unsigned}.${signature}`;
+}
+
+async function getFirebaseAccessToken() {
+    if (!FIREBASE_SERVICE_ACCOUNT_JSON) return null;
+    if (firebaseAccessToken && Date.now() < firebaseTokenExpiresAt - 60000) return firebaseAccessToken;
+    const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
+    const response = await fetch(serviceAccount.token_uri || "https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {"content-type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion: signFirebaseJwt(serviceAccount)
+        })
+    });
+    const body = await response.json();
+    if (!response.ok) {
+        const err = new Error(body.error_description || body.error || `Firebase token request failed with ${response.status}`);
+        err.statusCode = response.status || 500;
+        throw err;
+    }
+    firebaseAccessToken = body.access_token;
+    firebaseTokenExpiresAt = Date.now() + Number(body.expires_in || 3600) * 1000;
+    return firebaseAccessToken;
+}
+
 function firebaseUrl() {
     return `${FIREBASE_DATABASE_URL.replace(/\/$/, "")}/.json`;
 }
@@ -91,9 +142,12 @@ async function firebaseRequest(method, value) {
         err.statusCode = 500;
         throw err;
     }
+    const token = await getFirebaseAccessToken();
+    const headers = {"content-type": "application/json"};
+    if (token) headers.authorization = `Bearer ${token}`;
     const response = await fetch(firebaseUrl(), {
         method,
-        headers: {"content-type": "application/json"},
+        headers,
         body: value === undefined ? undefined : JSON.stringify(value)
     });
     const text = await response.text();
