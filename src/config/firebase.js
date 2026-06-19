@@ -1,7 +1,7 @@
 const env = import.meta.env || {};
 const databaseProvider = env.VITE_DATABASE_PROVIDER || "firebase";
 const apiBase = env.VITE_DATABASE_API_BASE || "/api/db";
-const pollMs = Number(env.VITE_VERCEL_DB_POLL_MS || 1000);
+const pollMs = Number(env.VITE_DATABASE_POLL_MS || env.VITE_VERCEL_DB_POLL_MS || 1000);
 
 const firebaseConfig = {
     apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
@@ -39,7 +39,7 @@ async function apiRequest(path, options = {}) {
     return body;
 }
 
-function vercelRef(path = "") {
+function apiBackedRef(path = "") {
     const timers = new Set();
     return {
         async once(event) {
@@ -49,7 +49,7 @@ function vercelRef(path = "") {
             return snapshot(value);
         },
         child(childPath) {
-            return vercelRef([path, childPath].filter(Boolean).join("/"));
+            return apiBackedRef([path, childPath].filter(Boolean).join("/"));
         },
         async set(value) {
             await apiRequest(path, {method: "PUT", body: JSON.stringify({value})});
@@ -106,7 +106,7 @@ if (databaseProvider === "firebase") {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 }
 
-export const db = databaseProvider === "firebase" ? firebase.database() : {ref: vercelRef};
+export const db = databaseProvider === "firebase" ? firebase.database() : {ref: apiBackedRef};
 
 export const configRef = () => db.ref(DATA_PATHS.config);
 export const usersRef = () => db.ref(DATA_PATHS.users);
