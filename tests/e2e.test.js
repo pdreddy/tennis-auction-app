@@ -29,8 +29,8 @@ const POOL_ORDER = ["utr_3_0","utr_3_5","utr_4_0","utr_4_5","utr_5_0","utr_5_5",
 const TEAM_BUDGET = 100000;
 const TEAM_SIZE   = 7;
 const TIMER_MS    = 60000;
-const ANTI_SNIPE_THRESHOLD_MS = 5000;
-const ANTI_SNIPE_EXTENSION_MS = 10000;
+const ANTI_SNIPE_THRESHOLD_MS = 3000;
+const ANTI_SNIPE_EXTENSION_MS = 3000;
 const UTR_PRICES = {6.0:20000,5.5:14000,5.0:12000,4.5:10000,4.0:8000,3.5:6000,3.0:5000};
 const BID_INCREMENT_OPTIONS = [1000, 2000, 3000, 5000];
 
@@ -133,7 +133,7 @@ function isOneThousandIncrement(amount, playerPrice) {
 function getAntiSnipeTimerEnd(timerEnd, now, thresholdMs, extensionMs) {
     if (!timerEnd || !thresholdMs || !extensionMs) return timerEnd;
     const remainingMs = timerEnd - now;
-    return remainingMs > 0 && remainingMs <= thresholdMs ? now + extensionMs : timerEnd;
+    return remainingMs > 0 && remainingMs < thresholdMs ? now + extensionMs : timerEnd;
 }
 
 function parseCSV(text) {
@@ -601,26 +601,26 @@ console.log("\n13. anti-snipe timer extension");
 test("extends timer when bid arrives inside anti-snipe window", () => {
     const now = 1_000_000;
     const timerEnd = now + 1000;
-    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(now + 10000);
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 3000, 3000)).toBe(now + 3000);
 });
 
-test("does not extend timer when bid arrives before anti-snipe window", () => {
+test("does not extend timer when at least three seconds remain", () => {
     const now = 1_000_000;
-    const timerEnd = now + 12000;
-    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(timerEnd);
+    const timerEnd = now + 3000;
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 3000, 3000)).toBe(timerEnd);
 });
 
 test("does not revive an already expired timer", () => {
     const now = 1_000_000;
     const timerEnd = now - 1;
-    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 10000)).toBe(timerEnd);
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 3000, 3000)).toBe(timerEnd);
 });
 
 test("anti-snipe can be disabled with zero threshold or extension", () => {
     const now = 1_000_000;
     const timerEnd = now + 1000;
-    expect(getAntiSnipeTimerEnd(timerEnd, now, 0, 10000)).toBe(timerEnd);
-    expect(getAntiSnipeTimerEnd(timerEnd, now, 5000, 0)).toBe(timerEnd);
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 0, 3000)).toBe(timerEnd);
+    expect(getAntiSnipeTimerEnd(timerEnd, now, 3000, 0)).toBe(timerEnd);
 });
 
 // ── Summary ───────────────────────────────────────────────────────────────────

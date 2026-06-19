@@ -130,7 +130,7 @@ function freshPools() {
 function getAntiSnipeTimerEnd(timerEnd, now, thresholdMs, extensionMs) {
     if (!timerEnd || !thresholdMs || !extensionMs) return timerEnd;
     const remainingMs = timerEnd - now;
-    return remainingMs > 0 && remainingMs <= thresholdMs ? now + extensionMs : timerEnd;
+    return remainingMs > 0 && remainingMs < thresholdMs ? now + extensionMs : timerEnd;
 }
 
 function initialDoc(sid) {
@@ -519,8 +519,8 @@ function AdminConfig() {
                                 {key:"playersPerGroup", label:"Players per Group", desc:"How many players are divided into each auction group", suffix:" players", min:1, max:50, step:1},
                                 {key:"budget",   label:"Budget per Team",    desc:"Starting coins each team gets to spend",     suffix:"$",      min:5000,  step:5000},
                                 {key:"timerMs",   label:"Bid Timer (sec)",    desc:"Countdown per player during auction",        suffix:"s",      min:10,    max:600,step:5, scale:1000},
-                                {key:"antiSnipeThresholdMs", label:"Anti-Snipe Window (sec)", desc:"If a bid arrives with this many seconds or less remaining, extend the timer", suffix:"s", min:0, max:60, step:1, scale:1000},
-                                {key:"antiSnipeExtensionMs", label:"Anti-Snipe Extension (sec)", desc:"How many seconds remain after a last-second bid triggers an extension", suffix:"s", min:0, max:60, step:1, scale:1000},
+                                {key:"antiSnipeThresholdMs", label:"Anti-Snipe Window (sec)", desc:"If a bid arrives with fewer than this many seconds remaining, extend the timer", suffix:"s", min:0, max:60, step:1, scale:1000},
+                                {key:"antiSnipeExtensionMs", label:"Anti-Snipe Extension (sec)", desc:"How many seconds should remain after a last-second bid triggers an extension", suffix:"s", min:0, max:60, step:1, scale:1000},
                             ].map(({key,label,desc,suffix,min,max,step,scale})=>(
                                 <div key={key} className="setting-row">
                                     <div><div className="setting-label">{label}</div><div className="setting-desc">{desc}</div></div>

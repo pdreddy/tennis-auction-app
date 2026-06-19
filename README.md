@@ -52,7 +52,7 @@ http://localhost:3000
 
 ## Anti-snipe bidding
 
-The auction includes an anti-snipe extension to prevent a team from winning only because it bid in the final second. By default, if a valid bid is placed with 5 seconds or less remaining, the timer is extended so 10 seconds remain. Admins can adjust or disable this in the setup settings by changing **Anti-Snipe Window** or **Anti-Snipe Extension**.
+The auction includes an anti-snipe extension to prevent a team from winning only because it bid in the final second. By default, if a valid bid is placed with fewer than 3 seconds remaining, the timer is extended so 3 seconds remain. Admins can adjust or disable this in the setup settings by changing **Anti-Snipe Window** or **Anti-Snipe Extension**.
 
 ## Database options
 
