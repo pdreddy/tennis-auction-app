@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { configRef, usersRef, userRef, auctionRef as getAuctionRef, connectedRef, rootRef, DATA_PATHS } from "./config/firebase.js";
 import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, ANTI_SNIPE_THRESHOLD_MS, ANTI_SNIPE_EXTENSION_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
-import { PLAYERS, withPlayerMeta } from "./data/players.js";
+import { withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
-import { CAPTAIN_NAMES, PLAYER_POOLS } from "./data/pools.js";
 import DEFAULT_PINS from "./config/pins.json";
 
 
@@ -111,33 +110,10 @@ function getEffective(state) {
     return { complete: false, effPool, effPlayer, poolKey: POOL_ORDER[effPool], pool, player: pool[effPlayer]||null };
 }
 
-function getInitialTeams() {
-    const byName = Object.fromEntries(PLAYERS.map(withPlayerMeta).map(p=>[p.Name,p]));
-    return TEAMS.map(team => {
-        const cap = byName[team.captain];
-        const price = cap?.price||0;
-        return { ...team, budget: TEAM_BUDGET-price, totalSpent: price,
-            players: cap ? [{...cap,id:`c${team.id}`,Name:cap.Name,utr:cap.utr,acquiredPrice:price}] : [] };
-    });
-}
-
-function freshPools() {
-    const p = {};
-    POOL_ORDER.forEach(k => { p[k] = PLAYER_POOLS[k].map(x=>({...x})); });
-    return p;
-}
-
 function getAntiSnipeTimerEnd(timerEnd, now, thresholdMs, extensionMs) {
     if (!timerEnd || !thresholdMs || !extensionMs) return timerEnd;
     const remainingMs = timerEnd - now;
     return remainingMs > 0 && remainingMs < thresholdMs ? now + extensionMs : timerEnd;
-}
-
-function initialDoc(sid) {
-    return { sessionId:sid, teams:getInitialTeams(), playerPools:freshPools(),
-        currentPoolIndex:0, currentPlayerIndex:0, currentBids:{},
-        timerEnd: Date.now()+TIMER_MS, lastUpdate: Date.now(),
-        config:{budget:TEAM_BUDGET, teamSize:TEAM_SIZE, timerMs:TIMER_MS, antiSnipeThresholdMs:ANTI_SNIPE_THRESHOLD_MS, antiSnipeExtensionMs:ANTI_SNIPE_EXTENSION_MS} };
 }
 
 const THIS_YEAR = new Date().getFullYear();
@@ -311,7 +287,7 @@ function Login({ onLogin }) {
 // ─── Admin Config (Players · Teams · Settings) ───────────────────────────────
 function AdminConfig() {
     const [tab, setTab]         = useState("players");
-    const [players, setPlayers] = useState(PLAYERS.map(p=>({...p})));
+    const [players, setPlayers] = useState([]);
     const [teams, setTeams]     = useState(TEAMS.map(t=>({...t})));
     const [settings, setSettings] = useState({budget:TEAM_BUDGET,teamSize:TEAM_SIZE,timerMs:TIMER_MS,antiSnipeThresholdMs:ANTI_SNIPE_THRESHOLD_MS,antiSnipeExtensionMs:ANTI_SNIPE_EXTENSION_MS,playersPerGroup:5});
     const [saving, setSaving]   = useState(false);
@@ -322,8 +298,9 @@ function AdminConfig() {
     useEffect(() => {
         configRef().once("value").then(snap => {
             const d = snap.val();
-            if (!d) return;
+            if (!d) { setStatus({ok:false,text:"No database config found. Seed Firebase or save imported players before starting an auction."}); return; }
             if (Array.isArray(d.players) && d.players.length) setPlayers(d.players.map(withPlayerMeta));
+            else setStatus({ok:false,text:"No players found in database config. Seed Firebase or import players and save."});
             if (Array.isArray(d.teams)   && d.teams.length)   setTeams(d.teams);
             if (d.settings) setSettings(s=>({...s,...d.settings}));
         });
@@ -665,15 +642,18 @@ const POOL_LABELS = {
 };
 function PoolViewer() {
     const [open, setOpen] = useState({});
-    const [pools, setPools] = useState(PLAYER_POOLS);
-    const [captainNames, setCaptainNames] = useState(CAPTAIN_NAMES);
+    const [pools, setPools] = useState({});
+    const [captainNames, setCaptainNames] = useState(new Set());
     const toggle = k => setOpen(o => ({...o,[k]:!o[k]}));
 
     useEffect(() => {
         configRef().once("value").then(snap => {
             const d = snap.val();
-            if (!d) return;
-            const cfgPlayers = Array.isArray(d.players) && d.players.length ? d.players.map(withPlayerMeta) : PLAYERS;
+            if (!d || !Array.isArray(d.players) || !d.players.length) {
+                setPools({});
+                return;
+            }
+            const cfgPlayers = d.players.map(withPlayerMeta);
             const cfgTeams   = Array.isArray(d.teams)   && d.teams.length   ? d.teams   : TEAMS;
             const capNames   = new Set(cfgTeams.map(t=>t.captain));
             setCaptainNames(capNames);
@@ -769,7 +749,10 @@ function Lobby({ user, onJoin, onLogout, selectedYear, onYearSelect }) {
         try {
             const cfgSnap = await configRef().once("value");
             const cfg = cfgSnap.val();
-            const cfgPlayers = (cfg?.players?.length ? cfg.players.map(withPlayerMeta) : PLAYERS);
+            if (!Array.isArray(cfg?.players) || !cfg.players.length) {
+                throw new Error("No players found in database config. Run npm run seed:firebase or save players in Admin Config before creating an auction.");
+            }
+            const cfgPlayers = cfg.players.map(withPlayerMeta);
             const cfgTeams   = (cfg?.teams?.length   ? cfg.teams   : TEAMS);
             const budget          = cfg?.settings?.budget          || TEAM_BUDGET;
             const teamSize        = cfg?.settings?.teamSize        || TEAM_SIZE;
@@ -1092,7 +1075,11 @@ function Auction({ sid, user, onBack }) {
     };
 
     const reset = () => {
-        const cfgPlayers = state.cfgPlayers ? state.cfgPlayers.map(withPlayerMeta) : PLAYERS;
+        if (!Array.isArray(state.cfgPlayers) || !state.cfgPlayers.length) {
+            setActionError("Cannot reset: this auction has no database-backed player config saved.");
+            return;
+        }
+        const cfgPlayers = state.cfgPlayers.map(withPlayerMeta);
         const cfgTeams   = state.cfgTeams   || TEAMS;
         const budget     = state.config?.budget  || TEAM_BUDGET;
         const capNames   = new Set(cfgTeams.map(t=>t.captain));
