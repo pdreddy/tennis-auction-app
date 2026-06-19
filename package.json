@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
     "start": "vite preview --host 0.0.0.0 --port 3000",
-    "test": "node tests/e2e.test.js"
+    "test": "node tests/e2e.test.js",
+    "seed:firebase": "node scripts/seed-firebase.mjs"
   },
   "dependencies": {
     "vite": "latest",

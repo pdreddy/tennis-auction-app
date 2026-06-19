@@ -1,6 +1,6 @@
 # Tennis Auction App
 
-React single-page app for running a live tennis auction with either Firebase Realtime Database or a Vercel-hosted Upstash Redis database. This repo is ready to push as a fresh Vercel-hosted project.
+React single-page app for running a live tennis auction with Firebase Realtime Database or an API-backed Upstash Redis database. This repo is ready to deploy on Netlify and still keeps the Vercel API route for existing deployments.
 
 ## Local development
 
@@ -16,7 +16,7 @@ Create local Firebase environment settings:
 cp .env.example .env.local
 ```
 
-Keep `VITE_DATABASE_PROVIDER=firebase` for Firebase, or set `VITE_DATABASE_PROVIDER=vercel` and provide the Upstash Redis REST values through Vercel environment variables for the alternate Vercel-hosted database.
+Keep `VITE_DATABASE_PROVIDER=netlify` for the Netlify-hosted Upstash database function, or set `VITE_DATABASE_PROVIDER=firebase` and provide the Firebase variables if you want direct Firebase Realtime Database access. Existing Vercel deployments can continue using `VITE_DATABASE_PROVIDER=vercel`.
 
 Start the React/Vite dev server:
 
@@ -56,23 +56,23 @@ The auction includes an anti-snipe extension to prevent a team from winning only
 
 ## Database options
 
-The app defaults to Firebase for full realtime updates. For a Vercel-native upgrade path, set `VITE_DATABASE_PROVIDER=vercel` and connect an Upstash Redis database from the Vercel Marketplace. The Vercel provider stores the app state in Redis through `/api/db/*` serverless functions and polls for updates from the browser.
+The app defaults to the Netlify-friendly API-backed provider for new deployments. Set `VITE_DATABASE_PROVIDER=netlify` and connect an Upstash Redis database, or explicitly set `VITE_DATABASE_PROVIDER=firebase` when you have Firebase Realtime Database environment variables configured. The API-backed provider stores the app state in Redis through `/api/db/*` serverless functions and polls for updates from the browser.
 
 ### Firebase provider
 
-Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in Vercel environment variables for production.
+Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Only select this provider after setting your Firebase environment variables; otherwise use `netlify` so the app does not try to initialize Firebase with a blank database URL. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in your hosting provider environment variables for production.
 
-### Vercel / Upstash Redis provider
+### Netlify / Upstash Redis provider
 
-Use this provider when you want the app data to live behind Vercel serverless functions instead of direct browser Firebase access. In Vercel:
+Use this provider when you want the app data to live behind Netlify Functions instead of direct browser Firebase access. In Netlify:
 
-1. Install an Upstash Redis integration from the Vercel Marketplace.
-2. Add `VITE_DATABASE_PROVIDER=vercel`.
-3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables.
-4. Optionally change `VERCEL_DB_KEY` if multiple deployments should not share the same Redis document.
+1. Create or connect an Upstash Redis database and copy its REST URL and REST token.
+2. Add `VITE_DATABASE_PROVIDER=netlify`.
+3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables. If you are using Firebase Realtime Database with public rules instead of Upstash, set `FIREBASE_DATABASE_URL` on Netlify and leave the Upstash variables blank.
+4. Optionally change `NETLIFY_DB_KEY` if multiple deployments should not share the same Redis document.
 5. Redeploy the project.
 
-The Vercel provider intentionally does not expose the Redis token to the browser. Browser code talks only to the local `/api/db/*` API route.
+The Netlify provider intentionally does not expose the Redis token to the browser. Browser code talks only to the local `/api/db/*` route, which `netlify.toml` rewrites to `/.netlify/functions/db/*`. Existing Vercel deployments can use the same Redis variables with `VITE_DATABASE_PROVIDER=vercel`.
 
 ## Creating a completely new repository
 
@@ -85,35 +85,27 @@ cd tennis-auction-app-new
 rm -rf .git node_modules dist .vercel
 git init
 git add .
-git commit -m "Initial Vercel tennis auction app"
+git commit -m "Initial Netlify tennis auction app"
 git branch -M main
 git remote add origin <your-new-github-repo-url>
 git push -u origin main
 ```
 
-After pushing, import the new GitHub repository into Vercel and add either the Firebase or Vercel/Upstash environment variables from `.env.example` in the Vercel project settings.
+After pushing, import the new GitHub repository into Netlify and add either the Firebase or Netlify/Upstash environment variables from `.env.example` in the Netlify site settings.
 
-## Deploying to Vercel
+## Deploying to Netlify
 
-This repository is configured for Vercel with `vercel.json`. Vercel runs `npm run build`, publishes the generated `dist/` directory, and rewrites app routes back to `index.html` so the React single-page app works on direct refreshes.
+This repository is configured for Netlify with `netlify.toml`. Netlify runs `npm run build`, publishes the generated `dist/` directory, serves the database function from `netlify/functions`, and rewrites app routes back to `index.html` so the React single-page app works on direct refreshes.
 
-To deploy from the Vercel dashboard:
+To deploy from the Netlify dashboard:
 
-1. Import this Git repository into Vercel.
+1. Import this Git repository into Netlify.
 2. Keep the detected framework as **Vite**.
-3. Confirm the build command is `npm run build` and the output directory is `dist`.
-4. Choose a database provider: keep Firebase variables, or set `VITE_DATABASE_PROVIDER=vercel` and add the Upstash Redis REST variables.
+3. Confirm the build command is `npm run build` and the publish directory is `dist`.
+4. Choose a database provider: keep `VITE_DATABASE_PROVIDER=netlify` and add the Upstash Redis REST variables, or set `VITE_DATABASE_PROVIDER=firebase` with all Firebase variables.
 5. Deploy.
 
-To deploy from the Vercel CLI:
-
-```bash
-npm install -g vercel
-vercel
-vercel --prod
-```
-
-When using Firebase, the browser connects directly to Firebase, so make sure the configured Firebase project allows your Vercel domain in any Firebase/Auth or database rules you use. When using the Vercel provider, the browser talks to `/api/db/*` and the Redis token remains server-side.
+When using Firebase, the browser connects directly to Firebase, so make sure the configured Firebase project allows your Netlify domain in any Firebase/Auth or database rules you use. When using the Netlify provider, the browser talks to `/api/db/*` and the Redis token remains server-side.
 
 ## Tests
 
@@ -128,7 +120,8 @@ npm test
 
 Firebase settings, teams, players, and generated pool defaults are split into small files for easier updates:
 
-- `src/config/firebase.js` — database provider selection, Firebase setup, Vercel API-backed adapter, editable `DATA_PATHS`, and helper functions for database references.
+- `src/config/firebase.js` — database provider selection, Firebase setup, API-backed adapter, editable `DATA_PATHS`, and helper functions for database references.
+- `netlify/functions/db.js` — Netlify Function that stores and reads app state from Upstash Redis when `VITE_DATABASE_PROVIDER=netlify`.
 - `api/db/[...path].js` — Vercel serverless API route that stores and reads app state from Upstash Redis when `VITE_DATABASE_PROVIDER=vercel`.
 - `src/config/pins.json` — default 6-digit PINs for admin and team accounts; the admin PIN screen can load these and save them into Firebase.
 - `src/data/teams.js` — team names and captains.
@@ -138,11 +131,38 @@ Firebase settings, teams, players, and generated pool defaults are split into sm
 
 ## Notes
 
-The app can use Firebase Realtime Database in the browser or the Vercel/Upstash Redis provider through serverless API routes. Internet access is required for Firebase scripts or hosted database calls to load.
+The app can use Firebase Realtime Database in the browser or the Netlify/Vercel Upstash Redis provider through serverless API routes. Internet access is required for Firebase scripts or hosted database calls to load.
+
+
+### Tables / keys required for a new database
+
+The Redis-backed provider stores everything in one JSON document under `NETLIFY_DB_KEY` (default `tennis-auction-app:data`), so you do not need SQL tables. Inside that document, or in Firebase paths if you use Firebase, the app needs these top-level collections:
+
+- `config` — saved auction configuration, players, teams, and settings. The app can insert this after setup.
+- `users` — admin and team PIN records. You can insert defaults from `src/config/pins.json` using the admin PIN screen.
+- `auctionsdata` — live auction sessions. The app creates session rows/objects as auctions start and progress.
+
+If you choose a SQL database later, create equivalent tables named `config`, `users`, and `auctionsdata`, or map those concepts in your API layer.
+
+
+### Seeding Firebase Realtime Database
+
+If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an initialized auction collection marker so all required paths are visible in Firebase. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty. In Admin Config, upload either CSV or JSON player data, then click **Save All**; the save writes `config.players` and also initializes missing `users` records and `auctionsdata._initialized` automatically.
+
+If your Realtime Database rules are temporarily public (`.read`/`.write` set to `true`), you can seed with only `FIREBASE_DATABASE_URL`. For locked-down rules, pass a service account through an environment variable. Do not commit a Firebase service account JSON file, and rotate the key if it has been exposed. Example:
+
+```bash
+export FIREBASE_DATABASE_URL="https://pdrdata-bcdc9-default-rtdb.firebaseio.com"
+# Optional when rules are not public:
+export FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+npm run seed:firebase
+```
+
+Optional path overrides are available with `FIREBASE_CONFIG_PATH`, `FIREBASE_USERS_PATH`, and `FIREBASE_AUCTIONS_PATH`. Firebase may hide empty objects in the console, so the script writes `auctionsdata._initialized` to make that required path visible before the first auction session is created.
 
 ### Firebase setup and data paths
 
-Database wiring lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in Vercel project environment variables for production. To switch to the alternate Vercel database, set `VITE_DATABASE_PROVIDER=vercel` and configure the Upstash Redis variables from `.env.example`. To change where data is stored, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
+Database wiring lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in your hosting provider environment variables for production. To switch to the alternate Netlify database, set `VITE_DATABASE_PROVIDER=netlify` and configure the Upstash Redis variables from `.env.example`. To change where data is stored, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
 
 - `config` — saved auction configuration, players, teams, and settings.
 - `users` — PIN login records. Defaults can be edited in `src/config/pins.json`, loaded in the admin PIN screen, then saved to this database path.
