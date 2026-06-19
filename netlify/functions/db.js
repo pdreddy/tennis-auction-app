@@ -1,6 +1,7 @@
 const DATA_KEY = process.env.NETLIFY_DB_KEY || process.env.VERCEL_DB_KEY || "tennis-auction-app:data";
 const REST_URL = process.env.NETLIFY_BLOBS_REDIS_URL || process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const REST_TOKEN = process.env.NETLIFY_BLOBS_REDIS_TOKEN || process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || process.env.VITE_FIREBASE_DATABASE_URL;
 
 function response(statusCode, body, headers = {}) {
     return {
@@ -80,7 +81,33 @@ async function command(...args) {
     return body.result;
 }
 
+function firebaseUrl() {
+    return `${FIREBASE_DATABASE_URL.replace(/\/$/, "")}/.json`;
+}
+
+async function firebaseRequest(method, value) {
+    if (!FIREBASE_DATABASE_URL) {
+        const err = new Error("Missing database environment variables. Set Upstash Redis REST variables or FIREBASE_DATABASE_URL.");
+        err.statusCode = 500;
+        throw err;
+    }
+    const response = await fetch(firebaseUrl(), {
+        method,
+        headers: {"content-type": "application/json"},
+        body: value === undefined ? undefined : JSON.stringify(value)
+    });
+    const text = await response.text();
+    const body = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+        const err = new Error(body?.error || `Firebase request failed with ${response.status}`);
+        err.statusCode = response.status || 500;
+        throw err;
+    }
+    return body;
+}
+
 async function readRoot() {
+    if (!REST_URL || !REST_TOKEN) return await firebaseRequest("GET") || {};
     const raw = await command("GET", DATA_KEY);
     if (!raw) return {};
     if (typeof raw === "object") return raw;
@@ -88,6 +115,10 @@ async function readRoot() {
 }
 
 async function writeRoot(root) {
+    if (!REST_URL || !REST_TOKEN) {
+        await firebaseRequest("PUT", root || {});
+        return;
+    }
     await command("SET", DATA_KEY, JSON.stringify(root || {}));
 }
 

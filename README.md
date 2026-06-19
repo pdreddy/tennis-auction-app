@@ -68,7 +68,7 @@ Use this provider when you want the app data to live behind Netlify Functions in
 
 1. Create or connect an Upstash Redis database and copy its REST URL and REST token.
 2. Add `VITE_DATABASE_PROVIDER=netlify`.
-3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables.
+3. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as server-only environment variables. If you are using Firebase Realtime Database with public rules instead of Upstash, set `FIREBASE_DATABASE_URL` on Netlify and leave the Upstash variables blank.
 4. Optionally change `NETLIFY_DB_KEY` if multiple deployments should not share the same Redis document.
 5. Redeploy the project.
 
