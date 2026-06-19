@@ -147,7 +147,7 @@ If you choose a SQL database later, create equivalent tables named `config`, `us
 
 ### Seeding Firebase Realtime Database
 
-If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an initialized auction collection marker so all required paths are visible in Firebase. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty.
+If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an initialized auction collection marker so all required paths are visible in Firebase. The running app now reads auction players only from the database `config.players` path; it does not fall back to the bundled player catalog in the UI when that path is empty. In Admin Config, upload either CSV or JSON player data, then click **Save All**; the save writes `config.players` and also initializes missing `users` records and `auctionsdata._initialized` automatically.
 
 If your Realtime Database rules are temporarily public (`.read`/`.write` set to `true`), you can seed with only `FIREBASE_DATABASE_URL`. For locked-down rules, pass a service account through an environment variable. Do not commit a Firebase service account JSON file, and rotate the key if it has been exposed. Example:
 

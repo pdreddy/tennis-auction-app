@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { configRef, usersRef, userRef, auctionRef as getAuctionRef, connectedRef, rootRef, DATA_PATHS } from "./config/firebase.js";
-import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, ANTI_SNIPE_THRESHOLD_MS, ANTI_SNIPE_EXTENSION_MS, UTR_TIERS, UTR_PRICES, POOL_ORDER, getUTR } from "./data/settings.js";
+import { TEAM_BUDGET, TEAM_SIZE, TIMER_MS, ANTI_SNIPE_THRESHOLD_MS, ANTI_SNIPE_EXTENSION_MS, UTR_TIERS, UTR_PRICES, CATEGORY_UTR, POOL_ORDER, getUTR } from "./data/settings.js";
 import { withPlayerMeta } from "./data/players.js";
 import { TEAMS } from "./data/teams.js";
 import DEFAULT_PINS from "./config/pins.json";
@@ -131,6 +131,53 @@ function parseCSV(text) {
         const utr = ui>=0 ? parseFloat(r[ui])||3.0 : 3.0;
         return withPlayerMeta({ id:Date.now()+i, Name:r[ni]||'', utr, price:pi>=0?parseInt(r[pi])||UTR_PRICES[utr]||5000:UTR_PRICES[utr]||5000 });
     }).filter(p=>p.Name);
+}
+
+function normalizeImportedPlayer(player, index) {
+    const name = (player.Name || player.name || "").trim();
+    const utr = Number(player.utr || CATEGORY_UTR[player.cat] || player.best || 3.0);
+    const price = Number(player.price || UTR_PRICES[utr] || 5000);
+    return withPlayerMeta({
+        id: player.id || Date.now() + index,
+        Name: name,
+        utr,
+        price,
+        cat: player.cat,
+        best: player.best ?? null,
+        s: player.s ?? null,
+        d: player.d ?? null
+    });
+}
+
+function parseJSONPlayers(text) {
+    const data = JSON.parse(text);
+    const rows = Array.isArray(data) ? data : Array.isArray(data.players) ? data.players : [];
+    return rows.map(normalizeImportedPlayer).filter(p => p.Name);
+}
+
+function defaultUserRecords(existing = {}) {
+    const updates = {};
+    ACCOUNTS.forEach(account => {
+        if (existing[account.code]) return;
+        updates[`${DATA_PATHS.users}/${account.code}`] = {
+            code: account.code,
+            pin: DEFAULT_PINS[account.code] || "",
+            role: account.role,
+            teamId: account.teamId || null,
+            name: account.label
+        };
+    });
+    return updates;
+}
+
+async function ensureRequiredDatabasePaths() {
+    const usersSnap = await usersRef().once("value");
+    const updates = {
+        ...defaultUserRecords(usersSnap.val() || {}),
+        [`${DATA_PATHS.auctions}/_initialized`]: true,
+        [`${DATA_PATHS.auctions}/seededAt`]: Date.now()
+    };
+    await rootRef().update(updates);
 }
 
 function buildPools(players, poolOrder, captainNames) {
@@ -307,13 +354,17 @@ function AdminConfig() {
     }, []);
 
     const handleFile = file => {
-        if (!file || !file.name.match(/\.(csv|txt)$/i)) { setStatus({ok:false,text:"Please upload a .csv file"}); return; }
+        if (!file || !file.name.match(/\.(csv|txt|json)$/i)) { setStatus({ok:false,text:"Please upload a .csv, .txt, or .json player file"}); return; }
         const reader = new FileReader();
         reader.onload = e => {
-            const parsed = parseCSV(e.target.result);
-            if (!parsed.length) { setStatus({ok:false,text:"No players found — check CSV has a Name column"}); return; }
-            setPlayers(parsed);
-            setStatus({ok:true,text:`Imported ${parsed.length} players`});
+            try {
+                const parsed = file.name.match(/\.json$/i) ? parseJSONPlayers(e.target.result) : parseCSV(e.target.result);
+                if (!parsed.length) { setStatus({ok:false,text:"No players found — check the file has player names"}); return; }
+                setPlayers(parsed);
+                setStatus({ok:true,text:`Imported ${parsed.length} players`});
+            } catch (error) {
+                setStatus({ok:false,text:"Import failed: " + error.message});
+            }
         };
         reader.readAsText(file);
     };
@@ -350,7 +401,8 @@ function AdminConfig() {
         const norm = vp.map(p=>({...p,price:p.price||UTR_PRICES[p.utr]||5000}));
         try {
             await configRef().set({players:norm,teams:vt,settings,updatedAt:Date.now()});
-            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget`});
+            await ensureRequiredDatabasePaths();
+            setStatus({ok:true,text:`✓ Saved — ${norm.length} players · ${vt.length} teams · ${fmtR(settings.budget)} budget · database paths ready`});
         } catch(e) { setStatus({ok:false,text:"Save failed: "+e.message}); }
         setSaving(false);
     };
@@ -378,10 +430,10 @@ function AdminConfig() {
                             onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0])}}
                             onClick={()=>fileRef.current?.click()}>
                             <div className="import-zone-icon">📄</div>
-                            <div className="import-zone-text">Drop CSV or click to import players</div>
+                            <div className="import-zone-text">Drop CSV/JSON or click to import players</div>
                             <div className="import-zone-sub">Columns: Name, UTR, Price (Price auto-fills from UTR if omitted)</div>
                         </div>
-                        <input ref={fileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])} />
+                        <input ref={fileRef} type="file" accept=".csv,.txt,.json" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])} />
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                             <span style={{fontSize:12,color:"var(--text3)"}}>{players.filter(p=>p.Name).length} players</span>
                             <button className="btn btn-secondary" style={{width:"auto",padding:"5px 12px",fontSize:11}} onClick={addPlayer}>+ Add Player</button>
