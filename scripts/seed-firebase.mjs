@@ -11,14 +11,11 @@ const usersPath = process.env.FIREBASE_USERS_PATH || "users";
 const auctionsPath = process.env.FIREBASE_AUCTIONS_PATH || "auctionsdata";
 const seededAt = Date.now();
 
-if (!serviceAccountJson) {
-    throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_JSON. Paste the service account JSON into an environment variable; do not commit it.");
-}
 if (!databaseUrl) {
     throw new Error("Missing FIREBASE_DATABASE_URL, for example https://<project-id>-default-rtdb.firebaseio.com");
 }
 
-const serviceAccount = JSON.parse(serviceAccountJson);
+const serviceAccount = serviceAccountJson ? JSON.parse(serviceAccountJson) : null;
 const base64url = value => Buffer.from(typeof value === "string" ? value : JSON.stringify(value))
     .toString("base64")
     .replace(/=/g, "")
@@ -41,6 +38,7 @@ function signJwt() {
 }
 
 async function getAccessToken() {
+    if (!serviceAccount) return null;
     const response = await fetch(serviceAccount.token_uri || "https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: {"content-type": "application/x-www-form-urlencoded"},
@@ -61,12 +59,11 @@ function pathUrl(path) {
 }
 
 async function put(path, value, token) {
+    const headers = {"content-type": "application/json"};
+    if (token) headers.authorization = `Bearer ${token}`;
     const response = await fetch(pathUrl(path), {
         method: "PUT",
-        headers: {
-            authorization: `Bearer ${token}`,
-            "content-type": "application/json"
-        },
+        headers,
         body: JSON.stringify(value)
     });
     const bodyText = await response.text();
@@ -104,6 +101,7 @@ const seedConfig = {
 };
 
 const token = await getAccessToken();
+if (!token) console.warn("No FIREBASE_SERVICE_ACCOUNT_JSON provided; seeding with public database rules.");
 await put(configPath, seedConfig, token);
 await put(usersPath, buildUsers(), token);
 await put(auctionsPath, {_initialized: true, seededAt}, token);
