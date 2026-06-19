@@ -130,7 +130,7 @@ export const RAW_PLAYERS = [
     {
         "name": "Dinesh Reddy Timmareddy",
         "best": 5.88,
-        "cat": 2,
+        "cat": 1,
         "s": 5.13,
         "d": 5.88
     },
@@ -158,7 +158,7 @@ export const RAW_PLAYERS = [
     {
         "name": "Rajasekhar Mangalampally",
         "best": 5.81,
-        "cat": 1,
+        "cat": 2,
         "s": 5.81,
         "d": 5.35
     },

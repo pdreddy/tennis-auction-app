@@ -144,6 +144,21 @@ The Redis-backed provider stores everything in one JSON document under `NETLIFY_
 
 If you choose a SQL database later, create equivalent tables named `config`, `users`, and `auctionsdata`, or map those concepts in your API layer.
 
+
+### Seeding Firebase Realtime Database
+
+If you use Firebase instead of Netlify/Upstash, create these Realtime Database paths before the auction starts: `config`, `users`, and `auctionsdata`. This repository includes a seed script that writes the current player list, teams, settings, default PIN users, and an empty auction collection.
+
+Do not commit a Firebase service account JSON file. Pass it through an environment variable and rotate the key if it has been exposed. Example:
+
+```bash
+export FIREBASE_DATABASE_URL="https://<project-id>-default-rtdb.firebaseio.com"
+export FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+npm run seed:firebase
+```
+
+Optional path overrides are available with `FIREBASE_CONFIG_PATH`, `FIREBASE_USERS_PATH`, and `FIREBASE_AUCTIONS_PATH`.
+
 ### Firebase setup and data paths
 
 Database wiring lives in `src/config/firebase.js`. To point a new repo at a different Firebase project, set the `VITE_FIREBASE_*` values in `.env.local` for local development and in your hosting provider environment variables for production. To switch to the alternate Netlify database, set `VITE_DATABASE_PROVIDER=netlify` and configure the Upstash Redis variables from `.env.example`. To change where data is stored, set the optional path variables from `.env.example` or edit the `DATA_PATHS` defaults in `src/config/firebase.js`:
