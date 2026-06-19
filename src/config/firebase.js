@@ -1,5 +1,5 @@
 const env = import.meta.env || {};
-const databaseProvider = env.VITE_DATABASE_PROVIDER || "firebase";
+const databaseProvider = env.VITE_DATABASE_PROVIDER || (env.VITE_FIREBASE_DATABASE_URL ? "firebase" : "netlify");
 const apiBase = env.VITE_DATABASE_API_BASE || "/api/db";
 const pollMs = Number(env.VITE_DATABASE_POLL_MS || env.VITE_VERCEL_DB_POLL_MS || 1000);
 
@@ -102,11 +102,19 @@ function apiBackedRef(path = "") {
     };
 }
 
-if (databaseProvider === "firebase") {
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+function missingFirebaseConfig() {
+    return !firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.projectId;
 }
 
-export const db = databaseProvider === "firebase" ? firebase.database() : {ref: apiBackedRef};
+function createFirebaseDatabase() {
+    if (missingFirebaseConfig()) {
+        throw new Error("Firebase provider selected but VITE_FIREBASE_API_KEY, VITE_FIREBASE_DATABASE_URL, or VITE_FIREBASE_PROJECT_ID is missing. Set VITE_DATABASE_PROVIDER=netlify for Netlify/Upstash deployments or provide your Firebase environment variables.");
+    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    return firebase.database();
+}
+
+export const db = databaseProvider === "firebase" ? createFirebaseDatabase() : {ref: apiBackedRef};
 
 export const configRef = () => db.ref(DATA_PATHS.config);
 export const usersRef = () => db.ref(DATA_PATHS.users);

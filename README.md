@@ -16,7 +16,7 @@ Create local Firebase environment settings:
 cp .env.example .env.local
 ```
 
-Keep `VITE_DATABASE_PROVIDER=firebase` for Firebase, or set `VITE_DATABASE_PROVIDER=netlify` and provide the Upstash Redis REST values through Netlify environment variables for the Netlify-hosted database function. Existing Vercel deployments can continue using `VITE_DATABASE_PROVIDER=vercel`.
+Keep `VITE_DATABASE_PROVIDER=netlify` for the Netlify-hosted Upstash database function, or set `VITE_DATABASE_PROVIDER=firebase` and provide the Firebase variables if you want direct Firebase Realtime Database access. Existing Vercel deployments can continue using `VITE_DATABASE_PROVIDER=vercel`.
 
 Start the React/Vite dev server:
 
@@ -56,11 +56,11 @@ The auction includes an anti-snipe extension to prevent a team from winning only
 
 ## Database options
 
-The app defaults to Firebase for full realtime updates. For a Netlify-friendly hosted database path, set `VITE_DATABASE_PROVIDER=netlify` and connect an Upstash Redis database. The API-backed provider stores the app state in Redis through `/api/db/*` serverless functions and polls for updates from the browser.
+The app defaults to the Netlify-friendly API-backed provider for new deployments. Set `VITE_DATABASE_PROVIDER=netlify` and connect an Upstash Redis database, or explicitly set `VITE_DATABASE_PROVIDER=firebase` when you have Firebase Realtime Database environment variables configured. The API-backed provider stores the app state in Redis through `/api/db/*` serverless functions and polls for updates from the browser.
 
 ### Firebase provider
 
-Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in your hosting provider environment variables for production.
+Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Only select this provider after setting your Firebase environment variables; otherwise use `netlify` so the app does not try to initialize Firebase with a blank database URL. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in your hosting provider environment variables for production.
 
 ### Netlify / Upstash Redis provider
 
@@ -102,7 +102,7 @@ To deploy from the Netlify dashboard:
 1. Import this Git repository into Netlify.
 2. Keep the detected framework as **Vite**.
 3. Confirm the build command is `npm run build` and the publish directory is `dist`.
-4. Choose a database provider: keep Firebase variables, or set `VITE_DATABASE_PROVIDER=netlify` and add the Upstash Redis REST variables.
+4. Choose a database provider: keep `VITE_DATABASE_PROVIDER=netlify` and add the Upstash Redis REST variables, or set `VITE_DATABASE_PROVIDER=firebase` with all Firebase variables.
 5. Deploy.
 
 When using Firebase, the browser connects directly to Firebase, so make sure the configured Firebase project allows your Netlify domain in any Firebase/Auth or database rules you use. When using the Netlify provider, the browser talks to `/api/db/*` and the Redis token remains server-side.
