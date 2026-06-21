@@ -172,6 +172,6 @@ Database wiring lives in `src/config/firebase.js`. To point a new repo at a diff
 - `auctions` — live auction sessions.
 - `connected` — Firebase connection status path; normally leave this as `.info/connected`.
 
-Admin sign-in is separated from team sign-in on the login screen. Captains choose only team accounts; admins switch to **Admin Login** and enter the admin access code plus the admin PIN saved under `users/ADMIN`. If a PIN has not been saved to the database yet, the login screen falls back to the matching default in `src/config/pins.json`, including `ADMIN` / `198198` for initial setup.
+Admin sign-in is separated from team sign-in on the login screen. Captains choose only team accounts; admins switch to **Admin Login** and enter the admin access code plus the admin PIN saved under `users/ADMIN`. The login screen accepts the matching bundled default in `src/config/pins.json` for initial setup, including `ADMIN` / `198198`, even before PINs have been saved to the database or if the saved admin PIN needs to be recovered.
 
 The app remains PWA-installable: `index.html` links `/manifest.json`, and the same manifest is kept in `public/manifest.json` so Vite copies it into `dist/` during production builds.
