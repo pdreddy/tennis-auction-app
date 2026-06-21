@@ -3,7 +3,7 @@ const databaseProvider = env.VITE_DATABASE_PROVIDER || "firebase";
 const apiBase = env.VITE_DATABASE_API_BASE || "/api/db";
 const pollMs = Number(env.VITE_VERCEL_DB_POLL_MS || 1000);
 
-const firebaseConfig = {
+/*const firebaseConfig = {
     apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
     authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "koc2-20fb8.firebaseapp.com",
     databaseURL: env.VITE_FIREBASE_DATABASE_URL || "https://koc2-20fb8-default-rtdb.firebaseio.com",
@@ -11,12 +11,24 @@ const firebaseConfig = {
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "koc2-20fb8.firebasestorage.app",
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "317734341461",
     appId: env.VITE_FIREBASE_APP_ID || "1:317734341461:web:1bcad5a1792fac0e46bddc"
+};*/
+
+const firebaseConfig = {
+    apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyCO2SRwIwvqXJwqQNi3NfpDRFoE8DUyXj0",
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "pdrdata-bcdc9.firebaseapp.com",
+    databaseURL: env.VITE_FIREBASE_DATABASE_URL || "https://pdrdata-bcdc9-default-rtdb.firebaseio.com", // confirm region (may be ...<region>.firebasedatabase.app)
+    projectId: env.VITE_FIREBASE_PROJECT_ID || "pdrdata-bcdc9",
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "pdrdata-bcdc9.firebasestorage.app", // confirm; some projects use ...appspot.com
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "95091760805",
+    appId: env.VITE_FIREBASE_APP_ID || "1:95091760805:web:d9232ada50b52e1903374c"
 };
+
+
 
 export const DATA_PATHS = {
     config: env.VITE_FIREBASE_CONFIG_PATH || "config",
     users: env.VITE_FIREBASE_USERS_PATH || "users",
-    auctions: env.VITE_FIREBASE_AUCTIONS_PATH || "auctionsdata",
+    auctions: env.VITE_FIREBASE_AUCTIONS_PATH || "koc3auctionsdata",
     connected: ".info/connected"
 };
 
