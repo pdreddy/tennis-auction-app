@@ -204,6 +204,17 @@ function downloadAuctionXls(state, sid, user) {
     URL.revokeObjectURL(url);
 }
 
+async function saveAuctionXlsToDirectory(directoryHandle, state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const html = buildAuctionXls(state, sid, user);
+    const filename = `tennis-auction-${sid}-${data.scope}-autosave.xls`;
+    const fileHandle = await directoryHandle.getFileHandle(filename, {create:true});
+    const writable = await fileHandle.createWritable();
+    await writable.write(new Blob([html], {type:"application/vnd.ms-excel;charset=utf-8"}));
+    await writable.close();
+    return filename;
+}
+
 function normalize(data) {
     if (!data) return null;
     const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
@@ -1048,7 +1059,10 @@ function Auction({ sid, user, onBack }) {
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
     const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
+    const [autoSaveDir, setAutoSaveDir] = useState(null);
+    const [autoSaveStatus, setAutoSaveStatus] = useState(null);
     const auctionRef = useRef(getAuctionRef(sid));
+    const latestStateRef = useRef(null);
 
     // Real-time listener
     useEffect(() => {
@@ -1074,12 +1088,50 @@ function Auction({ sid, user, onBack }) {
         return () => { connRef.off(); auctionRef.current.off(); };
     }, [sid]);
 
+    useEffect(() => {
+        latestStateRef.current = state;
+    }, [state]);
+
     // Timer
     useEffect(() => {
         if (!state?.timerEnd) return;
         const iv = setInterval(() => setTimeLeft(Math.max(0, Math.floor((state.timerEnd - Date.now())/1000))), 200);
         return () => clearInterval(iv);
     }, [state?.timerEnd]);
+
+    const writeAutoSaveXls = useCallback(async (directoryHandle) => {
+        const latestState = latestStateRef.current;
+        if (!latestState) return;
+        const filename = await saveAuctionXlsToDirectory(directoryHandle, latestState, sid, user);
+        setAutoSaveStatus({ok:true, text:`Auto-saved ${filename} at ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`});
+    }, [sid, user]);
+
+    useEffect(() => {
+        if (!autoSaveDir) return;
+        const iv = setInterval(() => {
+            writeAutoSaveXls(autoSaveDir).catch(error => setAutoSaveStatus({ok:false, text:`Auto-save failed: ${error.message}`}));
+        }, 120000);
+        return () => clearInterval(iv);
+    }, [autoSaveDir, writeAutoSaveXls]);
+
+    const selectAutoSaveFolder = async () => {
+        if (!window.showDirectoryPicker) {
+            setAutoSaveStatus({ok:false, text:"Auto-save needs a Chromium browser with folder access support. Use Export XLS for manual downloads here."});
+            return;
+        }
+        try {
+            const directoryHandle = await window.showDirectoryPicker({mode:"readwrite"});
+            setAutoSaveDir(directoryHandle);
+            await writeAutoSaveXls(directoryHandle);
+        } catch (error) {
+            if (error.name !== "AbortError") setAutoSaveStatus({ok:false, text:`Auto-save setup failed: ${error.message}`});
+        }
+    };
+
+    const stopAutoSave = () => {
+        setAutoSaveDir(null);
+        setAutoSaveStatus({ok:true, text:"Auto-save stopped"});
+    };
 
     const fbUpdate = updates => auctionRef.current.update({...updates, lastUpdate: Date.now()});
     const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
@@ -1258,8 +1310,14 @@ function Auction({ sid, user, onBack }) {
                 <div className="auction-actions">
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionXls(state, sid, user)}>Export XLS</button>
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionExport(state, sid, user)}>Export JSON</button>
+                    {autoSaveDir ? (
+                        <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={stopAutoSave}>Stop XLS Auto-save</button>
+                    ) : (
+                        <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={selectAutoSaveFolder}>Auto-save XLS</button>
+                    )}
                     {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>}
                 </div>
+                {autoSaveStatus && <div className={`cfg-status ${autoSaveStatus.ok?"ok":"err"}`} style={{margin:"0 16px 12px"}}>{autoSaveStatus.text}</div>}
                 <div className="rosters-grid">
                     {state.teams.map(t => <RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
@@ -1309,6 +1367,11 @@ function Auction({ sid, user, onBack }) {
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
                     <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionXls(state, sid, user)}>XLS</button>
                     <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>JSON</button>
+                    {autoSaveDir ? (
+                        <button className="btn btn-neutral top-action-btn" onClick={stopAutoSave}>Stop Auto XLS</button>
+                    ) : (
+                        <button className="btn btn-neutral top-action-btn" onClick={selectAutoSaveFolder}>Auto XLS</button>
+                    )}
                     {isAdmin && <button className="btn btn-danger top-action-btn" onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
@@ -1317,6 +1380,8 @@ function Auction({ sid, user, onBack }) {
                 <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
                 <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
             </div>
+
+            {autoSaveStatus && <div className={`cfg-status ${autoSaveStatus.ok?"ok":"err"}`} style={{margin:"0 16px 12px"}}>{autoSaveStatus.text}</div>}
 
             <div style={{margin:"0 12px 10px",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
                 <div onClick={()=>setShowUpcoming(v=>!v)}
