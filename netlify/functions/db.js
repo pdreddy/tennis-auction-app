@@ -1,8 +1,8 @@
 import { createSign } from "node:crypto";
 
-const DATA_KEY = process.env.VERCEL_DB_KEY || "tennis-auction-app:data";
-const REST_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const REST_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const DATA_KEY = process.env.NETLIFY_DB_KEY || process.env.VERCEL_DB_KEY || "tennis-auction-app:data";
+const REST_URL = process.env.NETLIFY_BLOBS_REDIS_URL || process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const REST_TOKEN = process.env.NETLIFY_BLOBS_REDIS_TOKEN || process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || process.env.VITE_FIREBASE_DATABASE_URL;
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 let firebaseAccessToken = null;
@@ -10,17 +10,28 @@ let firebaseTokenExpiresAt = 0;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-function json(res, status, body) {
-    res.statusCode = status;
-    res.setHeader("content-type", "application/json; charset=utf-8");
-    res.setHeader("cache-control", "no-store");
-    res.end(JSON.stringify(body));
+function response(statusCode, body, headers = {}) {
+    return {
+        statusCode,
+        headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "no-store",
+            ...headers
+        },
+        body: JSON.stringify(body)
+    };
 }
 
-function pathParts(req) {
-    const raw = req.query?.path;
-    const parts = Array.isArray(raw) ? raw : raw ? [raw] : [];
-    return parts.flatMap(part => String(part).split("/")).filter(Boolean).map(decodeURIComponent);
+function pathParts(event) {
+    const splat = event.pathParameters?.splat;
+    if (splat) return String(splat).split("/").filter(Boolean).map(decodeURIComponent);
+
+    const url = event.rawUrl ? new URL(event.rawUrl) : null;
+    const pathname = url?.pathname || event.path || "";
+    const rawPath = pathname
+        .replace(/^\/api\/db\/?/, "")
+        .replace(/^\/\.netlify\/functions\/db\/?/, "");
+    return rawPath.split("/").filter(Boolean).map(decodeURIComponent);
 }
 
 function getAtPath(root, parts) {
@@ -108,7 +119,7 @@ async function command(...args) {
         err.statusCode = 500;
         throw err;
     }
-    const response = await fetch(REST_URL, {
+    const redisResponse = await fetch(REST_URL, {
         method: "POST",
         headers: {
             authorization: `Bearer ${REST_TOKEN}`,
@@ -116,10 +127,10 @@ async function command(...args) {
         },
         body: JSON.stringify(args)
     });
-    const body = await response.json();
-    if (!response.ok || body.error) {
-        const err = new Error(body.error || `Redis request failed with ${response.status}`);
-        err.statusCode = response.status || 500;
+    const body = await redisResponse.json();
+    if (!redisResponse.ok || body.error) {
+        const err = new Error(body.error || `Redis request failed with ${redisResponse.status}`);
+        err.statusCode = redisResponse.status || 500;
         throw err;
     }
     return body.result;
@@ -220,37 +231,29 @@ async function writeRoot(root) {
     await command("SET", DATA_KEY, JSON.stringify(root || {}));
 }
 
-async function readBody(req) {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    if (!chunks.length) return {};
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-}
-
-export default async function handler(req, res) {
+export async function handler(event) {
     try {
-        const parts = pathParts(req);
-        if (req.method === "GET") {
+        const parts = pathParts(event);
+        if (event.httpMethod === "GET") {
             const root = await readRoot();
-            return json(res, 200, {value: getAtPath(root, parts) ?? null});
+            return response(200, {value: getAtPath(root, parts) ?? null});
         }
-        if (req.method === "PUT") {
-            const {value} = await readBody(req);
+        if (event.httpMethod === "PUT") {
+            const {value} = event.body ? JSON.parse(event.body) : {};
             const root = await readRoot();
             const next = setAtPath(root, parts, value);
             await writeRoot(next);
-            return json(res, 200, {ok: true});
+            return response(200, {ok: true});
         }
-        if (req.method === "PATCH") {
-            const {value} = await readBody(req);
+        if (event.httpMethod === "PATCH") {
+            const {value} = event.body ? JSON.parse(event.body) : {};
             const root = await readRoot();
             const next = parts.length === 0 ? applyFirebaseUpdate(root, value) : mergeAtPath(root, parts, value);
             await writeRoot(next);
-            return json(res, 200, {ok: true});
+            return response(200, {ok: true});
         }
-        res.setHeader("allow", "GET, PUT, PATCH");
-        return json(res, 405, {error: "Method not allowed"});
+        return response(405, {error: "Method not allowed"}, {allow: "GET, PUT, PATCH"});
     } catch (error) {
-        return json(res, error.statusCode || 500, {error: error.message || "Database request failed"});
+        return response(error.statusCode || 500, {error: error.message || "Database request failed"});
     }
 }

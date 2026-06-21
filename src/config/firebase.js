@@ -1,16 +1,16 @@
 const env = import.meta.env || {};
-const databaseProvider = env.VITE_DATABASE_PROVIDER || "firebase";
+const databaseProvider = env.VITE_DATABASE_PROVIDER || (env.VITE_FIREBASE_DATABASE_URL ? "firebase" : "netlify");
 const apiBase = env.VITE_DATABASE_API_BASE || "/api/db";
-const pollMs = Number(env.VITE_VERCEL_DB_POLL_MS || 1000);
+const pollMs = Number(env.VITE_DATABASE_POLL_MS || env.VITE_VERCEL_DB_POLL_MS || 1000);
 
 const firebaseConfig = {
-    apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDbO0eP52i4t3V94bEiDcl7WoKbSrrM9VA",
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "koc2-20fb8.firebaseapp.com",
-    databaseURL: env.VITE_FIREBASE_DATABASE_URL || "https://koc2-20fb8-default-rtdb.firebaseio.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID || "koc2-20fb8",
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "koc2-20fb8.firebasestorage.app",
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "317734341461",
-    appId: env.VITE_FIREBASE_APP_ID || "1:317734341461:web:1bcad5a1792fac0e46bddc"
+    apiKey: env.VITE_FIREBASE_API_KEY || "",
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "",
+    databaseURL: env.VITE_FIREBASE_DATABASE_URL || "",
+    projectId: env.VITE_FIREBASE_PROJECT_ID || "",
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: env.VITE_FIREBASE_APP_ID || ""
 };
 
 export const DATA_PATHS = {
@@ -39,7 +39,7 @@ async function apiRequest(path, options = {}) {
     return body;
 }
 
-function vercelRef(path = "") {
+function apiBackedRef(path = "") {
     const timers = new Set();
     return {
         async once(event) {
@@ -49,7 +49,7 @@ function vercelRef(path = "") {
             return snapshot(value);
         },
         child(childPath) {
-            return vercelRef([path, childPath].filter(Boolean).join("/"));
+            return apiBackedRef([path, childPath].filter(Boolean).join("/"));
         },
         async set(value) {
             await apiRequest(path, {method: "PUT", body: JSON.stringify({value})});
@@ -102,11 +102,19 @@ function vercelRef(path = "") {
     };
 }
 
-if (databaseProvider === "firebase") {
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+function missingFirebaseConfig() {
+    return !firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.projectId;
 }
 
-export const db = databaseProvider === "firebase" ? firebase.database() : {ref: vercelRef};
+function createFirebaseDatabase() {
+    if (missingFirebaseConfig()) {
+        throw new Error("Firebase provider selected but VITE_FIREBASE_API_KEY, VITE_FIREBASE_DATABASE_URL, or VITE_FIREBASE_PROJECT_ID is missing. Set VITE_DATABASE_PROVIDER=netlify for Netlify/Upstash deployments or provide your Firebase environment variables.");
+    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    return firebase.database();
+}
+
+export const db = databaseProvider === "firebase" ? createFirebaseDatabase() : {ref: apiBackedRef};
 
 export const configRef = () => db.ref(DATA_PATHS.config);
 export const usersRef = () => db.ref(DATA_PATHS.users);
