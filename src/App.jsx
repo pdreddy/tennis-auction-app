@@ -715,10 +715,12 @@ function ManagePins() {
                     <div key={a.code} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                         <div style={{flex:1,fontSize:12,color:"#ccc",minWidth:160}}>{a.label}</div>
                         <input
-                            type="password"
+                            type="text"
                             maxLength={6}
                             inputMode="numeric"
-                            placeholder="● ● ● ● ● ●"
+                            autoComplete="off"
+                            aria-label={`${a.label} PIN`}
+                            placeholder="000000"
                             value={pins[a.code]||""}
                             style={{width:110,letterSpacing:4,textAlign:"center",padding:"6px 8px",background:"#1a1f2e",border:"1px solid #333",borderRadius:6,color:"#fff",fontSize:14}}
                             onChange={e => setPins(p => ({...p,[a.code]:e.target.value.replace(/\D/g,"").slice(0,6)}))}
