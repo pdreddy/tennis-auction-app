@@ -986,6 +986,8 @@ function Auction({ sid, user, onBack }) {
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
 
+    const teamOwnsUtr = (team, utr) => (team?.players || []).some(p => Number(p.utr) === Number(utr));
+
     const reserveAfterCurrentWin = team => {
         if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
         const projectedPlayers = [...team.players, eff.player];
@@ -1008,11 +1010,17 @@ function Auction({ sid, user, onBack }) {
         if (!team) return "Team not found";
         if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
         const utr = getUTR(eff.poolKey);
-        const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
-        if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
+        if (teamOwnsUtr(team, utr)) return `Max 1 at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
         if ((amount - eff.player.price)%1000!==0) return "Bids must be in $1k increments";
+        const currentTeamBid = state.currentBids[String(teamId)] || 0;
+        const competingHighBid = Math.max(0, ...Object.entries(state.currentBids)
+            .filter(([tid]) => parseInt(tid)!==teamId)
+            .map(([,bid]) => bid || 0));
+        if (competingHighBid > 0 && amount <= competingHighBid && amount !== currentTeamBid) {
+            return `Bid at least ${fmtR(competingHighBid + 1000)}`;
+        }
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
@@ -1032,11 +1040,15 @@ function Auction({ sid, user, onBack }) {
         setBidErrors(p=>({...p,[teamId]:null}));
         auctionRef.current.child("currentBids").transaction(cur => {
             const bids = cur||{};
+            const currentTeamBid = bids[String(teamId)] || 0;
+            const competingHighBid = Math.max(0, ...Object.entries(bids)
+                .filter(([tid]) => parseInt(tid)!==teamId)
+                .map(([,bid]) => bid || 0));
             const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
-            if (taken) return;
+            if (taken || (competingHighBid > 0 && n <= competingHighBid && n !== currentTeamBid)) return;
             return {...bids,[teamId]:n};
         }, (err,committed) => {
-            if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
+            if (!committed) setBidErrors(p=>({...p,[teamId]:"Bid must be unique and above the current high bid"}));
             else {
                 const now = Date.now();
                 const timerEnd = getAntiSnipeTimerEnd(state.timerEnd, now, ANTI_SNIPE_THRESHOLD_EFF, ANTI_SNIPE_EXTENSION_EFF);
@@ -1147,7 +1159,7 @@ function Auction({ sid, user, onBack }) {
     const sortedTeams = [...state.teams].map(t => {
         const reserve = reserveAfterCurrentWin(t);
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price || reserve.maxBid<eff.player.price ||
-            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
+            teamOwnsUtr(t, getUTR(eff.poolKey));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id,reserve};
     }).filter(t => isAdmin || t.id===myTeamId).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;

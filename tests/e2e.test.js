@@ -102,6 +102,10 @@ function buildPoolCaps(playerPools) {
     return caps;
 }
 
+function teamOwnsUtr(team, utr) {
+    return (team?.players || []).some(p => Number(p.utr) === Number(utr));
+}
+
 function reserveAfterCurrentWin(team, eff, teamSize) {
     if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
     const projectedPlayers = [...team.players, eff.player];
@@ -114,6 +118,31 @@ function reserveAfterCurrentWin(team, eff, teamSize) {
     const slots = Math.min(openSlots, remainingTierCosts.length);
     const amount = remainingTierCosts.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
     return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
+}
+
+
+function validateBidForTest({team, teams, currentBids, eff, amount, teamSize}) {
+    if (!eff?.player) return "No player";
+    if (!team) return "Team not found";
+    if (team.players.length >= teamSize) return "Team full";
+    const utr = getUTR(eff.poolKey);
+    if (teamOwnsUtr(team, utr)) return `Max 1 at UTR ${utr}`;
+    if (!amount || amount <= 0) return "Enter amount";
+    if (amount < eff.player.price) return `Min $${eff.player.price}`;
+    if ((amount - eff.player.price) % 1000 !== 0) return "Bids must be in $1k increments";
+    const currentTeamBid = currentBids[String(team.id)] || 0;
+    const competingHighBid = Math.max(0, ...Object.entries(currentBids)
+        .filter(([tid]) => parseInt(tid) !== team.id)
+        .map(([,bid]) => bid || 0));
+    if (competingHighBid > 0 && amount <= competingHighBid && amount !== currentTeamBid) {
+        return `Bid at least $${competingHighBid + 1000}`;
+    }
+    const dup = teams.find(t => t.id !== team.id && (currentBids[String(t.id)] || 0) === amount);
+    if (dup) return `$${amount} taken by ${dup.name}`;
+    if (amount > team.budget) return "Exceeds budget";
+    const reserve = reserveAfterCurrentWin(team, eff, teamSize);
+    if (amount > reserve.maxBid) return `Keep reserve · max bid $${reserve.maxBid}`;
+    return null;
 }
 
 function buildBidChips(highest, playerPrice, maxBid) {
@@ -536,6 +565,25 @@ test("caps stay one per UTR level when team count changes from 16 to 8", () => {
     expect(cap8).toBe(1);
 });
 
+
+console.log("\n9b. category caps include captains");
+
+test("captain counts toward current UTR category cap", () => {
+    const team = {id:1, name:"Team A", budget:80000, players:[{Name:"Captain", utr:6.0}]};
+    const teams = [team, {id:2, name:"Team B", budget:100000, players:[]}];
+    const eff = {poolKey:"utr_6_0", player:{Name:"P6.0", utr:6.0, price:20000}};
+    const err = validateBidForTest({team, teams, currentBids:{}, eff, amount:20000, teamSize:TEAM_SIZE});
+    expect(err).toBe("Max 1 at UTR 6");
+});
+
+test("non-captain existing player also counts toward current UTR category cap", () => {
+    const team = {id:1, name:"Team A", budget:80000, players:[{Name:"Captain", utr:5.5}, {Name:"Existing", utr:4.0}]};
+    const teams = [team, {id:2, name:"Team B", budget:100000, players:[]}];
+    const eff = {poolKey:"utr_4_0", player:{Name:"P4.0", utr:4.0, price:8000}};
+    const err = validateBidForTest({team, teams, currentBids:{}, eff, amount:8000, teamSize:TEAM_SIZE});
+    expect(err).toBe("Max 1 at UTR 4");
+});
+
 console.log("\n10. reserve logic protects future UTR levels");
 
 test("reserves base prices for future UTR levels after a projected low-pool win", () => {
@@ -575,6 +623,22 @@ test("manual bids allow any amount in 1000 increments from player base price", (
     expect(isOneThousandIncrement(11000, 10000)).toBeTruthy();
     expect(isOneThousandIncrement(14000, 10000)).toBeTruthy();
     expect(isOneThousandIncrement(14500, 10000)).toBeFalsy();
+});
+
+test("manual bids must beat a competing high bid", () => {
+    const team = {id:2, name:"Team B", budget:80000, players:[{Name:"Captain B", utr:6.0}]};
+    const teams = [{id:1, name:"Team A", budget:80000, players:[{Name:"Captain A", utr:6.0}]}, team];
+    const eff = {poolKey:"utr_3_0", player:{Name:"P3.0", utr:3.0, price:5000}};
+    const err = validateBidForTest({team, teams, currentBids:{"1":10000}, eff, amount:9000, teamSize:TEAM_SIZE});
+    expect(err).toBe("Bid at least $11000");
+});
+
+test("manual bids can replace the team's own current bid value without high-bid error", () => {
+    const team = {id:2, name:"Team B", budget:80000, players:[{Name:"Captain B", utr:6.0}]};
+    const teams = [{id:1, name:"Team A", budget:80000, players:[{Name:"Captain A", utr:6.0}]}, team];
+    const eff = {poolKey:"utr_3_0", player:{Name:"P3.0", utr:3.0, price:5000}};
+    const err = validateBidForTest({team, teams, currentBids:{"1":10000,"2":9000}, eff, amount:9000, teamSize:TEAM_SIZE});
+    expect(err).toBeNull();
 });
 
 console.log("\n12. TIMER_EFF respects state.config");
