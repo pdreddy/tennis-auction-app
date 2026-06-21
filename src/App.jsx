@@ -222,7 +222,15 @@ function Login({ onLogin }) {
         setBusy(true);
         try {
             const snap = await userRef(activeAccount.code).once("value");
-            const user = snap.val();
+            const savedUser = snap.val();
+            const fallbackPin = DEFAULT_PINS[activeAccount.code];
+            const user = savedUser && savedUser.pin ? savedUser : fallbackPin ? {
+                code: activeAccount.code,
+                pin: fallbackPin,
+                role: activeAccount.role,
+                teamId: activeAccount.teamId,
+                name: activeAccount.label
+            } : null;
             if (!user || !user.pin) {
                 setError("Account not set up yet. Ask the admin to configure PINs.");
                 setBusy(false);
