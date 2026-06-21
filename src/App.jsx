@@ -81,6 +81,104 @@ function downloadAuctionExport(state, sid, user) {
     URL.revokeObjectURL(url);
 }
 
+function escapeXls(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function buildAuctionXls(state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const money = value => Number(value || 0);
+    const teamRows = data.teams.map(team => `
+        <tr>
+            <td>${escapeXls(team.teamId)}</td>
+            <td>${escapeXls(team.teamName)}</td>
+            <td>${escapeXls(team.captain)}</td>
+            <td>${escapeXls(team.players.length)}</td>
+            <td>${money(team.totalSpent)}</td>
+            <td>${money(team.budgetRemaining)}</td>
+        </tr>`).join("");
+    const playerRows = data.teams.flatMap(team => team.players.map(player => `
+        <tr>
+            <td>${escapeXls(team.teamId)}</td>
+            <td>${escapeXls(team.teamName)}</td>
+            <td>${escapeXls(team.captain)}</td>
+            <td>${escapeXls(player.slot)}</td>
+            <td>${escapeXls(player.name)}</td>
+            <td>${escapeXls(player.tierUtr)}</td>
+            <td>${escapeXls(player.actualUtr ?? "")}</td>
+            <td>${money(player.basePrice)}</td>
+            <td>${money(player.bidPrice)}</td>
+            <td>${player.isCaptain ? "Yes" : "No"}</td>
+            <td>${money(team.budgetRemaining)}</td>
+        </tr>`)).join("");
+    const bidRows = data.currentBids.map(bid => `
+        <tr>
+            <td>${escapeXls(bid.teamId)}</td>
+            <td>${escapeXls(bid.teamName)}</td>
+            <td>${money(bid.amount)}</td>
+        </tr>`).join("");
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+body{font-family:Arial,sans-serif;}
+table{border-collapse:collapse;margin-bottom:24px;}
+th,td{border:1px solid #999;padding:6px 8px;}
+th{background:#e8eef8;font-weight:bold;}
+.money{mso-number-format:"\$#,##0";}
+</style>
+</head>
+<body>
+<h1>Tennis Auction Backup</h1>
+<table>
+<tr><th>Session ID</th><td>${escapeXls(data.sessionId)}</td></tr>
+<tr><th>Exported At</th><td>${escapeXls(data.exportedAt)}</td></tr>
+<tr><th>Exported By</th><td>${escapeXls(data.exportedBy)}</td></tr>
+<tr><th>Scope</th><td>${escapeXls(data.scope)}</td></tr>
+</table>
+
+<h2>Teams Summary</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Players</th><th>Total Spent</th><th>Money Left</th></tr>
+${teamRows}
+</table>
+
+<h2>Roster / Auctioned Players</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th><th>Team Money Left</th></tr>
+${playerRows}
+</table>
+
+<h2>Current Open Bids</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Current Bid</th></tr>
+${bidRows || '<tr><td colspan="3">No open bids</td></tr>'}
+</table>
+</body>
+</html>`;
+}
+
+function downloadAuctionXls(state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const html = buildAuctionXls(state, sid, user);
+    const filename = `tennis-auction-${sid}-${data.scope}-${new Date().toISOString().slice(0,10)}.xls`;
+    const blob = new Blob([html], {type:"application/vnd.ms-excel;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 function normalize(data) {
     if (!data) return null;
     const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
@@ -1131,6 +1229,7 @@ function Auction({ sid, user, onBack }) {
                 </div>
                 <div className="complete-banner">🏆 Auction Complete · Session {sid}</div>
                 <div className="auction-actions">
+                    <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionXls(state, sid, user)}>Export XLS</button>
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionExport(state, sid, user)}>Export JSON</button>
                     {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>}
                 </div>
@@ -1181,7 +1280,8 @@ function Auction({ sid, user, onBack }) {
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
-                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>Export</button>
+                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionXls(state, sid, user)}>XLS</button>
+                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>JSON</button>
                     {isAdmin && <button className="btn btn-danger top-action-btn" onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
