@@ -992,14 +992,13 @@ function Auction({ sid, user, onBack }) {
         const openSlots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
         if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
 
-        const costs = [];
-        POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
-            const utr = getUTR(poolKey);
-            costs.push(UTR_PRICES[utr] || 5000);
-        });
+        const ownedUtrs = new Set(projectedPlayers.map(p => Number(p.utr)));
+        const remainingTierCosts = UTR_TIERS
+            .filter(utr => !ownedUtrs.has(Number(utr)))
+            .map(utr => UTR_PRICES[utr] || 5000);
 
-        const slots = Math.min(openSlots, costs.length);
-        const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
+        const slots = Math.min(openSlots, remainingTierCosts.length);
+        const amount = remainingTierCosts.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
         return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
     };
 
@@ -1275,14 +1274,15 @@ function Auction({ sid, user, onBack }) {
                         );
                     }
 
-                    const bidBase = highest>0?highest:eff.player.price;
+                    const defaultBid = highest>0 ? highest + 1000 : eff.player.price;
                     const maxBid = team.reserve?.maxBid ?? team.budget;
-                    const chips = BID_INCREMENT_OPTIONS
-                        .map(increment => ({
-                            increment,
-                            amount: highest>0 ? bidBase + increment : bidBase + increment - 1000
+                    const chips = [
+                        {label:"D", amount:defaultBid},
+                        ...BID_INCREMENT_OPTIONS.map(increment => ({
+                            label:`+${increment/1000}k`,
+                            amount: defaultBid + increment
                         }))
-                        .filter(chip => chip.amount<=maxBid);
+                    ].filter(chip => chip.amount<=maxBid);
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
@@ -1313,8 +1313,8 @@ function Auction({ sid, user, onBack }) {
                                         onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
                                     />
                                     <div className="quick-chips">
-                                        {chips.map(({increment, amount})=><button key={increment} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            +{increment/1000}k
+                                        {chips.map(({label, amount})=><button key={label} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
+                                            {label}
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}
