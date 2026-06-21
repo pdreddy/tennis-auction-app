@@ -101,20 +101,43 @@ function buildAuctionXls(state, sid, user) {
             <td>${money(team.totalSpent)}</td>
             <td>${money(team.budgetRemaining)}</td>
         </tr>`).join("");
-    const playerRows = data.teams.flatMap(team => team.players.map(player => `
-        <tr>
-            <td>${escapeXls(team.teamId)}</td>
-            <td>${escapeXls(team.teamName)}</td>
-            <td>${escapeXls(team.captain)}</td>
-            <td>${escapeXls(player.slot)}</td>
-            <td>${escapeXls(player.name)}</td>
-            <td>${escapeXls(player.tierUtr)}</td>
-            <td>${escapeXls(player.actualUtr ?? "")}</td>
-            <td>${money(player.basePrice)}</td>
-            <td>${money(player.bidPrice)}</td>
-            <td>${player.isCaptain ? "Yes" : "No"}</td>
-            <td>${money(team.budgetRemaining)}</td>
-        </tr>`)).join("");
+    const rosterSlotCount = Math.max(7, ...data.teams.map(team => team.players.length));
+    const teamTables = data.teams.map(team => {
+        const rows = Array.from({length: rosterSlotCount}, (_, index) => {
+            const slot = index + 1;
+            const player = team.players.find(p => p.slot === slot) || team.players[index];
+            if (!player) {
+                return `
+                    <tr class="empty-slot">
+                        <td>${slot}</td>
+                        <td>Player ${slot}</td>
+                        <td></td>
+                        <td></td>
+                        <td class="money"></td>
+                        <td class="money"></td>
+                        <td></td>
+                    </tr>`;
+            }
+            return `
+                <tr>
+                    <td>${escapeXls(slot)}</td>
+                    <td>${escapeXls(player.name)}</td>
+                    <td>${escapeXls(player.tierUtr)}</td>
+                    <td>${escapeXls(player.actualUtr ?? "")}</td>
+                    <td class="money">${money(player.basePrice)}</td>
+                    <td class="money">${money(player.bidPrice)}</td>
+                    <td>${player.isCaptain ? "Yes" : "No"}</td>
+                </tr>`;
+        }).join("");
+        return `
+            <h3>${escapeXls(team.teamName)} · ${escapeXls(team.captain)}</h3>
+            <table class="team-table">
+                <tr><th>Team ID</th><td>${escapeXls(team.teamId)}</td><th>Players</th><td>${escapeXls(team.players.length)} / ${rosterSlotCount}</td></tr>
+                <tr><th>Total Spent</th><td class="money">${money(team.totalSpent)}</td><th>Money Left</th><td class="money">${money(team.budgetRemaining)}</td></tr>
+                <tr><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th></tr>
+                ${rows}
+            </table>`;
+    }).join("");
     const bidRows = data.currentBids.map(bid => `
         <tr>
             <td>${escapeXls(bid.teamId)}</td>
@@ -127,8 +150,13 @@ function buildAuctionXls(state, sid, user) {
 <head>
 <meta charset="utf-8" />
 <style>
-body{font-family:Arial,sans-serif;}
-table{border-collapse:collapse;margin-bottom:24px;}
+body{font-family:Arial,sans-serif;color:#1f2937;}
+h1{color:#1d4ed8;}
+h2{background:#1d4ed8;color:#fff;padding:8px 10px;}
+h3{background:#dbeafe;color:#1e3a8a;padding:6px 10px;margin:18px 0 0;}
+table{border-collapse:collapse;margin-bottom:24px;width:100%;}
+.team-table{margin-bottom:30px;}
+.empty-slot td{color:#9ca3af;font-style:italic;}
 th,td{border:1px solid #999;padding:6px 8px;}
 th{background:#e8eef8;font-weight:bold;}
 .money{mso-number-format:"\$#,##0";}
@@ -149,11 +177,8 @@ th{background:#e8eef8;font-weight:bold;}
 ${teamRows}
 </table>
 
-<h2>Roster / Auctioned Players</h2>
-<table>
-<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th><th>Team Money Left</th></tr>
-${playerRows}
-</table>
+<h2>Team Rosters</h2>
+${teamTables}
 
 <h2>Current Open Bids</h2>
 <table>
@@ -177,6 +202,17 @@ function downloadAuctionXls(state, sid, user) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+}
+
+async function saveAuctionXlsToDirectory(directoryHandle, state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const html = buildAuctionXls(state, sid, user);
+    const filename = `tennis-auction-${sid}-${data.scope}-autosave.xls`;
+    const fileHandle = await directoryHandle.getFileHandle(filename, {create:true});
+    const writable = await fileHandle.createWritable();
+    await writable.write(new Blob([html], {type:"application/vnd.ms-excel;charset=utf-8"}));
+    await writable.close();
+    return filename;
 }
 
 function normalize(data) {
@@ -715,10 +751,12 @@ function ManagePins() {
                     <div key={a.code} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                         <div style={{flex:1,fontSize:12,color:"#ccc",minWidth:160}}>{a.label}</div>
                         <input
-                            type="password"
+                            type="text"
                             maxLength={6}
                             inputMode="numeric"
-                            placeholder="● ● ● ● ● ●"
+                            autoComplete="off"
+                            aria-label={`${a.label} PIN`}
+                            placeholder="000000"
                             value={pins[a.code]||""}
                             style={{width:110,letterSpacing:4,textAlign:"center",padding:"6px 8px",background:"#1a1f2e",border:"1px solid #333",borderRadius:6,color:"#fff",fontSize:14}}
                             onChange={e => setPins(p => ({...p,[a.code]:e.target.value.replace(/\D/g,"").slice(0,6)}))}
@@ -1021,7 +1059,10 @@ function Auction({ sid, user, onBack }) {
     const [showRosters, setShowRosters] = useState(() => pref("ta_rosters",true));
     const [showUpcoming, setShowUpcoming] = useState(true);
     const [pinnedTeam, setPinnedTeam] = useState(() => pref("ta_pin",null));
+    const [autoSaveDir, setAutoSaveDir] = useState(null);
+    const [autoSaveStatus, setAutoSaveStatus] = useState(null);
     const auctionRef = useRef(getAuctionRef(sid));
+    const latestStateRef = useRef(null);
 
     // Real-time listener
     useEffect(() => {
@@ -1047,12 +1088,50 @@ function Auction({ sid, user, onBack }) {
         return () => { connRef.off(); auctionRef.current.off(); };
     }, [sid]);
 
+    useEffect(() => {
+        latestStateRef.current = state;
+    }, [state]);
+
     // Timer
     useEffect(() => {
         if (!state?.timerEnd) return;
         const iv = setInterval(() => setTimeLeft(Math.max(0, Math.floor((state.timerEnd - Date.now())/1000))), 200);
         return () => clearInterval(iv);
     }, [state?.timerEnd]);
+
+    const writeAutoSaveXls = useCallback(async (directoryHandle) => {
+        const latestState = latestStateRef.current;
+        if (!latestState) return;
+        const filename = await saveAuctionXlsToDirectory(directoryHandle, latestState, sid, user);
+        setAutoSaveStatus({ok:true, text:`Auto-saved ${filename} at ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`});
+    }, [sid, user]);
+
+    useEffect(() => {
+        if (!autoSaveDir) return;
+        const iv = setInterval(() => {
+            writeAutoSaveXls(autoSaveDir).catch(error => setAutoSaveStatus({ok:false, text:`Auto-save failed: ${error.message}`}));
+        }, 120000);
+        return () => clearInterval(iv);
+    }, [autoSaveDir, writeAutoSaveXls]);
+
+    const selectAutoSaveFolder = async () => {
+        if (!window.showDirectoryPicker) {
+            setAutoSaveStatus({ok:false, text:"Auto-save needs a Chromium browser with folder access support. Use Export XLS for manual downloads here."});
+            return;
+        }
+        try {
+            const directoryHandle = await window.showDirectoryPicker({mode:"readwrite"});
+            setAutoSaveDir(directoryHandle);
+            await writeAutoSaveXls(directoryHandle);
+        } catch (error) {
+            if (error.name !== "AbortError") setAutoSaveStatus({ok:false, text:`Auto-save setup failed: ${error.message}`});
+        }
+    };
+
+    const stopAutoSave = () => {
+        setAutoSaveDir(null);
+        setAutoSaveStatus({ok:true, text:"Auto-save stopped"});
+    };
 
     const fbUpdate = updates => auctionRef.current.update({...updates, lastUpdate: Date.now()});
     const toggleRosters = () => { const n=!showRosters; setShowRosters(n); savePref("ta_rosters",n); };
@@ -1231,8 +1310,14 @@ function Auction({ sid, user, onBack }) {
                 <div className="auction-actions">
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionXls(state, sid, user)}>Export XLS</button>
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionExport(state, sid, user)}>Export JSON</button>
+                    {autoSaveDir ? (
+                        <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={stopAutoSave}>Stop XLS Auto-save</button>
+                    ) : (
+                        <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={selectAutoSaveFolder}>Auto-save XLS</button>
+                    )}
                     {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>}
                 </div>
+                {autoSaveStatus && <div className={`cfg-status ${autoSaveStatus.ok?"ok":"err"}`} style={{margin:"0 16px 12px"}}>{autoSaveStatus.text}</div>}
                 <div className="rosters-grid">
                     {state.teams.map(t => <RosterCard key={t.id} team={t} teamSize={TEAM_SIZE_EFF}/>)}
                 </div>
@@ -1282,6 +1367,11 @@ function Auction({ sid, user, onBack }) {
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
                     <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionXls(state, sid, user)}>XLS</button>
                     <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>JSON</button>
+                    {autoSaveDir ? (
+                        <button className="btn btn-neutral top-action-btn" onClick={stopAutoSave}>Stop Auto XLS</button>
+                    ) : (
+                        <button className="btn btn-neutral top-action-btn" onClick={selectAutoSaveFolder}>Auto XLS</button>
+                    )}
                     {isAdmin && <button className="btn btn-danger top-action-btn" onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
@@ -1290,6 +1380,8 @@ function Auction({ sid, user, onBack }) {
                 <div className="progress-track"><div className="progress-fill" style={{width:pct+"%"}}/></div>
                 <div className="progress-text">UTR {getUTR(eff.poolKey)} pool · {pct}% complete · {state.teams.length} teams</div>
             </div>
+
+            {autoSaveStatus && <div className={`cfg-status ${autoSaveStatus.ok?"ok":"err"}`} style={{margin:"0 16px 12px"}}>{autoSaveStatus.text}</div>}
 
             <div style={{margin:"0 12px 10px",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
                 <div onClick={()=>setShowUpcoming(v=>!v)}
