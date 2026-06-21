@@ -101,24 +101,41 @@ function buildAuctionXls(state, sid, user) {
             <td>${money(team.totalSpent)}</td>
             <td>${money(team.budgetRemaining)}</td>
         </tr>`).join("");
+    const rosterSlotCount = Math.max(7, ...data.teams.map(team => team.players.length));
     const teamTables = data.teams.map(team => {
-        const rows = team.players.map(player => `
-            <tr>
-                <td>${escapeXls(player.slot)}</td>
-                <td>${escapeXls(player.name)}</td>
-                <td>${escapeXls(player.tierUtr)}</td>
-                <td>${escapeXls(player.actualUtr ?? "")}</td>
-                <td class="money">${money(player.basePrice)}</td>
-                <td class="money">${money(player.bidPrice)}</td>
-                <td>${player.isCaptain ? "Yes" : "No"}</td>
-            </tr>`).join("");
+        const rows = Array.from({length: rosterSlotCount}, (_, index) => {
+            const slot = index + 1;
+            const player = team.players.find(p => p.slot === slot) || team.players[index];
+            if (!player) {
+                return `
+                    <tr class="empty-slot">
+                        <td>${slot}</td>
+                        <td>Player ${slot}</td>
+                        <td></td>
+                        <td></td>
+                        <td class="money"></td>
+                        <td class="money"></td>
+                        <td></td>
+                    </tr>`;
+            }
+            return `
+                <tr>
+                    <td>${escapeXls(slot)}</td>
+                    <td>${escapeXls(player.name)}</td>
+                    <td>${escapeXls(player.tierUtr)}</td>
+                    <td>${escapeXls(player.actualUtr ?? "")}</td>
+                    <td class="money">${money(player.basePrice)}</td>
+                    <td class="money">${money(player.bidPrice)}</td>
+                    <td>${player.isCaptain ? "Yes" : "No"}</td>
+                </tr>`;
+        }).join("");
         return `
             <h3>${escapeXls(team.teamName)} · ${escapeXls(team.captain)}</h3>
             <table class="team-table">
-                <tr><th>Team ID</th><td>${escapeXls(team.teamId)}</td><th>Players</th><td>${escapeXls(team.players.length)}</td></tr>
+                <tr><th>Team ID</th><td>${escapeXls(team.teamId)}</td><th>Players</th><td>${escapeXls(team.players.length)} / ${rosterSlotCount}</td></tr>
                 <tr><th>Total Spent</th><td class="money">${money(team.totalSpent)}</td><th>Money Left</th><td class="money">${money(team.budgetRemaining)}</td></tr>
                 <tr><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th></tr>
-                ${rows || '<tr><td colspan="7">No players assigned</td></tr>'}
+                ${rows}
             </table>`;
     }).join("");
     const bidRows = data.currentBids.map(bid => `
@@ -139,6 +156,7 @@ h2{background:#1d4ed8;color:#fff;padding:8px 10px;}
 h3{background:#dbeafe;color:#1e3a8a;padding:6px 10px;margin:18px 0 0;}
 table{border-collapse:collapse;margin-bottom:24px;width:100%;}
 .team-table{margin-bottom:30px;}
+.empty-slot td{color:#9ca3af;font-style:italic;}
 th,td{border:1px solid #999;padding:6px 8px;}
 th{background:#e8eef8;font-weight:bold;}
 .money{mso-number-format:"\$#,##0";}
