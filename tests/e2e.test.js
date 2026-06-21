@@ -321,6 +321,19 @@ test("default captain budgets are deducted from the configured team budget", () 
     expect(courtMasters.budget).toBe(TEAM_BUDGET - courtMasters.players[0].acquiredPrice);
 });
 
+test("default player list includes confirmed version 6 corrections", () => {
+    const byName = Object.fromEntries(DEFAULT_PLAYERS.map(p => [p.Name, p]));
+    expect(DEFAULT_PLAYERS).toHaveLength(112);
+    expect(byName["Vinod Marakoosham"].cat).toBe(1);
+    expect(byName["Nagarjuna Saladi"]).toBeFalsy();
+    expect(byName["Dinesh Reddy Timmareddy"].cat).toBe(1);
+    expect(byName["Rajasekhar Mangalampally"].cat).toBe(2);
+    expect(byName["Malla Reddy Cheerke"].cat).toBe(6);
+    expect(byName["Sashank T"].cat).toBe(5);
+    expect(byName["Shiva Kumar"].cat).toBe(6);
+    expect(byName["Shiva Gundimeda"]).toBeFalsy();
+});
+
 console.log("\n3. normalize");
 
 test("returns null for null input", () => {
