@@ -62,6 +62,20 @@ The app defaults to the Netlify-friendly API-backed provider for new deployments
 
 Use Firebase when you want native realtime subscriptions from Firebase Realtime Database. Only select this provider after setting your Firebase environment variables; otherwise use `netlify` so the app does not try to initialize Firebase with a blank database URL. Configure the `VITE_FIREBASE_*` variables in `.env.local` for local development and in your hosting provider environment variables for production.
 
+
+### Supabase provider
+
+If you moved off Firebase and do not have Redis, use Supabase through the existing `/api/db/*` Netlify Function. Run `supabase/schema.sql` in the Supabase SQL editor, then add these Netlify environment variables:
+
+```bash
+VITE_DATABASE_PROVIDER=netlify
+VITE_DATABASE_API_BASE=/api/db
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+```
+
+The API stores the app's top-level database paths as rows in `public.app_kv`, so you can see and edit `config`, `users`, and `auctionsdata` in the Supabase Table Editor. Keep `SUPABASE_SERVICE_ROLE_KEY` server-side only.
+
 ### Netlify / Upstash Redis provider
 
 Use this provider when you want the app data to live behind Netlify Functions instead of direct browser Firebase access. In Netlify:

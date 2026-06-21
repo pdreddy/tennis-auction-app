@@ -7,6 +7,8 @@ const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || process.env.V
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 let firebaseAccessToken = null;
 let firebaseTokenExpiresAt = 0;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 function json(res, status, body) {
     res.statusCode = status;
@@ -50,6 +52,54 @@ function applyFirebaseUpdate(root, updates) {
     return Object.entries(updates || {}).reduce((next, [path, value]) => {
         return setAtPath(next, String(path).split("/").filter(Boolean), value);
     }, root || {});
+}
+
+function hasSupabase() {
+    return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function supabaseHeaders(extra = {}) {
+    return {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "content-type": "application/json",
+        ...extra
+    };
+}
+
+function supabaseRestUrl(path = "app_kv") {
+    return `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${path}`;
+}
+
+async function supabaseRequest(path, options = {}) {
+    const response = await fetch(supabaseRestUrl(path), {
+        ...options,
+        headers: supabaseHeaders(options.headers || {})
+    });
+    const text = await response.text();
+    const body = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+        const message = Array.isArray(body) ? body.map(error => error.message).join(", ") : body?.message || body?.error || `Supabase request failed with ${response.status}`;
+        const err = new Error(message);
+        err.statusCode = response.status || 500;
+        throw err;
+    }
+    return body;
+}
+
+async function supabaseReadRoot() {
+    const rows = await supabaseRequest("app_kv?select=key,value");
+    return Object.fromEntries((rows || []).map(row => [row.key, row.value]));
+}
+
+async function supabaseWriteRoot(root) {
+    const rows = Object.entries(root || {}).map(([key, value]) => ({key, value}));
+    if (!rows.length) return;
+    await supabaseRequest("app_kv?on_conflict=key", {
+        method: "POST",
+        headers: {prefer: "resolution=merge-duplicates"},
+        body: JSON.stringify(rows)
+    });
 }
 
 async function command(...args) {
@@ -150,6 +200,7 @@ async function firebaseRequest(method, value) {
 }
 
 async function readRoot() {
+    if (hasSupabase()) return await supabaseReadRoot();
     if (!REST_URL || !REST_TOKEN) return await firebaseRequest("GET") || {};
     const raw = await command("GET", DATA_KEY);
     if (!raw) return {};
@@ -158,6 +209,10 @@ async function readRoot() {
 }
 
 async function writeRoot(root) {
+    if (hasSupabase()) {
+        await supabaseWriteRoot(root || {});
+        return;
+    }
     if (!REST_URL || !REST_TOKEN) {
         await firebaseRequest("PUT", root || {});
         return;
