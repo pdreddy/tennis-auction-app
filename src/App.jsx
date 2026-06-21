@@ -81,6 +81,104 @@ function downloadAuctionExport(state, sid, user) {
     URL.revokeObjectURL(url);
 }
 
+function escapeXls(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function buildAuctionXls(state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const money = value => Number(value || 0);
+    const teamRows = data.teams.map(team => `
+        <tr>
+            <td>${escapeXls(team.teamId)}</td>
+            <td>${escapeXls(team.teamName)}</td>
+            <td>${escapeXls(team.captain)}</td>
+            <td>${escapeXls(team.players.length)}</td>
+            <td>${money(team.totalSpent)}</td>
+            <td>${money(team.budgetRemaining)}</td>
+        </tr>`).join("");
+    const playerRows = data.teams.flatMap(team => team.players.map(player => `
+        <tr>
+            <td>${escapeXls(team.teamId)}</td>
+            <td>${escapeXls(team.teamName)}</td>
+            <td>${escapeXls(team.captain)}</td>
+            <td>${escapeXls(player.slot)}</td>
+            <td>${escapeXls(player.name)}</td>
+            <td>${escapeXls(player.tierUtr)}</td>
+            <td>${escapeXls(player.actualUtr ?? "")}</td>
+            <td>${money(player.basePrice)}</td>
+            <td>${money(player.bidPrice)}</td>
+            <td>${player.isCaptain ? "Yes" : "No"}</td>
+            <td>${money(team.budgetRemaining)}</td>
+        </tr>`)).join("");
+    const bidRows = data.currentBids.map(bid => `
+        <tr>
+            <td>${escapeXls(bid.teamId)}</td>
+            <td>${escapeXls(bid.teamName)}</td>
+            <td>${money(bid.amount)}</td>
+        </tr>`).join("");
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+body{font-family:Arial,sans-serif;}
+table{border-collapse:collapse;margin-bottom:24px;}
+th,td{border:1px solid #999;padding:6px 8px;}
+th{background:#e8eef8;font-weight:bold;}
+.money{mso-number-format:"\$#,##0";}
+</style>
+</head>
+<body>
+<h1>Tennis Auction Backup</h1>
+<table>
+<tr><th>Session ID</th><td>${escapeXls(data.sessionId)}</td></tr>
+<tr><th>Exported At</th><td>${escapeXls(data.exportedAt)}</td></tr>
+<tr><th>Exported By</th><td>${escapeXls(data.exportedBy)}</td></tr>
+<tr><th>Scope</th><td>${escapeXls(data.scope)}</td></tr>
+</table>
+
+<h2>Teams Summary</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Players</th><th>Total Spent</th><th>Money Left</th></tr>
+${teamRows}
+</table>
+
+<h2>Roster / Auctioned Players</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th><th>Team Money Left</th></tr>
+${playerRows}
+</table>
+
+<h2>Current Open Bids</h2>
+<table>
+<tr><th>Team ID</th><th>Team Name</th><th>Current Bid</th></tr>
+${bidRows || '<tr><td colspan="3">No open bids</td></tr>'}
+</table>
+</body>
+</html>`;
+}
+
+function downloadAuctionXls(state, sid, user) {
+    const data = buildAuctionExport(state, sid, user);
+    const html = buildAuctionXls(state, sid, user);
+    const filename = `tennis-auction-${sid}-${data.scope}-${new Date().toISOString().slice(0,10)}.xls`;
+    const blob = new Blob([html], {type:"application/vnd.ms-excel;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 function normalize(data) {
     if (!data) return null;
     const teams = toArr(data.teams).map(t => ({...t, players: toArr(t.players)}));
@@ -986,20 +1084,21 @@ function Auction({ sid, user, onBack }) {
     const isAdmin = user.role === "admin";
     const myTeamId = user.teamId;
 
+    const teamOwnsUtr = (team, utr) => (team?.players || []).some(p => Number(p.utr) === Number(utr));
+
     const reserveAfterCurrentWin = team => {
         if (!eff?.player || !team) return {amount:0,slots:0,maxBid:team?.budget||0};
         const projectedPlayers = [...team.players, eff.player];
         const openSlots = Math.max(0, TEAM_SIZE_EFF - projectedPlayers.length);
         if (openSlots === 0) return {amount:0,slots:0,maxBid:team.budget};
 
-        const costs = [];
-        POOL_ORDER.slice(eff.effPool + 1).forEach(poolKey => {
-            const utr = getUTR(poolKey);
-            costs.push(UTR_PRICES[utr] || 5000);
-        });
+        const ownedUtrs = new Set(projectedPlayers.map(p => Number(p.utr)));
+        const remainingTierCosts = UTR_TIERS
+            .filter(utr => !ownedUtrs.has(Number(utr)))
+            .map(utr => UTR_PRICES[utr] || 5000);
 
-        const slots = Math.min(openSlots, costs.length);
-        const amount = costs.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
+        const slots = Math.min(openSlots, remainingTierCosts.length);
+        const amount = remainingTierCosts.slice(0, slots).reduce((sum,cost)=>sum+cost, 0);
         return {amount,slots,maxBid:Math.max(0, team.budget - amount)};
     };
 
@@ -1009,11 +1108,17 @@ function Auction({ sid, user, onBack }) {
         if (!team) return "Team not found";
         if (team.players.length >= TEAM_SIZE_EFF) return `Team full`;
         const utr = getUTR(eff.poolKey);
-        const fromPool = team.players.slice(1).filter(p=>p.utr===utr).length;
-        if (fromPool >= (POOL_CAPS_EFF[eff.poolKey]||0)) return `Max ${POOL_CAPS_EFF[eff.poolKey]} at UTR ${utr}`;
+        if (teamOwnsUtr(team, utr)) return `Max 1 at UTR ${utr}`;
         if (!amount||amount<=0) return "Enter amount";
         if (amount < eff.player.price) return `Min ${fmtR(eff.player.price)}`;
         if ((amount - eff.player.price)%1000!==0) return "Bids must be in $1k increments";
+        const currentTeamBid = state.currentBids[String(teamId)] || 0;
+        const competingHighBid = Math.max(0, ...Object.entries(state.currentBids)
+            .filter(([tid]) => parseInt(tid)!==teamId)
+            .map(([,bid]) => bid || 0));
+        if (competingHighBid > 0 && amount <= competingHighBid && amount !== currentTeamBid) {
+            return `Bid at least ${fmtR(competingHighBid + 1000)}`;
+        }
         const dup = state.teams.find(t=>t.id!==teamId&&(state.currentBids[String(t.id)]||0)===amount);
         if (dup) return `${fmtR(amount)} taken by ${dup.name}`;
         if (amount > team.budget) return "Exceeds budget";
@@ -1033,11 +1138,15 @@ function Auction({ sid, user, onBack }) {
         setBidErrors(p=>({...p,[teamId]:null}));
         auctionRef.current.child("currentBids").transaction(cur => {
             const bids = cur||{};
+            const currentTeamBid = bids[String(teamId)] || 0;
+            const competingHighBid = Math.max(0, ...Object.entries(bids)
+                .filter(([tid]) => parseInt(tid)!==teamId)
+                .map(([,bid]) => bid || 0));
             const taken = Object.entries(bids).some(([tid,b])=>parseInt(tid)!==teamId && b===n);
-            if (taken) return;
+            if (taken || (competingHighBid > 0 && n <= competingHighBid && n !== currentTeamBid)) return;
             return {...bids,[teamId]:n};
         }, (err,committed) => {
-            if (!committed) setBidErrors(p=>({...p,[teamId]:"Amount taken — bid higher"}));
+            if (!committed) setBidErrors(p=>({...p,[teamId]:"Bid must be unique and above the current high bid"}));
             else {
                 const now = Date.now();
                 const timerEnd = getAntiSnipeTimerEnd(state.timerEnd, now, ANTI_SNIPE_THRESHOLD_EFF, ANTI_SNIPE_EXTENSION_EFF);
@@ -1120,6 +1229,7 @@ function Auction({ sid, user, onBack }) {
                 </div>
                 <div className="complete-banner">🏆 Auction Complete · Session {sid}</div>
                 <div className="auction-actions">
+                    <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionXls(state, sid, user)}>Export XLS</button>
                     <button className="btn btn-neutral" style={{width:"auto",padding:"10px 24px"}} onClick={()=>downloadAuctionExport(state, sid, user)}>Export JSON</button>
                     {isAdmin && <button className="btn btn-danger" style={{width:"auto",padding:"10px 24px"}} onClick={()=>setResetOpen(true)}>Reset Auction</button>}
                 </div>
@@ -1148,7 +1258,7 @@ function Auction({ sid, user, onBack }) {
     const sortedTeams = [...state.teams].map(t => {
         const reserve = reserveAfterCurrentWin(t);
         const isDisabled = t.players.length>=TEAM_SIZE_EFF || t.budget<eff.player.price || reserve.maxBid<eff.player.price ||
-            (t.players.slice(1).filter(p=>p.utr===getUTR(eff.poolKey)).length >= (POOL_CAPS_EFF[eff.poolKey]||0));
+            teamOwnsUtr(t, getUTR(eff.poolKey));
         return {...t,isDisabled,isPinned:pinnedTeam===t.id,reserve};
     }).filter(t => isAdmin || t.id===myTeamId).sort((a,b) => {
         if (a.isPinned!==b.isPinned) return a.isPinned?-1:1;
@@ -1170,7 +1280,8 @@ function Auction({ sid, user, onBack }) {
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <div className="sync-dot"><div className={`dot ${connected?"dot-green":"dot-red"}`}/>{connected?"Live":"Offline"}</div>
-                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>Export</button>
+                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionXls(state, sid, user)}>XLS</button>
+                    <button className="btn btn-neutral top-action-btn" onClick={()=>downloadAuctionExport(state, sid, user)}>JSON</button>
                     {isAdmin && <button className="btn btn-danger top-action-btn" onClick={()=>setResetOpen(true)}>Reset</button>}
                 </div>
             </div>
@@ -1275,14 +1386,15 @@ function Auction({ sid, user, onBack }) {
                         );
                     }
 
-                    const bidBase = highest>0?highest:eff.player.price;
+                    const defaultBid = highest>0 ? highest + 1000 : eff.player.price;
                     const maxBid = team.reserve?.maxBid ?? team.budget;
-                    const chips = BID_INCREMENT_OPTIONS
-                        .map(increment => ({
-                            increment,
-                            amount: highest>0 ? bidBase + increment : bidBase + increment - 1000
+                    const chips = [
+                        {label:"D", amount:defaultBid},
+                        ...BID_INCREMENT_OPTIONS.map(increment => ({
+                            label:`+${increment/1000}k`,
+                            amount: defaultBid + increment
                         }))
-                        .filter(chip => chip.amount<=maxBid);
+                    ].filter(chip => chip.amount<=maxBid);
 
                     return (
                         <div key={team.id} className={`bid-card ${isWin?"winning":""} ${isTie?"tied":""} ${team.isPinned?"pinned":""}`}>
@@ -1313,8 +1425,8 @@ function Auction({ sid, user, onBack }) {
                                         onKeyPress={e=>e.key==="Enter"&&bidInputs[team.id]&&placeBid(team.id,bidInputs[team.id])}
                                     />
                                     <div className="quick-chips">
-                                        {chips.map(({increment, amount})=><button key={increment} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
-                                            +{increment/1000}k
+                                        {chips.map(({label, amount})=><button key={label} className="chip" disabled={timeLeft===0} onClick={()=>{setBidInputs(p=>({...p,[team.id]:String(amount)}));setBidErrors(p=>({...p,[team.id]:null}));}}>
+                                            {label}
                                         </button>)}
                                     </div>
                                     {bidErrors[team.id] && <div className="bid-error">{bidErrors[team.id]}</div>}

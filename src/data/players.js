@@ -66,12 +66,12 @@ export const RAW_PLAYERS = [
         d: 5.96
     },
     {
-        name: "Nagarjuna Saladi",
+        name: "Vinod Marakoosham",
         group: "UTR 6.0",
-        best: 5.9,
+        best: 6.14,
         cat: 1,
-        s: 5.9,
-        d: 4.79
+        s: 6.1,
+        d: 6.14
     },
     {
         name: "Jayesh Barai",
@@ -99,9 +99,9 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Rajasekhar Mangalampally",
-        group: "UTR 6.0",
+        group: "UTR 5.5",
         best: 5.81,
-        cat: 1,
+        cat: 2,
         s: 5.81,
         d: 5.35
     },
@@ -171,9 +171,9 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Dinesh Reddy Timmareddy",
-        group: "UTR 5.5",
+        group: "UTR 6.0",
         best: 5.88,
-        cat: 2,
+        cat: 1,
         s: 5.13,
         d: 5.88
     },
@@ -611,9 +611,9 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Malla Reddy Cheerke",
-        group: "UTR 4.0",
+        group: "UTR 3.5",
         best: 4.49,
-        cat: 5,
+        cat: 6,
         s: 4.49,
         d: 3.99
     },
@@ -691,9 +691,9 @@ export const RAW_PLAYERS = [
     },
     {
         name: "Sashank T",
-        group: "UTR 3.5",
+        group: "UTR 4.0",
         best: 4.22,
-        cat: 6,
+        cat: 5,
         s: 3.64,
         d: 4.22
     },
@@ -754,7 +754,7 @@ export const RAW_PLAYERS = [
         d: 3.78
     },
     {
-        name: "Shiva Gundimeda",
+        name: "Shiva Kumar",
         group: "UTR 3.5",
         best: 3.74,
         cat: 6,
