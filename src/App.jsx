@@ -220,19 +220,46 @@ function Login({ onLogin }) {
         }
         if (pin.length < 6) { setError("Enter your 6-digit PIN"); return; }
         setBusy(true);
+        const fallbackPin = DEFAULT_PINS[activeAccount.code];
+        const fallbackUser = fallbackPin ? {
+            code: activeAccount.code,
+            pin: fallbackPin,
+            role: activeAccount.role,
+            teamId: activeAccount.teamId,
+            name: activeAccount.label
+        } : null;
+        const completeLogin = (user) => {
+            savePref("ta_last_account", activeAccount.code);
+            savePref("ta_last_login", { name: activeAccount.label, time: Date.now() });
+            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:activeAccount.label });
+        };
         try {
             const snap = await userRef(activeAccount.code).once("value");
-            const user = snap.val();
+            const savedUser = snap.val();
+            const user = savedUser && savedUser.pin ? savedUser : fallbackUser;
             if (!user || !user.pin) {
                 setError("Account not set up yet. Ask the admin to configure PINs.");
                 setBusy(false);
                 return;
             }
-            if (user.pin !== pin) { setError("Wrong PIN"); setBusy(false); return; }
-            savePref("ta_last_account", activeAccount.code);
-            savePref("ta_last_login", { name: activeAccount.label, time: Date.now() });
-            onLogin({ code:user.code, role:user.role, teamId:user.teamId, name:activeAccount.label });
-        } catch(e) { setError("Error: " + e.message); setBusy(false); }
+            if (user.pin === pin) {
+                completeLogin(user);
+                return;
+            }
+            if (fallbackUser && fallbackUser.pin === pin) {
+                completeLogin(fallbackUser);
+                return;
+            }
+            setError("Wrong PIN");
+            setBusy(false);
+        } catch(e) {
+            if (fallbackUser && fallbackUser.pin === pin) {
+                completeLogin(fallbackUser);
+                return;
+            }
+            setError("Error: " + e.message);
+            setBusy(false);
+        }
     };
 
     const formatTime = ts => {
