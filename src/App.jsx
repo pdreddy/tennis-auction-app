@@ -101,20 +101,26 @@ function buildAuctionXls(state, sid, user) {
             <td>${money(team.totalSpent)}</td>
             <td>${money(team.budgetRemaining)}</td>
         </tr>`).join("");
-    const playerRows = data.teams.flatMap(team => team.players.map(player => `
-        <tr>
-            <td>${escapeXls(team.teamId)}</td>
-            <td>${escapeXls(team.teamName)}</td>
-            <td>${escapeXls(team.captain)}</td>
-            <td>${escapeXls(player.slot)}</td>
-            <td>${escapeXls(player.name)}</td>
-            <td>${escapeXls(player.tierUtr)}</td>
-            <td>${escapeXls(player.actualUtr ?? "")}</td>
-            <td>${money(player.basePrice)}</td>
-            <td>${money(player.bidPrice)}</td>
-            <td>${player.isCaptain ? "Yes" : "No"}</td>
-            <td>${money(team.budgetRemaining)}</td>
-        </tr>`)).join("");
+    const teamTables = data.teams.map(team => {
+        const rows = team.players.map(player => `
+            <tr>
+                <td>${escapeXls(player.slot)}</td>
+                <td>${escapeXls(player.name)}</td>
+                <td>${escapeXls(player.tierUtr)}</td>
+                <td>${escapeXls(player.actualUtr ?? "")}</td>
+                <td class="money">${money(player.basePrice)}</td>
+                <td class="money">${money(player.bidPrice)}</td>
+                <td>${player.isCaptain ? "Yes" : "No"}</td>
+            </tr>`).join("");
+        return `
+            <h3>${escapeXls(team.teamName)} · ${escapeXls(team.captain)}</h3>
+            <table class="team-table">
+                <tr><th>Team ID</th><td>${escapeXls(team.teamId)}</td><th>Players</th><td>${escapeXls(team.players.length)}</td></tr>
+                <tr><th>Total Spent</th><td class="money">${money(team.totalSpent)}</td><th>Money Left</th><td class="money">${money(team.budgetRemaining)}</td></tr>
+                <tr><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th></tr>
+                ${rows || '<tr><td colspan="7">No players assigned</td></tr>'}
+            </table>`;
+    }).join("");
     const bidRows = data.currentBids.map(bid => `
         <tr>
             <td>${escapeXls(bid.teamId)}</td>
@@ -127,8 +133,12 @@ function buildAuctionXls(state, sid, user) {
 <head>
 <meta charset="utf-8" />
 <style>
-body{font-family:Arial,sans-serif;}
-table{border-collapse:collapse;margin-bottom:24px;}
+body{font-family:Arial,sans-serif;color:#1f2937;}
+h1{color:#1d4ed8;}
+h2{background:#1d4ed8;color:#fff;padding:8px 10px;}
+h3{background:#dbeafe;color:#1e3a8a;padding:6px 10px;margin:18px 0 0;}
+table{border-collapse:collapse;margin-bottom:24px;width:100%;}
+.team-table{margin-bottom:30px;}
 th,td{border:1px solid #999;padding:6px 8px;}
 th{background:#e8eef8;font-weight:bold;}
 .money{mso-number-format:"\$#,##0";}
@@ -149,11 +159,8 @@ th{background:#e8eef8;font-weight:bold;}
 ${teamRows}
 </table>
 
-<h2>Roster / Auctioned Players</h2>
-<table>
-<tr><th>Team ID</th><th>Team Name</th><th>Captain</th><th>Slot</th><th>Player</th><th>Tier UTR</th><th>Actual UTR</th><th>Base Price</th><th>Auctioned Money</th><th>Captain Slot</th><th>Team Money Left</th></tr>
-${playerRows}
-</table>
+<h2>Team Rosters</h2>
+${teamTables}
 
 <h2>Current Open Bids</h2>
 <table>
